@@ -48,5 +48,5 @@ every push to `main`. To turn it on:
 Once deployed, open the Pages URL in Safari on your phone and use
 **Share → Add to Home Screen** to install it like an app.
 
-The Vite `base` path in `vite.config.ts` is set to `/p-finance/` to match this
+The Vite `base` path in `vite.config.ts` is set to `/P-finance/` to match this
 repo's GitHub Pages URL. If you rename the repo, update that value to match.
