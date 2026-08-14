@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/p-finance/',
+  base: '/P-finance/',
   plugins: [
     react(),
     tailwindcss(),
@@ -19,8 +19,8 @@ export default defineConfig({
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
-        start_url: '/p-finance/',
-        scope: '/p-finance/',
+        start_url: '/P-finance/',
+        scope: '/P-finance/',
         icons: [
           {
             src: 'pwa-192x192.png',
