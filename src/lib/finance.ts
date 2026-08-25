@@ -1,14 +1,21 @@
-import type { AppState, Debt, DebtStrategy } from '../types'
+import type { AppState, ClearedDebt, Debt, DebtStrategy, PriorityTier } from '../types'
+import { categoryOf } from '../types'
 
 const WEEKS_PER_MONTH = 4.345
 
+/** Confirmed, outstanding debt. Excludes `potential` (unconfirmed) and paid-off entries. */
 export function activeDebts(debts: Debt[]): Debt[] {
   return debts.filter((d) => d.status === 'active' && d.balance > 0)
 }
 
-/** Debts with a real recurring minimum payment obligation (not informal personal debts). */
+/** Unconfirmed debts — tracked and shown, but kept out of the active totals. */
+export function potentialDebts(debts: Debt[]): Debt[] {
+  return debts.filter((d) => d.status === 'potential' && d.balance > 0)
+}
+
+/** Active debts carrying a real recurring payment obligation (excludes informal personal debts). */
 export function scheduledDebts(debts: Debt[]): Debt[] {
-  return activeDebts(debts).filter((d) => d.category !== 'personal')
+  return activeDebts(debts).filter((d) => categoryOf(d) !== 'personal' && d.monthlyPayment)
 }
 
 export function totalMonthlyMinimum(debts: Debt[]): number {
@@ -19,17 +26,42 @@ export function weeklyMinimumObligation(debts: Debt[]): number {
   return totalMonthlyMinimum(debts) / WEEKS_PER_MONTH
 }
 
-/** Orders active debts by payoff strategy. Avalanche = highest APR first, snowball = smallest balance first. */
+/**
+ * Orders active debts by payoff strategy.
+ * - `tier`: the priority tiers from the source data (urgent → high interest → 0% BNPL → Apple Card → personal),
+ *   breaking ties by APR then balance.
+ * - `avalanche`: highest APR first.
+ * - `snowball`: smallest balance first.
+ */
 export function orderByStrategy(debts: Debt[], strategy: DebtStrategy): Debt[] {
   const list = activeDebts(debts)
+  if (strategy === 'tier') {
+    return [...list].sort(
+      (a, b) => a.priorityTier - b.priorityTier || b.apr - a.apr || a.balance - b.balance,
+    )
+  }
   if (strategy === 'avalanche') {
-    return [...list].sort((a, b) => (b.apr ?? 0) - (a.apr ?? 0) || a.balance - b.balance)
+    return [...list].sort((a, b) => b.apr - a.apr || a.balance - b.balance)
   }
   return [...list].sort((a, b) => a.balance - b.balance)
 }
 
 export function totalDebt(debts: Debt[]): number {
   return activeDebts(debts).reduce((sum, d) => sum + d.balance, 0)
+}
+
+export function totalPotentialDebt(debts: Debt[]): number {
+  return potentialDebts(debts).reduce((sum, d) => sum + d.balance, 0)
+}
+
+export function totalByTier(debts: Debt[], tier: PriorityTier): number {
+  return activeDebts(debts)
+    .filter((d) => d.priorityTier === tier)
+    .reduce((sum, d) => sum + d.balance, 0)
+}
+
+export function totalCleared(cleared: ClearedDebt[]): number {
+  return cleared.reduce((sum, c) => sum + c.amountCleared, 0)
 }
 
 export interface WeeklySplit {
@@ -47,10 +79,7 @@ export interface WeeklySplit {
  * this month's minimum debt obligations (spread evenly over ~4.3 weeks),
  * savings, and extra toward the top-priority debt.
  */
-export function calculateWeeklySplit(
-  state: AppState,
-  incomeAmount: number,
-): WeeklySplit {
+export function calculateWeeklySplit(state: AppState, incomeAmount: number): WeeklySplit {
   const available = state.bankBalance.amount + incomeAmount
   const weeklyMinimum = weeklyMinimumObligation(state.debts)
   const shortfall = Math.max(weeklyMinimum - available, 0)
@@ -87,7 +116,7 @@ export function estimatePayoffMonths(
 
 export function latestScheduledPayoffDate(debts: Debt[]): string | null {
   const dates = scheduledDebts(debts)
-    .map((d) => d.payoffDate)
+    .map((d) => d.finalPaymentDate)
     .filter((d): d is string => Boolean(d))
   if (dates.length === 0) return null
   return dates.sort().at(-1) ?? null
@@ -101,10 +130,17 @@ export function formatCurrency(amount: number): string {
   })
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
 export function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/** Renders a due value that may be an ISO date or a token such as `ASAP` / `flexible`. */
+export function formatDue(value: string): string {
+  return ISO_DATE.test(value) ? formatDate(value) : value
 }

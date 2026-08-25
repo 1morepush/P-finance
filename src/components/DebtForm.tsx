@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Debt, DebtCategory } from '../types'
+import type { Debt, DebtProduct, DebtStatus, PriorityTier } from '../types'
+import { PRODUCT_LABEL, TIER_LABEL } from '../types'
 
 const inputStyle = {
   background: 'var(--surface-page)',
@@ -9,14 +10,19 @@ const inputStyle = {
 
 const emptyDebt: Omit<Debt, 'id'> = {
   name: '',
-  category: 'installment',
+  product: 'affirm_pay_monthly',
   status: 'active',
+  priorityTier: 1,
   balance: 0,
-  apr: undefined,
+  apr: 0,
   monthlyPayment: undefined,
-  payoffDate: undefined,
+  nextDue: undefined,
+  finalPaymentDate: undefined,
   notes: '',
 }
+
+const PRODUCTS = Object.keys(PRODUCT_LABEL) as DebtProduct[]
+const TIERS = [0, 1, 2, 3, 4] as PriorityTier[]
 
 export function DebtForm({
   initial,
@@ -49,29 +55,50 @@ export function DebtForm({
         />
       </label>
 
+      <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        Lender / product
+        <select
+          value={form.product}
+          onChange={(e) => setForm({ ...form, product: e.target.value as DebtProduct })}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={inputStyle}
+        >
+          {PRODUCTS.map((p) => (
+            <option key={p} value={p}>
+              {PRODUCT_LABEL[p]}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          Category
+          Priority tier
           <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value as DebtCategory })}
+            value={form.priorityTier}
+            onChange={(e) =>
+              setForm({ ...form, priorityTier: Number(e.target.value) as PriorityTier })
+            }
             className="rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           >
-            <option value="installment">Installment</option>
-            <option value="revolving">Revolving</option>
-            <option value="personal">Personal</option>
+            {TIERS.map((t) => (
+              <option key={t} value={t}>
+                {t} — {TIER_LABEL[t]}
+              </option>
+            ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
           Status
           <select
             value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value as Debt['status'] })}
+            onChange={(e) => setForm({ ...form, status: e.target.value as DebtStatus })}
             className="rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           >
             <option value="active">Active</option>
+            <option value="potential">Potential (unconfirmed)</option>
             <option value="paid">Paid off</option>
           </select>
         </label>
@@ -96,10 +123,8 @@ export function DebtForm({
             type="number"
             inputMode="decimal"
             step="0.01"
-            value={form.apr ?? ''}
-            onChange={(e) =>
-              setForm({ ...form, apr: e.target.value === '' ? undefined : Number(e.target.value) })
-            }
+            value={form.apr}
+            onChange={(e) => setForm({ ...form, apr: Number(e.target.value) })}
             className="rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           />
@@ -125,16 +150,27 @@ export function DebtForm({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          Payoff date
+          Final payment date
           <input
             type="date"
-            value={form.payoffDate ?? ''}
-            onChange={(e) => setForm({ ...form, payoffDate: e.target.value || undefined })}
+            value={form.finalPaymentDate ?? ''}
+            onChange={(e) => setForm({ ...form, finalPaymentDate: e.target.value || undefined })}
             className="rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           />
         </label>
       </div>
+
+      <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        Next due — a date, or a word like ASAP / flexible
+        <input
+          value={form.nextDue ?? ''}
+          placeholder="2026-09-13 or ASAP"
+          onChange={(e) => setForm({ ...form, nextDue: e.target.value || undefined })}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={inputStyle}
+        />
+      </label>
 
       <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
         Notes

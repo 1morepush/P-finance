@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import type { AppState, DebtStrategy } from '../types'
 import { Card } from '../components/Card'
-import { exportStateAsJson, parseImportedState } from '../lib/storage'
+import { exportStateAsJson, parseImportedState, resetToSeed } from '../lib/storage'
 
 export function Settings({
   state,
@@ -52,7 +52,7 @@ export function Settings({
           Debt payoff strategy
         </h2>
         <div className="flex gap-2">
-          {(['avalanche', 'snowball'] as DebtStrategy[]).map((s) => (
+          {(['tier', 'avalanche', 'snowball'] as DebtStrategy[]).map((s) => (
             <button
               key={s}
               type="button"
@@ -68,8 +68,9 @@ export function Settings({
           ))}
         </div>
         <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Avalanche targets the highest-APR debt first (saves the most money — good fit for the
-          22.49% Apple Card). Snowball targets the smallest balance first (faster wins).
+          Tier follows your own priority ordering: urgent first, then ~36% APR plans, 0% promo
+          BNPL, the Apple Card, then flexible personal debts. Avalanche targets the highest APR
+          first (pure interest savings). Snowball targets the smallest balance first (faster wins).
         </p>
       </Card>
 
@@ -133,6 +134,18 @@ export function Settings({
             }}
           />
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Discard everything on this device and restore the source-of-truth figures?')) {
+              setState(resetToSeed())
+            }
+          }}
+          className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
+          style={{ background: 'transparent', color: 'var(--status-critical)' }}
+        >
+          Reset to source-of-truth data
+        </button>
       </Card>
     </div>
   )

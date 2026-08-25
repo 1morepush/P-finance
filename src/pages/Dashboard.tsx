@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AppState } from '../types'
+import { categoryOf } from '../types'
 import { Card } from '../components/Card'
 import { StatTile } from '../components/StatTile'
 import { CategoryBar } from '../components/CategoryBar'
@@ -10,7 +11,9 @@ import {
   formatCurrency,
   formatDate,
   latestScheduledPayoffDate,
+  totalCleared,
   totalDebt,
+  totalPotentialDebt,
 } from '../lib/finance'
 
 export function Dashboard({
@@ -28,9 +31,11 @@ export function Dashboard({
   const split = useMemo(() => calculateWeeklySplit(state, incomeAmount), [state, incomeAmount])
   const debts = activeDebts(state.debts)
   const debtTotal = totalDebt(state.debts)
+  const potentialTotal = totalPotentialDebt(state.debts)
+  const clearedTotal = totalCleared(state.clearedDebts)
   const lastPayoff = latestScheduledPayoffDate(state.debts)
 
-  const appleCard = state.debts.find((d) => d.id === 'debt-apple-card')
+  const appleCard = state.debts.find((d) => d.id === 'apple_card')
   const appleMonths =
     appleCard && appleCard.apr && appleCard.monthlyPayment
       ? estimatePayoffMonths(appleCard.balance, appleCard.apr, appleCard.monthlyPayment)
@@ -47,27 +52,20 @@ export function Dashboard({
   const categorySegments = [
     {
       label: 'Installment',
-      value: debts.filter((d) => d.category === 'installment').reduce((s, d) => s + d.balance, 0),
+      value: debts.filter((d) => categoryOf(d) === 'installment').reduce((s, d) => s + d.balance, 0),
       color: 'var(--cat-installment)',
     },
     {
       label: 'Revolving',
-      value: debts.filter((d) => d.category === 'revolving').reduce((s, d) => s + d.balance, 0),
+      value: debts.filter((d) => categoryOf(d) === 'revolving').reduce((s, d) => s + d.balance, 0),
       color: 'var(--cat-revolving)',
     },
     {
       label: 'Personal',
-      value: debts.filter((d) => d.category === 'personal').reduce((s, d) => s + d.balance, 0),
+      value: debts.filter((d) => categoryOf(d) === 'personal').reduce((s, d) => s + d.balance, 0),
       color: 'var(--cat-personal)',
     },
   ]
-
-  function saveBalance() {
-    const amount = Number(balanceInput)
-    if (Number.isNaN(amount)) return
-    setState((s) => ({ ...s, bankBalance: { amount, updatedAt: new Date().toISOString().slice(0, 10) } }))
-    setBalanceEdit(false)
-  }
 
   /** Folds any not-yet-logged income in the input box into the bank balance + entry log. */
   function commitPendingIncome(s: AppState): AppState {
@@ -89,6 +87,16 @@ export function Dashboard({
     }
   }
 
+  function saveBalance() {
+    const amount = Number(balanceInput)
+    if (Number.isNaN(amount)) return
+    setState((s) => ({
+      ...s,
+      bankBalance: { amount, updatedAt: new Date().toISOString().slice(0, 10) },
+    }))
+    setBalanceEdit(false)
+  }
+
   function logIncome() {
     if (incomeAmount <= 0) return
     setState(commitPendingIncome)
@@ -100,11 +108,11 @@ export function Dashboard({
   function applyToSavings() {
     if (split.toSavings <= 0) return
     setState((s) => {
-      const committed = commitPendingIncome(s)
+      const c = commitPendingIncome(s)
       return {
-        ...committed,
-        bankBalance: { ...committed.bankBalance, amount: committed.bankBalance.amount - split.toSavings },
-        savingsBalance: committed.savingsBalance + split.toSavings,
+        ...c,
+        bankBalance: { ...c.bankBalance, amount: c.bankBalance.amount - split.toSavings },
+        savingsBalance: c.savingsBalance + split.toSavings,
       }
     })
     setIncomeInput('')
@@ -114,11 +122,11 @@ export function Dashboard({
     if (split.toExtraDebt <= 0 || !split.priorityDebt) return
     const targetId = split.priorityDebt.id
     setState((s) => {
-      const committed = commitPendingIncome(s)
+      const c = commitPendingIncome(s)
       return {
-        ...committed,
-        bankBalance: { ...committed.bankBalance, amount: committed.bankBalance.amount - split.toExtraDebt },
-        debts: committed.debts.map((d) =>
+        ...c,
+        bankBalance: { ...c.bankBalance, amount: c.bankBalance.amount - split.toExtraDebt },
+        debts: c.debts.map((d) =>
           d.id === targetId ? { ...d, balance: Math.max(d.balance - split.toExtraDebt, 0) } : d,
         ),
       }
@@ -155,7 +163,11 @@ export function Dashboard({
               value={balanceInput}
               onChange={(e) => setBalanceInput(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              style={{ background: 'var(--surface-page)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+              style={{
+                background: 'var(--surface-page)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)',
+              }}
             />
             <button
               type="button"
@@ -181,7 +193,11 @@ export function Dashboard({
             value={incomeInput}
             onChange={(e) => setIncomeInput(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 text-sm"
-            style={{ background: 'var(--surface-page)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+            style={{
+              background: 'var(--surface-page)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-primary)',
+            }}
           />
           <button
             type="button"
@@ -205,17 +221,19 @@ export function Dashboard({
             </p>
           )}
           <div className="flex flex-col gap-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Minimum debt payments (weekly share)</span>
+            <div className="flex items-center justify-between gap-3">
+              <span style={{ color: 'var(--text-secondary)' }}>
+                Minimum debt payments (weekly share)
+              </span>
               <span className="tabular-nums">{formatCurrency(split.weeklyMinimum)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span style={{ color: 'var(--text-secondary)' }}>
                 Extra toward {split.priorityDebt?.name ?? '—'}
               </span>
               <span className="tabular-nums">{formatCurrency(split.toExtraDebt)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span style={{ color: 'var(--text-secondary)' }}>To savings</span>
               <span className="tabular-nums">{formatCurrency(split.toSavings)}</span>
             </div>
@@ -245,7 +263,11 @@ export function Dashboard({
 
       <Card>
         <div className="grid grid-cols-2 gap-4">
-          <StatTile label="Total active debt" value={formatCurrency(debtTotal)} />
+          <StatTile
+            label="Total active debt"
+            value={formatCurrency(debtTotal)}
+            sub={potentialTotal > 0 ? `+ ${formatCurrency(potentialTotal)} unconfirmed` : undefined}
+          />
           <StatTile
             label="Savings set aside"
             value={formatCurrency(state.savingsBalance)}
@@ -257,7 +279,13 @@ export function Dashboard({
         </div>
         {lastPayoff && (
           <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-            All fixed-schedule installment debt clears by {formatDate(lastPayoff)} at minimum payments.
+            All fixed-schedule installment debt clears by {formatDate(lastPayoff)} at minimum
+            payments.
+          </p>
+        )}
+        {clearedTotal > 0 && (
+          <p className="mt-1 text-xs" style={{ color: 'var(--status-good)' }}>
+            {formatCurrency(clearedTotal)} already paid off.
           </p>
         )}
       </Card>
@@ -270,9 +298,11 @@ export function Dashboard({
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {formatCurrency(appleCard.balance)} at {appleCard.apr}% APR
           </p>
-          <div className="mt-2 flex gap-4 text-sm">
+          <div className="mt-2 flex flex-wrap gap-4 text-sm">
             <div>
-              <span style={{ color: 'var(--text-secondary)' }}>At minimum (${appleCard.monthlyPayment}/mo): </span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                At minimum ({formatCurrency(appleCard.monthlyPayment ?? 0)}/mo):{' '}
+              </span>
               <span className="tabular-nums font-medium">
                 {appleMonths ? `${appleMonths} mo` : 'never clears interest'}
               </span>
@@ -280,7 +310,10 @@ export function Dashboard({
             {split.toExtraDebt > 0 && split.priorityDebt?.id === appleCard.id && (
               <div>
                 <span style={{ color: 'var(--text-secondary)' }}>With this week's extra: </span>
-                <span className="tabular-nums font-medium" style={{ color: 'var(--status-good)' }}>
+                <span
+                  className="tabular-nums font-medium"
+                  style={{ color: 'var(--status-good)' }}
+                >
                   {appleMonthsBoosted ? `${appleMonthsBoosted} mo` : '—'}
                 </span>
               </div>
@@ -296,7 +329,7 @@ export function Dashboard({
           </h2>
           {state.pendingClaims.map((c) => (
             <div key={c.id} className="text-sm">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <span>{c.name}</span>
                 <span className="tabular-nums" style={{ color: 'var(--status-warning)' }}>
                   {formatCurrency(c.low)}–{formatCurrency(c.high)}
