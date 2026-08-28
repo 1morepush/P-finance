@@ -2,9 +2,10 @@ import type { AppState } from '../types'
 
 // Source of truth: the confirmed debt table supplied Aug 2026.
 // Totals this data produces (asserted in the app, verified against the source):
-//   active (confirmed)  $12,456.35
-//   potential            $256.00
-//   monthly minimums     $749.26   (weekly share $172.44)
+//   active (confirmed)  $12,313.72
+//   potential            $256.00   ($12,569.72 combined)
+//   monthly minimums     $719.26   (weekly share $165.54)
+//   cleared to date    $1,291.56
 export const seedState: AppState = {
   bankBalance: {
     amount: 719,
@@ -14,6 +15,7 @@ export const seedState: AppState = {
   settings: {
     strategy: 'tier',
     savingsPercent: 10,
+    keepInCheckingPercent: 10,
   },
   pendingClaims: [
     {
@@ -94,11 +96,12 @@ export const seedState: AppState = {
       product: 'paypal_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 632.33,
+      balance: 579.57,
       apr: 35.99,
       monthlyPayment: 52.7,
-      nextDue: '2026-08-29',
-      finalPaymentDate: '2027-07-29',
+      nextDue: '2026-09-29',
+      finalPaymentDate: '2027-08-29',
+      notes: 'Confirmed Aug 2026 — 2 of 12 payments made, one month further along than first projected.',
     },
     {
       id: 'affirm_atlanta',
@@ -111,18 +114,6 @@ export const seedState: AppState = {
       monthlyPayment: 36.28,
       nextDue: '2026-09-20',
       finalPaymentDate: '2027-04-20',
-    },
-    {
-      id: 'affirm_dc',
-      name: 'Affirm Holiday Inn Express DC',
-      product: 'affirm_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 89.87,
-      apr: 36.0,
-      monthlyPayment: 30.0,
-      nextDue: '2026-09-21',
-      finalPaymentDate: '2026-11-21',
     },
     {
       id: 'affirm_columbia',
@@ -262,6 +253,15 @@ export const seedState: AppState = {
   ],
 
   clearedDebts: [
+    {
+      id: 'affirm_dc',
+      name: 'Affirm Holiday Inn Express DC',
+      product: 'affirm_pay_monthly',
+      amountCleared: 89.87,
+      dateCleared: '2026-08-28',
+      notes:
+        'Confirmed $0.00 remaining. $89.87 was the balance still outstanding here; $191.39 was paid across the life of the plan.',
+    },
     {
       id: 'paypal_negative',
       name: 'PayPal negative balance',

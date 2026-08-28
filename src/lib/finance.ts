@@ -70,22 +70,37 @@ export interface WeeklySplit {
   shortfall: number
   afterMinimum: number
   toSavings: number
+  /** Left in checking on purpose, to build a cushion. Needs no action — it simply stays. */
+  toChecking: number
   toExtraDebt: number
   priorityDebt: Debt | null
 }
 
 /**
- * Suggests how to split (current bank balance + this week's income) across
- * this month's minimum debt obligations (spread evenly over ~4.3 weeks),
- * savings, and extra toward the top-priority debt.
+ * Suggests how to split THIS CHECK across this month's minimum debt
+ * obligations (spread evenly over ~4.3 weeks), savings, and extra toward the
+ * top-priority debt.
+ *
+ * Deliberately ignores the existing bank balance: splitting the whole balance
+ * would sweep the account every week and stop the checking cushion from ever
+ * building. Only new income is allocated; whatever is already banked stays put.
  */
 export function calculateWeeklySplit(state: AppState, incomeAmount: number): WeeklySplit {
-  const available = state.bankBalance.amount + incomeAmount
+  const available = Math.max(incomeAmount, 0)
   const weeklyMinimum = weeklyMinimumObligation(state.debts)
   const shortfall = Math.max(weeklyMinimum - available, 0)
   const afterMinimum = Math.max(available - weeklyMinimum, 0)
-  const toSavings = afterMinimum * (state.settings.savingsPercent / 100)
-  const toExtraDebt = afterMinimum - toSavings
+
+  // Clamp so the two reserved shares can never exceed the leftover and drive
+  // extra-debt negative, however the sliders are set.
+  const savingsPct = Math.max(state.settings.savingsPercent || 0, 0)
+  const checkingPct = Math.max(state.settings.keepInCheckingPercent || 0, 0)
+  const reservedPct = Math.min(savingsPct + checkingPct, 100)
+  const scale = savingsPct + checkingPct > 100 ? reservedPct / (savingsPct + checkingPct) : 1
+
+  const toSavings = afterMinimum * ((savingsPct * scale) / 100)
+  const toChecking = afterMinimum * ((checkingPct * scale) / 100)
+  const toExtraDebt = Math.max(afterMinimum - toSavings - toChecking, 0)
   const ordered = orderByStrategy(state.debts, state.settings.strategy)
 
   return {
@@ -94,6 +109,7 @@ export function calculateWeeklySplit(state: AppState, incomeAmount: number): Wee
     shortfall,
     afterMinimum,
     toSavings,
+    toChecking,
     toExtraDebt,
     priorityDebt: ordered[0] ?? null,
   }

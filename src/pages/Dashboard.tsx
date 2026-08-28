@@ -212,52 +212,82 @@ export function Dashboard({
 
         <div className="mt-4 rounded-xl p-3" style={{ background: 'var(--surface-page)' }}>
           <p className="mb-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            Suggested split of {formatCurrency(split.available)} (bank balance + this entry)
+            {split.available > 0 ? (
+              <>
+                Suggested split of {formatCurrency(split.available)} — this check only. Your
+                existing balance stays in checking.
+              </>
+            ) : (
+              <>Enter this week's check above to see how to split it.</>
+            )}
           </p>
-          {split.shortfall > 0 && (
+          {split.available > 0 && split.shortfall > 0 && (
             <p className="mb-2 text-xs font-medium" style={{ color: 'var(--status-critical)' }}>
-              ⚠ Short {formatCurrency(split.shortfall)} of this month's weekly-equivalent minimum
-              debt payments ({formatCurrency(split.weeklyMinimum)}/wk).
+              ⚠ This check is {formatCurrency(split.shortfall)} short of the weekly share of your
+              minimum debt payments ({formatCurrency(split.weeklyMinimum)}/wk) — cover the gap from
+              your checking balance.
             </p>
           )}
-          <div className="flex flex-col gap-2 text-sm">
-            <div className="flex items-center justify-between gap-3">
+          {split.available > 0 ? (
+            <>
+              <div className="flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Minimum debt payments (weekly share)
+                  </span>
+                  <span className="tabular-nums">{formatCurrency(split.weeklyMinimum)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Extra toward {split.priorityDebt?.name ?? '—'}
+                  </span>
+                  <span className="tabular-nums">{formatCurrency(split.toExtraDebt)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-secondary)' }}>To savings</span>
+                  <span className="tabular-nums">{formatCurrency(split.toSavings)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Stays in checking
+                    <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      (no action)
+                    </span>
+                  </span>
+                  <span className="tabular-nums" style={{ color: 'var(--status-good)' }}>
+                    {formatCurrency(split.toChecking)}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={applyExtraToDebt}
+                  disabled={split.toExtraDebt <= 0}
+                  className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
+                  style={{ background: 'var(--cat-installment)', color: 'white' }}
+                >
+                  Apply extra to debt
+                </button>
+                <button
+                  type="button"
+                  onClick={applyToSavings}
+                  disabled={split.toSavings <= 0}
+                  className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
+                  style={{ background: 'var(--status-good)', color: 'white' }}
+                >
+                  Move to savings
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-between gap-3 text-sm">
               <span style={{ color: 'var(--text-secondary)' }}>
-                Minimum debt payments (weekly share)
+                For reference — weekly share of minimums
               </span>
               <span className="tabular-nums">{formatCurrency(split.weeklyMinimum)}</span>
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <span style={{ color: 'var(--text-secondary)' }}>
-                Extra toward {split.priorityDebt?.name ?? '—'}
-              </span>
-              <span className="tabular-nums">{formatCurrency(split.toExtraDebt)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span style={{ color: 'var(--text-secondary)' }}>To savings</span>
-              <span className="tabular-nums">{formatCurrency(split.toSavings)}</span>
-            </div>
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={applyExtraToDebt}
-              disabled={split.toExtraDebt <= 0}
-              className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
-              style={{ background: 'var(--cat-installment)', color: 'white' }}
-            >
-              Apply extra to debt
-            </button>
-            <button
-              type="button"
-              onClick={applyToSavings}
-              disabled={split.toSavings <= 0}
-              className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
-              style={{ background: 'var(--status-good)', color: 'white' }}
-            >
-              Move to savings
-            </button>
-          </div>
+          )}
         </div>
       </Card>
 

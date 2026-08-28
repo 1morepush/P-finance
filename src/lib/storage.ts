@@ -17,10 +17,22 @@ function loadState(): AppState {
     return seedState
   }
   try {
-    const parsed = JSON.parse(raw) as Partial<AppState>
-    return { ...seedState, ...parsed }
+    return merge(JSON.parse(raw) as Partial<AppState>)
   } catch {
     return seedState
+  }
+}
+
+/**
+ * Layers a saved payload over the seed. `settings` is merged key-by-key rather
+ * than replaced, so a payload written before a setting existed picks up its
+ * default instead of leaving it undefined.
+ */
+function merge(parsed: Partial<AppState>): AppState {
+  return {
+    ...seedState,
+    ...parsed,
+    settings: { ...seedState.settings, ...parsed.settings },
   }
 }
 
@@ -43,7 +55,7 @@ export function parseImportedState(raw: string): AppState {
   if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.debts)) {
     throw new Error('That file does not look like a P-Finance export.')
   }
-  return { ...seedState, ...parsed } as AppState
+  return merge(parsed as Partial<AppState>)
 }
 
 /** Discards saved data and returns to the seeded source-of-truth figures. */

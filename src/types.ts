@@ -45,9 +45,11 @@ export interface ClearedDebt {
   id: string
   name: string
   product: DebtProduct | 'paypal' | 'klarna' | 'affirm'
+  /** The balance that was outstanding when this debt was cleared. */
   amountCleared: number
   /** ISO date the debt was cleared. */
   dateCleared: string
+  notes?: string
 }
 
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly' | 'variable' | 'one-time'
@@ -85,6 +87,12 @@ export interface Settings {
   strategy: DebtStrategy
   /** Percent (0-100) of leftover cash (after weekly minimum debt obligations) routed to savings. */
   savingsPercent: number
+  /**
+   * Percent (0-100) of that same leftover deliberately left in checking to build a
+   * cushion. Together with savingsPercent this must not exceed 100; whatever remains
+   * goes to extra debt payoff.
+   */
+  keepInCheckingPercent: number
 }
 
 export interface BankBalance {

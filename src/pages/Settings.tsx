@@ -16,8 +16,28 @@ export function Settings({
     setState((s) => ({ ...s, settings: { ...s.settings, strategy } }))
   }
 
+  // The two reserved shares come out of the same leftover, so raising one past
+  // the remaining headroom pushes the other down rather than starving debt payoff.
   function setSavingsPercent(percent: number) {
-    setState((s) => ({ ...s, settings: { ...s.settings, savingsPercent: percent } }))
+    setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        savingsPercent: percent,
+        keepInCheckingPercent: Math.min(s.settings.keepInCheckingPercent, 100 - percent),
+      },
+    }))
+  }
+
+  function setKeepInCheckingPercent(percent: number) {
+    setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        keepInCheckingPercent: percent,
+        savingsPercent: Math.min(s.settings.savingsPercent, 100 - percent),
+      },
+    }))
   }
 
   function downloadBackup() {
@@ -92,8 +112,39 @@ export function Settings({
           </span>
         </div>
         <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Share of leftover cash (after weekly-equivalent minimum debt payments) suggested for
-          savings each time you log income. The rest goes toward extra debt payoff.
+          Share of each check left over after minimum debt payments that gets moved into savings.
+        </p>
+
+        <h2 className="mt-4 mb-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          Keep in checking
+        </h2>
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={0}
+            max={100 - state.settings.savingsPercent}
+            value={state.settings.keepInCheckingPercent}
+            onChange={(e) => setKeepInCheckingPercent(Number(e.target.value))}
+            className="w-full"
+          />
+          <span className="tabular-nums w-12 text-right text-sm font-semibold">
+            {state.settings.keepInCheckingPercent}%
+          </span>
+        </div>
+        <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Share deliberately left in your checking account to build a cushion. It needs no action —
+          the money simply stays put.
+        </p>
+
+        <p
+          className="mt-3 rounded-lg p-2 text-xs"
+          style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+        >
+          Remaining{' '}
+          <strong style={{ color: 'var(--text-primary)' }}>
+            {100 - state.settings.savingsPercent - state.settings.keepInCheckingPercent}%
+          </strong>{' '}
+          goes to extra debt payoff.
         </p>
       </Card>
 
