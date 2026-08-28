@@ -203,20 +203,24 @@ export function Debts({
               {[...state.clearedDebts]
                 .sort((a, b) => b.dateCleared.localeCompare(a.dateCleared))
                 .map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-                  >
-                    <span className="min-w-0 truncate">{c.name}</span>
-                    <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {formatDate(c.dateCleared)}
-                    </span>
-                    <span
-                      className="tabular-nums shrink-0 font-medium"
-                      style={{ color: 'var(--status-good)' }}
-                    >
-                      {formatCurrency(c.amountCleared)}
-                    </span>
+                  <div key={c.id} className="py-2 text-sm first:pt-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate">{c.name}</span>
+                      <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {formatDate(c.dateCleared)}
+                      </span>
+                      <span
+                        className="tabular-nums shrink-0 font-medium"
+                        style={{ color: 'var(--status-good)' }}
+                      >
+                        {formatCurrency(c.amountCleared)}
+                      </span>
+                    </div>
+                    {c.notes && (
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {c.notes}
+                      </p>
+                    )}
                   </div>
                 ))}
             </div>

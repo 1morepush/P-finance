@@ -45,9 +45,11 @@ export interface ClearedDebt {
   id: string
   name: string
   product: DebtProduct | 'paypal' | 'klarna' | 'affirm'
+  /** The balance that was outstanding when this debt was cleared. */
   amountCleared: number
   /** ISO date the debt was cleared. */
   dateCleared: string
+  notes?: string
 }
 
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly' | 'variable' | 'one-time'
