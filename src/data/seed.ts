@@ -5,6 +5,7 @@ import type { AppState } from '../types'
 //   active (confirmed)  $12,313.72
 //   potential            $256.00   ($12,569.72 combined)
 //   monthly minimums     $719.26   (weekly share $165.54)
+//   installment-free     2027-07-29
 //   cleared to date    $1,291.56
 export const seedState: AppState = {
   bankBalance: {
@@ -100,8 +101,9 @@ export const seedState: AppState = {
       apr: 35.99,
       monthlyPayment: 52.7,
       nextDue: '2026-09-29',
-      finalPaymentDate: '2027-08-29',
-      notes: 'Confirmed Aug 2026 — 2 of 12 payments made, one month further along than first projected.',
+      finalPaymentDate: '2027-07-29',
+      notes:
+        'Confirmed Aug 2026 — 2 of 12 payments made. 11 remaining at $52.70 run Sep 29, 2026 to Jul 29, 2027; making a payment does not move the final date later.',
     },
     {
       id: 'affirm_atlanta',
@@ -197,7 +199,8 @@ export const seedState: AppState = {
       apr: 22.49,
       monthlyPayment: 212.0,
       nextDue: '2026-09-01',
-      notes: 'Not payable off at minimums (10+ years). Revolving — no fixed payoff date.',
+      notes:
+        'Revolving — no lender-set payoff date. Held flat at $212/mo it clears in about 57 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
     },
     {
       id: 'himeth',
