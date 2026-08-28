@@ -247,6 +247,17 @@ export function Dashboard({
                   <span style={{ color: 'var(--text-secondary)' }}>To savings</span>
                   <span className="tabular-nums">{formatCurrency(split.toSavings)}</span>
                 </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Stays in checking
+                    <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      (no action)
+                    </span>
+                  </span>
+                  <span className="tabular-nums" style={{ color: 'var(--status-good)' }}>
+                    {formatCurrency(split.toChecking)}
+                  </span>
+                </div>
               </div>
               <div className="mt-3 flex gap-2">
                 <button

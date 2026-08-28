@@ -87,6 +87,12 @@ export interface Settings {
   strategy: DebtStrategy
   /** Percent (0-100) of leftover cash (after weekly minimum debt obligations) routed to savings. */
   savingsPercent: number
+  /**
+   * Percent (0-100) of that same leftover deliberately left in checking to build a
+   * cushion. Together with savingsPercent this must not exceed 100; whatever remains
+   * goes to extra debt payoff.
+   */
+  keepInCheckingPercent: number
 }
 
 export interface BankBalance {

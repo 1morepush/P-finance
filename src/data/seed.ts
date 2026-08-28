@@ -15,6 +15,7 @@ export const seedState: AppState = {
   settings: {
     strategy: 'tier',
     savingsPercent: 10,
+    keepInCheckingPercent: 10,
   },
   pendingClaims: [
     {
