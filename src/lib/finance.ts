@@ -75,12 +75,16 @@ export interface WeeklySplit {
 }
 
 /**
- * Suggests how to split (current bank balance + this week's income) across
- * this month's minimum debt obligations (spread evenly over ~4.3 weeks),
- * savings, and extra toward the top-priority debt.
+ * Suggests how to split THIS CHECK across this month's minimum debt
+ * obligations (spread evenly over ~4.3 weeks), savings, and extra toward the
+ * top-priority debt.
+ *
+ * Deliberately ignores the existing bank balance: splitting the whole balance
+ * would sweep the account every week and stop the checking cushion from ever
+ * building. Only new income is allocated; whatever is already banked stays put.
  */
 export function calculateWeeklySplit(state: AppState, incomeAmount: number): WeeklySplit {
-  const available = state.bankBalance.amount + incomeAmount
+  const available = Math.max(incomeAmount, 0)
   const weeklyMinimum = weeklyMinimumObligation(state.debts)
   const shortfall = Math.max(weeklyMinimum - available, 0)
   const afterMinimum = Math.max(available - weeklyMinimum, 0)
