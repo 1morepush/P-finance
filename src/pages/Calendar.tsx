@@ -15,19 +15,28 @@ import {
   groupByMonth,
   installmentFreeDate,
   isDate,
+  nextMonth,
+  openingOfNextMonth,
   paymentsBetween,
   projectedPayoffDate,
   scheduleMismatches,
+  sumConfirmed,
   sumPayments,
+  sumPotential,
   today,
 } from '../lib/schedule'
 
 /** How far ahead the itemised list runs before collapsing into the payoff summary. */
 const DETAIL_MONTHS = 6
 
+/** How far into the following month each month block looks ahead. */
+const LOOKAHEAD_DAYS = 14
+
 export function Calendar({ state }: { state: AppState }) {
   const now = today()
-  const payments = useMemo(() => allPayments(state.debts), [state.debts])
+  // Unconfirmed debts are included so nothing is a surprise, but every total
+  // separates them out from the confirmed figure.
+  const payments = useMemo(() => allPayments(state.debts, true), [state.debts])
 
   const next7 = paymentsBetween(payments, now, addDays(now, 7))
   const next14 = paymentsBetween(payments, now, addDays(now, 14))
@@ -56,31 +65,39 @@ export function Calendar({ state }: { state: AppState }) {
       {/* The reserve figure: what must survive whatever you throw at extra payoff. */}
       <Card>
         <div className="grid grid-cols-3 gap-3">
-          <StatTile
-            label="Next 7 days"
-            value={formatCurrency(sumPayments(next7))}
-            sub={`${next7.length} payment${next7.length === 1 ? '' : 's'}`}
-            accent={sumPayments(next7) > 0 ? 'var(--status-warning)' : undefined}
-          />
-          <StatTile
-            label="Next 14 days"
-            value={formatCurrency(sumPayments(next14))}
-            sub={`${next14.length} payment${next14.length === 1 ? '' : 's'}`}
-          />
-          <StatTile
-            label="Next 30 days"
-            value={formatCurrency(sumPayments(next30))}
-            sub={`${next30.length} payment${next30.length === 1 ? '' : 's'}`}
-          />
+          {(
+            [
+              ['Next 7 days', next7, 'var(--status-warning)'],
+              ['Next 14 days', next14, undefined],
+              ['Next 30 days', next30, undefined],
+            ] as const
+          ).map(([label, items, accent]) => {
+            const confirmed = sumConfirmed(items)
+            const potential = sumPotential(items)
+            const n = items.filter((i) => !i.isPotential).length
+            return (
+              <StatTile
+                key={label}
+                label={label}
+                value={formatCurrency(confirmed)}
+                sub={
+                  potential > 0
+                    ? `${n} payment${n === 1 ? '' : 's'} · +${formatCurrency(potential)} unconfirmed`
+                    : `${n} payment${n === 1 ? '' : 's'}`
+                }
+                accent={confirmed > 0 ? accent : undefined}
+              />
+            )
+          })}
         </div>
         <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
           Keep at least the 14-day figure in checking before putting anything extra toward a single
           debt.
         </p>
-        {state.bankBalance.amount < sumPayments(next14) && (
+        {state.bankBalance.amount < sumConfirmed(next14) && (
           <p className="mt-2 text-xs font-medium" style={{ color: 'var(--status-critical)' }}>
             ⚠ Your balance of {formatCurrency(state.bankBalance.amount)} is under the{' '}
-            {formatCurrency(sumPayments(next14))} due in the next 14 days.
+            {formatCurrency(sumConfirmed(next14))} due in the next 14 days.
           </p>
         )}
       </Card>
@@ -93,15 +110,20 @@ export function Calendar({ state }: { state: AppState }) {
         </Card>
       )}
 
-      {months.map(({ month, items }) => (
+      {months.map(({ month, items }) => {
+        const confirmed = sumConfirmed(items)
+        const potential = sumPotential(items)
+        const ahead = openingOfNextMonth(payments, month, LOOKAHEAD_DAYS)
+        const aheadConfirmed = sumConfirmed(ahead)
+        const aheadPotential = sumPotential(ahead)
+        return (
         <section key={month} className="flex flex-col gap-2">
           <div className="flex items-baseline gap-2">
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
               {formatMonth(month)}
             </h2>
             <span className="tabular-nums ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
-              {formatCurrency(sumPayments(items))} · {items.length} payment
-              {items.length === 1 ? '' : 's'}
+              {items.length} payment{items.length === 1 ? '' : 's'}
             </span>
           </div>
           <Card>
@@ -124,12 +146,15 @@ export function Calendar({ state }: { state: AppState }) {
                       </span>
                     </div>
                     <div
-                      className="mt-0.5 flex gap-2 text-[11px]"
+                      className="mt-0.5 flex flex-wrap gap-2 text-[11px]"
                       style={{ color: 'var(--text-muted)' }}
                     >
                       <span>{PRODUCT_LABEL[p.product]}</span>
                       {days >= 0 && days <= 14 && <span>· in {days}d</span>}
-                      {p.isFinal && (
+                      {p.isPotential && (
+                        <span style={{ color: 'var(--status-warning)' }}>· unconfirmed</span>
+                      )}
+                      {p.isFinal && !p.isPotential && (
                         <span style={{ color: 'var(--status-good)' }}>· final payment 🎉</span>
                       )}
                     </div>
@@ -137,9 +162,58 @@ export function Calendar({ state }: { state: AppState }) {
                 )
               })}
             </div>
+
+            {/* End-of-month total, then what lands immediately after it. */}
+            <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm font-semibold">Total due in {formatMonth(month)}</span>
+                <span className="tabular-nums text-sm font-semibold">
+                  {formatCurrency(confirmed)}
+                </span>
+              </div>
+              {potential > 0 && (
+                <div className="mt-1 flex items-baseline justify-between gap-3 text-xs">
+                  <span style={{ color: 'var(--text-muted)' }}>+ unconfirmed</span>
+                  <span className="tabular-nums" style={{ color: 'var(--status-warning)' }}>
+                    {formatCurrency(potential)}
+                  </span>
+                </div>
+              )}
+              {aheadConfirmed + aheadPotential > 0 && (
+                <div
+                  className="mt-2 rounded-lg p-2"
+                  style={{ background: 'var(--surface-page)' }}
+                >
+                  <div className="flex items-baseline justify-between gap-3 text-xs">
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Have ready for the first {LOOKAHEAD_DAYS} days of{' '}
+                      {formatMonth(nextMonth(month)).split(' ')[0]}
+                    </span>
+                    <span className="tabular-nums font-semibold">
+                      {formatCurrency(aheadConfirmed)}
+                    </span>
+                  </div>
+                  {aheadPotential > 0 && (
+                    <div className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px]">
+                      <span style={{ color: 'var(--text-muted)' }}>+ unconfirmed</span>
+                      <span className="tabular-nums" style={{ color: 'var(--status-warning)' }}>
+                        {formatCurrency(aheadPotential)}
+                      </span>
+                    </div>
+                  )}
+                  <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    {ahead
+                      .filter((a) => !a.isPotential)
+                      .map((a) => a.debtName)
+                      .join(', ') || '—'}
+                  </p>
+                </div>
+              )}
+            </div>
           </Card>
         </section>
-      ))}
+        )
+      })}
 
       {beyond.length > 0 && (
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>

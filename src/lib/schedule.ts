@@ -1,5 +1,5 @@
 import type { Debt, DebtProduct } from '../types'
-import { activeDebts, estimatePayoffMonths } from './finance'
+import { activeDebts, estimatePayoffMonths, potentialDebts } from './finance'
 
 export type Cadence = 'monthly' | 'biweekly' | null
 
@@ -49,6 +49,8 @@ export interface ScheduledPayment {
   date: string
   amount: number
   isFinal: boolean
+  /** From an unconfirmed debt — shown, but kept out of the confirmed totals. */
+  isPotential: boolean
 }
 
 /**
@@ -60,9 +62,21 @@ export interface ScheduledPayment {
  * count comes from amortisation — dividing would badly understate it.
  */
 export function projectPayments(debt: Debt): ScheduledPayment[] {
+  if (debt.balance <= 0 || !isDate(debt.nextDue)) return []
   const cadence = PAYMENT_CADENCE[debt.product]
   const payment = debt.monthlyPayment ?? 0
-  if (!cadence || payment <= 0 || debt.balance <= 0 || !isDate(debt.nextDue)) return []
+  const base = {
+    debtId: debt.id,
+    debtName: debt.name,
+    product: debt.product,
+    isPotential: debt.status === 'potential',
+  }
+
+  // No recurring plan (an informal debt with a date on it): a single settlement
+  // of the whole balance on that date.
+  if (!cadence || payment <= 0) {
+    return [{ ...base, date: debt.nextDue, amount: debt.balance, isFinal: true }]
+  }
 
   const count =
     debt.product === 'credit_card' && debt.apr > 0
@@ -80,23 +94,45 @@ export function projectPayments(debt: Debt): ScheduledPayment[] {
       isFinal && debt.product !== 'credit_card' && remainder > 0 && remainder < payment
         ? remainder
         : payment
-    out.push({
-      debtId: debt.id,
-      debtName: debt.name,
-      product: debt.product,
-      date: step(debt.nextDue, cadence, i),
-      amount,
-      isFinal,
-    })
+    out.push({ ...base, date: step(debt.nextDue, cadence, i), amount, isFinal })
   }
   return out
 }
 
-/** Every remaining payment across all active debts, earliest first. */
-export function allPayments(debts: Debt[]): ScheduledPayment[] {
-  return activeDebts(debts)
+/** Every remaining payment, earliest first. Unconfirmed debts are opt-in. */
+export function allPayments(debts: Debt[], includePotential = false): ScheduledPayment[] {
+  const pool = includePotential ? [...activeDebts(debts), ...potentialDebts(debts)] : activeDebts(debts)
+  return pool
     .flatMap(projectPayments)
     .sort((a, b) => a.date.localeCompare(b.date) || a.debtName.localeCompare(b.debtName))
+}
+
+/** Sums only confirmed payments, leaving unconfirmed ones out of the figure. */
+export function sumConfirmed(payments: ScheduledPayment[]): number {
+  return sumPayments(payments.filter((p) => !p.isPotential))
+}
+
+export function sumPotential(payments: ScheduledPayment[]): number {
+  return sumPayments(payments.filter((p) => p.isPotential))
+}
+
+/** The YYYY-MM after the given one. */
+export function nextMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7)
+}
+
+/**
+ * What lands in the opening stretch of the following month — the figure to have
+ * ready before a month closes, so a month-end balance isn't mistaken for slack.
+ */
+export function openingOfNextMonth(
+  payments: ScheduledPayment[],
+  month: string,
+  days = 14,
+): ScheduledPayment[] {
+  const start = `${nextMonth(month)}-01`
+  return paymentsBetween(payments, start, addDays(start, days - 1))
 }
 
 export function paymentsBetween(
