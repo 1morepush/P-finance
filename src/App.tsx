@@ -3,6 +3,7 @@ import { useAppState } from './lib/storage'
 import { BottomNav, type Tab } from './components/BottomNav'
 import { Dashboard } from './pages/Dashboard'
 import { Debts } from './pages/Debts'
+import { Calendar } from './pages/Calendar'
 import { Income } from './pages/Income'
 import { Settings } from './pages/Settings'
 
@@ -18,6 +19,7 @@ function App() {
 
       {tab === 'dashboard' && <Dashboard state={state} setState={setState} />}
       {tab === 'debts' && <Debts state={state} setState={setState} />}
+      {tab === 'calendar' && <Calendar state={state} />}
       {tab === 'income' && <Income state={state} setState={setState} />}
       {tab === 'settings' && <Settings state={state} setState={setState} />}
 

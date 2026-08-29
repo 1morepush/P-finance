@@ -10,11 +10,11 @@ import {
   estimatePayoffMonths,
   formatCurrency,
   formatDate,
-  latestScheduledPayoffDate,
   totalCleared,
   totalDebt,
   totalPotentialDebt,
 } from '../lib/finance'
+import { dueWithin, installmentFreeDate } from '../lib/schedule'
 
 export function Dashboard({
   state,
@@ -33,7 +33,13 @@ export function Dashboard({
   const debtTotal = totalDebt(state.debts)
   const potentialTotal = totalPotentialDebt(state.debts)
   const clearedTotal = totalCleared(state.clearedDebts)
-  const lastPayoff = latestScheduledPayoffDate(state.debts)
+  const lastPayoff = installmentFreeDate(state.debts)
+
+  // Guard against emptying the account into one debt when other payments are imminent.
+  const due14 = useMemo(() => dueWithin(state.debts, 14), [state.debts])
+  const balanceAfterApplying =
+    state.bankBalance.amount + incomeAmount - split.toExtraDebt - split.toSavings
+  const leavesShort = balanceAfterApplying < due14
 
   const appleCard = state.debts.find((d) => d.id === 'apple_card')
   const appleMonths =
@@ -259,6 +265,29 @@ export function Dashboard({
                   </span>
                 </div>
               </div>
+              {due14 > 0 && (
+                <div
+                  className="mt-3 rounded-lg p-2 text-xs"
+                  style={{ background: 'var(--surface-card)' }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Due in the next 14 days
+                    </span>
+                    <span className="tabular-nums">{formatCurrency(due14)}</span>
+                  </div>
+                  {leavesShort ? (
+                    <p className="mt-1 font-medium" style={{ color: 'var(--status-critical)' }}>
+                      ⚠ Applying this would leave {formatCurrency(balanceAfterApplying)} against{' '}
+                      {formatCurrency(due14)} of upcoming payments. Hold some back.
+                    </p>
+                  ) : (
+                    <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+                      {formatCurrency(balanceAfterApplying)} left afterwards — covers it.
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
