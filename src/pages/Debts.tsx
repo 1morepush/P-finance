@@ -4,6 +4,8 @@ import { categoryOf, PRODUCT_LABEL, TIER_LABEL } from '../types'
 import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
 import { DebtForm } from '../components/DebtForm'
+import { PaymentForm } from '../components/PaymentForm'
+import { applyPayment, undoPayment, type PaymentInput } from '../lib/payments'
 import {
   formatCurrency,
   formatDate,
@@ -27,7 +29,17 @@ const TIER_COLOR: Record<PriorityTier, string> = {
   4: 'var(--cat-personal)',
 }
 
-function DebtCard({ debt, badge, onClick }: { debt: Debt; badge?: string; onClick: () => void }) {
+function DebtCard({
+  debt,
+  badge,
+  onClick,
+  onPay,
+}: {
+  debt: Debt
+  badge?: string
+  onClick: () => void
+  onPay?: () => void
+}) {
   return (
     <Card className="cursor-pointer">
       <div onClick={onClick}>
@@ -61,7 +73,22 @@ function DebtCard({ debt, badge, onClick }: { debt: Debt; badge?: string; onClic
               {debt.notes ? ` · ${debt.notes}` : ''}
             </p>
           </div>
-          <span className="tabular-nums shrink-0 font-semibold">{formatCurrency(debt.balance)}</span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className="tabular-nums font-semibold">{formatCurrency(debt.balance)}</span>
+            {onPay && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPay()
+                }}
+                className="rounded-md px-2 py-0.5 text-[11px] font-medium"
+                style={{ background: 'var(--status-good)', color: 'white' }}
+              >
+                Pay
+              </button>
+            )}
+          </div>
         </div>
         <div
           className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs"
@@ -85,6 +112,12 @@ export function Debts({
   setState: React.Dispatch<React.SetStateAction<AppState>>
 }) {
   const [editing, setEditing] = useState<Debt | 'new' | null>(null)
+  const [paying, setPaying] = useState<string | 'any' | null>(null)
+
+  function logPayment(input: PaymentInput) {
+    setState((s) => applyPayment(s, input))
+    setPaying(null)
+  }
 
   const ordered = orderByStrategy(state.debts, state.settings.strategy)
   const potential = potentialDebts(state.debts)
@@ -116,14 +149,24 @@ export function Debts({
     <div className="flex flex-col gap-4 p-4 pb-24">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Debts</h1>
-        <button
-          type="button"
-          onClick={() => setEditing('new')}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium"
-          style={{ background: 'var(--cat-installment)', color: 'white' }}
-        >
-          + Add debt
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPaying('any')}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium"
+            style={{ background: 'var(--status-good)', color: 'white' }}
+          >
+            Log payment
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing('new')}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium"
+            style={{ background: 'var(--cat-installment)', color: 'white' }}
+          >
+            + Add
+          </button>
+        </div>
       </div>
 
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -157,6 +200,7 @@ export function Debts({
                 debt={d}
                 badge={tier === tiers[0].tier && i === 0 ? 'NEXT TARGET' : undefined}
                 onClick={() => setEditing(d)}
+                onPay={() => setPaying(d.id)}
               />
             ))}
           </section>
@@ -169,6 +213,7 @@ export function Debts({
               debt={d}
               badge={i === 0 ? 'NEXT TARGET' : undefined}
               onClick={() => setEditing(d)}
+              onPay={() => setPaying(d.id)}
             />
           ))}
         </div>
@@ -226,6 +271,61 @@ export function Debts({
             </div>
           </Card>
         </section>
+      )}
+
+      {state.payments.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            Logged payments
+          </h2>
+          <Card>
+            <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+              {[...state.payments]
+                .reverse()
+                .slice(0, 15)
+                .map((pay) => (
+                  <div
+                    key={pay.id}
+                    className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate">{pay.debtName}</div>
+                      <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                        {formatDate(pay.date)}
+                        {pay.clearedDebt && ' · cleared it 🎉'}
+                        {!pay.fromBank && ' · not from bank'}
+                      </div>
+                    </div>
+                    <span
+                      className="tabular-nums shrink-0 font-medium"
+                      style={{ color: 'var(--status-good)' }}
+                    >
+                      −{formatCurrency(pay.amount)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setState((s) => undoPayment(s, pay.id))}
+                      className="shrink-0 rounded-md px-2 py-0.5 text-[11px]"
+                      style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+                    >
+                      Undo
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {paying && (
+        <Modal title="Log a payment" onClose={() => setPaying(null)}>
+          <PaymentForm
+            state={state}
+            initialDebtId={paying === 'any' ? undefined : paying}
+            onSave={logPayment}
+            onCancel={() => setPaying(null)}
+          />
+        </Modal>
       )}
 
       {editing && (
