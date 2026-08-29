@@ -14,7 +14,8 @@ import {
   totalDebt,
   totalPotentialDebt,
 } from '../lib/finance'
-import { dueWithin, installmentFreeDate } from '../lib/schedule'
+import { dueWithin, installmentFreeDate, today } from '../lib/schedule'
+import { applyPayment } from '../lib/payments'
 
 export function Dashboard({
   state,
@@ -127,16 +128,18 @@ export function Dashboard({
   function applyExtraToDebt() {
     if (split.toExtraDebt <= 0 || !split.priorityDebt) return
     const targetId = split.priorityDebt.id
-    setState((s) => {
-      const c = commitPendingIncome(s)
-      return {
-        ...c,
-        bankBalance: { ...c.bankBalance, amount: c.bankBalance.amount - split.toExtraDebt },
-        debts: c.debts.map((d) =>
-          d.id === targetId ? { ...d, balance: Math.max(d.balance - split.toExtraDebt, 0) } : d,
-        ),
-      }
-    })
+    // Routed through applyPayment so it lands in the payment history and can be
+    // undone like any other payment. An extra payment is on top of the schedule,
+    // so it must not advance the due date.
+    setState((s) =>
+      applyPayment(commitPendingIncome(s), {
+        debtId: targetId,
+        amount: split.toExtraDebt,
+        date: today(),
+        fromBank: true,
+        advanceDue: false,
+      }),
+    )
     setIncomeInput('')
   }
 

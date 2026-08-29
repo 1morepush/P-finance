@@ -65,6 +65,7 @@ export const seedState: AppState = {
     },
   ],
   incomeEntries: [],
+  payments: [],
 
   // Tier 0 — urgent · Tier 1 — ~36% APR · Tier 2 — 0% promo BNPL
   // Tier 3 — Apple Card · Tier 4 — personal / flexible

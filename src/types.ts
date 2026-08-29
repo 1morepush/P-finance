@@ -52,6 +52,23 @@ export interface ClearedDebt {
   notes?: string
 }
 
+/** A payment logged against a specific debt. Carries enough to be undone exactly. */
+export interface Payment {
+  id: string
+  debtId: string
+  /** Snapshot of the name, so history survives the debt being renamed or removed. */
+  debtName: string
+  amount: number
+  /** ISO date the payment was made. */
+  date: string
+  /** Whether it was deducted from the bank balance. */
+  fromBank: boolean
+  /** This payment zeroed the debt and moved it into the cleared log. */
+  clearedDebt: boolean
+  /** The due date before it was advanced, if it was. */
+  previousNextDue?: string
+}
+
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly' | 'variable' | 'one-time'
 
 export interface IncomeSource {
@@ -105,6 +122,7 @@ export interface AppState {
   savingsBalance: number
   debts: Debt[]
   clearedDebts: ClearedDebt[]
+  payments: Payment[]
   incomeSources: IncomeSource[]
   incomeEntries: IncomeEntry[]
   pendingClaims: PendingClaim[]
