@@ -2,11 +2,10 @@ import type { AppState } from '../types'
 
 // Source of truth: the confirmed debt table supplied Aug 2026.
 // Totals this data produces (asserted in the app, verified against the source):
-//   active (confirmed)  $12,313.72
-//   potential            $256.00   ($12,569.72 combined)
-//   monthly minimums     $719.26   (weekly share $165.54)
-//   installment-free     2027-07-29
-//   cleared to date    $1,291.56
+//   active             $12,153.41
+//   monthly minimums      $719.26   (weekly share $165.54)
+//   installment-free    2027-07-29
+//   cleared to date     $1,641.56
 export const seedState: AppState = {
   bankBalance: {
     amount: 719,
@@ -71,16 +70,6 @@ export const seedState: AppState = {
   // Tier 3 — Apple Card · Tier 4 — personal / flexible
   debts: [
     {
-      id: 'cousin',
-      name: 'Cousin',
-      product: 'personal',
-      status: 'active',
-      priorityTier: 0,
-      balance: 350.0,
-      apr: 0,
-      nextDue: 'ASAP',
-    },
-    {
       id: 'paypal_autozone',
       name: 'PayPal AutoZone',
       product: 'paypal_pay_monthly',
@@ -112,7 +101,7 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 289.93,
+      balance: 289.91,
       apr: 36.0,
       monthlyPayment: 36.28,
       nextDue: '2026-09-20',
@@ -136,10 +125,10 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 320.7,
+      balance: 267.25,
       apr: 36.0,
       monthlyPayment: 53.45,
-      nextDue: '2026-09-03',
+      nextDue: '2026-10-03',
       finalPaymentDate: '2027-02-03',
     },
     {
@@ -148,7 +137,7 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 2,
-      balance: 799.06,
+      balance: 799.07,
       apr: 0,
       monthlyPayment: 133.28,
       nextDue: '2026-09-12',
@@ -184,7 +173,7 @@ export const seedState: AppState = {
       product: 'paypal_pay_in_4',
       status: 'active',
       priorityTier: 2,
-      balance: 158.55,
+      balance: 105.7,
       apr: 0,
       monthlyPayment: 52.85,
       nextDue: '2026-09-22',
@@ -199,7 +188,7 @@ export const seedState: AppState = {
       balance: 7341.0,
       apr: 22.49,
       monthlyPayment: 212.0,
-      nextDue: '2026-09-01',
+      nextDue: '2026-10-01',
       notes:
         'Revolving — no lender-set payoff date. Held flat at $212/mo it clears in about 57 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
     },
@@ -247,16 +236,23 @@ export const seedState: AppState = {
       id: 'new_friend',
       name: 'New Friend',
       product: 'personal',
-      status: 'potential',
+      status: 'active',
       priorityTier: 4,
-      balance: 256.0,
+      balance: 296.0,
       apr: 0,
       nextDue: '2026-09-30',
-      notes: 'Unconfirmed — excluded from active debt totals until confirmed.',
     },
   ],
 
   clearedDebts: [
+    {
+      id: 'cousin',
+      name: 'Cousin',
+      product: 'personal',
+      amountCleared: 350.0,
+      dateCleared: '2026-09-04',
+      notes: 'Forgiven — no longer owed.',
+    },
     {
       id: 'affirm_dc',
       name: 'Affirm Holiday Inn Express DC',

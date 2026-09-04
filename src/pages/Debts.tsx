@@ -292,8 +292,9 @@ export function Debts({
                       <div className="truncate">{pay.debtName}</div>
                       <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                         {formatDate(pay.date)}
+                        {pay.auto && ' · auto (due date passed)'}
                         {pay.clearedDebt && ' · cleared it 🎉'}
-                        {!pay.fromBank && ' · not from bank'}
+                        {!pay.fromBank && !pay.auto && ' · not from bank'}
                       </div>
                     </div>
                     <span
