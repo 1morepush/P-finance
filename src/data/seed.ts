@@ -6,7 +6,16 @@ import type { AppState } from '../types'
 //   monthly minimums      $719.26   (weekly share $165.54)
 //   installment-free    2027-07-29
 //   cleared to date     $1,641.56
+/**
+ * Bump whenever the figures below change. Devices carrying an older stamp are
+ * offered the update rather than silently keeping their copy: saved state
+ * replaces the seed wholesale on load, so without this a reconciliation never
+ * reaches a phone that has opened the app before.
+ */
+export const SEED_VERSION = '2026-09-04'
+
 export const seedState: AppState = {
+  seedVersion: SEED_VERSION,
   bankBalance: {
     amount: 719,
     updatedAt: '2026-08-13',

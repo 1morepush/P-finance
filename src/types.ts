@@ -126,6 +126,13 @@ export interface BankBalance {
 }
 
 export interface AppState {
+  /**
+   * Which vintage of the seed figures this data came from. Absent on data saved
+   * before stamping existed, which is treated as out of date.
+   */
+  seedVersion?: string
+  /** A seed version the user chose to skip, so it is not offered again. */
+  skippedSeedVersion?: string
   bankBalance: BankBalance
   savingsBalance: number
   debts: Debt[]
