@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppState } from '../types'
-import { seedState } from '../data/seed'
+import { SEED_VERSION, seedState } from '../data/seed'
 
 // v2 introduced products, priority tiers, `potential` status and the cleared-debt
 // log. The key is versioned so a v1 payload is never read as a v2 shape — a stale
@@ -32,6 +32,10 @@ function merge(parsed: Partial<AppState>): AppState {
   return {
     ...seedState,
     ...parsed,
+    // Must come from the saved payload alone. Spreading the seed over data that
+    // predates stamping would hand it the current version and the device would
+    // never be told its figures are stale — the very failure this guards against.
+    seedVersion: parsed.seedVersion,
     settings: { ...seedState.settings, ...parsed.settings },
   }
 }
@@ -44,6 +48,32 @@ export function useAppState() {
   }, [state])
 
   return [state, setState] as const
+}
+
+/** Collections that come from the reconciled source table rather than from use. */
+const SEEDED_KEYS = ['debts', 'clearedDebts', 'pendingClaims', 'incomeSources'] as const
+
+/** True when the app ships figures newer than the ones this device is holding. */
+export function seedUpdateAvailable(state: AppState): boolean {
+  return state.seedVersion !== SEED_VERSION && state.skippedSeedVersion !== SEED_VERSION
+}
+
+/**
+ * Takes the newer figures, replacing only the seeded collections. Everything
+ * earned through use — bank balance, savings, logged payments, income entries
+ * and settings — is left untouched.
+ */
+export function applySeedUpdate(state: AppState): AppState {
+  const next = { ...state, seedVersion: SEED_VERSION, skippedSeedVersion: undefined }
+  for (const key of SEEDED_KEYS) {
+    Object.assign(next, { [key]: seedState[key] })
+  }
+  return next
+}
+
+/** Keeps this device's own figures, and stops offering this particular update. */
+export function skipSeedUpdate(state: AppState): AppState {
+  return { ...state, skippedSeedVersion: SEED_VERSION }
 }
 
 export function exportStateAsJson(state: AppState): string {
