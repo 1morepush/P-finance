@@ -172,6 +172,21 @@ export function DebtForm({
         />
       </label>
 
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={form.autoMarkPaid !== false}
+          onChange={(e) => setForm({ ...form, autoMarkPaid: e.target.checked })}
+        />
+        <span>
+          Assume paid when the due date passes
+          <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+            Turn off for anything you pay by hand or might miss.
+          </span>
+        </span>
+      </label>
+
       <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
         Notes
         <textarea

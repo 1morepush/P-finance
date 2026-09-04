@@ -37,6 +37,12 @@ export interface Debt {
   nextDue?: string
   /** ISO date of the final scheduled payment. Absent for revolving/personal debt. */
   finalPaymentDate?: string
+  /**
+   * When a due date passes, assume the payment went through (autopay) and settle
+   * it automatically. Set false for anything paid by hand, or that might be missed.
+   * Defaults to true when absent.
+   */
+  autoMarkPaid?: boolean
   notes?: string
 }
 
@@ -67,6 +73,8 @@ export interface Payment {
   clearedDebt: boolean
   /** The due date before it was advanced, if it was. */
   previousNextDue?: string
+  /** Settled automatically because its due date passed, rather than entered by hand. */
+  auto?: boolean
 }
 
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly' | 'variable' | 'one-time'
