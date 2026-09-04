@@ -6,6 +6,7 @@ import { Modal } from '../components/Modal'
 import { DebtForm } from '../components/DebtForm'
 import { PaymentForm } from '../components/PaymentForm'
 import { applyPayment, undoPayment, type PaymentInput } from '../lib/payments'
+import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import {
   formatCurrency,
   formatDate,
@@ -40,6 +41,7 @@ function DebtCard({
   onClick: () => void
   onPay?: () => void
 }) {
+  const payoff = earlyPayoff(debt)
   return (
     <Card className="cursor-pointer">
       <div onClick={onClick}>
@@ -99,6 +101,15 @@ function DebtCard({
           {debt.nextDue && <span>next {formatDue(debt.nextDue)}</span>}
           {debt.finalPaymentDate && <span>ends {formatDate(debt.finalPaymentDate)}</span>}
         </div>
+        {payoff.saved >= 0.01 && (
+          <p className="mt-1 text-xs">
+            <span style={{ color: 'var(--text-muted)' }}>Settle today </span>
+            <span className="tabular-nums">{formatCurrency(payoff.today)}</span>
+            <span style={{ color: 'var(--status-good)' }}>
+              {' '}· saves {formatCurrency(payoff.saved)}
+            </span>
+          </p>
+        )}
       </div>
     </Card>
   )
@@ -119,6 +130,7 @@ export function Debts({
     setPaying(null)
   }
 
+  const payoff = payoffSummary(state.debts)
   const ordered = orderByStrategy(state.debts, state.settings.strategy)
   const potential = potentialDebts(state.debts)
   const byTier = state.settings.strategy === 'tier'
@@ -176,6 +188,51 @@ export function Debts({
             ? 'Ordered by highest APR first (avalanche). Change this in Settings.'
             : 'Ordered by smallest balance first (snowball). Change this in Settings.'}
       </p>
+
+      <Card>
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          Clear everything today
+        </h2>
+        <div className="mt-2 flex flex-col gap-1 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <span style={{ color: 'var(--text-secondary)' }}>If the schedules run their course</span>
+            <span className="tabular-nums">{formatCurrency(payoff.scheduled)}</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span style={{ color: 'var(--text-secondary)' }}>Settled in full today</span>
+            <span className="tabular-nums">{formatCurrency(payoff.today)}</span>
+          </div>
+          <div
+            className="mt-1 flex items-baseline justify-between gap-3 border-t pt-2"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <span className="font-semibold">You would save</span>
+            <span className="tabular-nums font-semibold" style={{ color: 'var(--status-good)' }}>
+              {formatCurrency(payoff.saved)}
+            </span>
+          </div>
+        </div>
+        {payoff.worthwhile.length > 0 && (
+          <div className="mt-3 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+            <p className="mb-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Where the saving actually is — everything else is 0% and saves nothing:
+            </p>
+            {payoff.worthwhile.map(({ debt, payoff: pay }) => (
+              <div key={debt.id} className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="min-w-0 truncate">{debt.name}</span>
+                <span className="tabular-nums shrink-0" style={{ color: 'var(--status-good)' }}>
+                  {formatCurrency(pay.saved)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          Instalment plans assume the lender waives interest you have not yet been charged, which is
+          the usual arrangement — confirm a payoff quote before settling. The Apple Card figure is
+          simply the interest never accrued.
+        </p>
+      </Card>
 
       {byTier ? (
         tiers.map(({ tier, debts }) => (
