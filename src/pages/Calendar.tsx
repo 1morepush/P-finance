@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { AppState } from '../types'
 import { PRODUCT_LABEL } from '../types'
 import { Card } from '../components/Card'
+import { MonthGrid } from '../components/MonthGrid'
 import { StatTile } from '../components/StatTile'
 import { activeDebts, formatCurrency, formatDate, formatDue } from '../lib/finance'
 import {
@@ -34,6 +35,8 @@ const LOOKAHEAD_DAYS = 14
 
 export function Calendar({ state }: { state: AppState }) {
   const now = today()
+  const [gridMonth, setGridMonth] = useState(now.slice(0, 7))
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   // Unconfirmed debts are included so nothing is a surprise, but every total
   // separates them out from the confirmed figure.
   const payments = useMemo(() => allPayments(state.debts, true), [state.debts])
@@ -100,6 +103,59 @@ export function Calendar({ state }: { state: AppState }) {
             {formatCurrency(sumConfirmed(next14))} due in the next 14 days.
           </p>
         )}
+      </Card>
+
+      <Card>
+        <MonthGrid
+          month={gridMonth}
+          payments={payments}
+          today={now}
+          selected={selectedDay}
+          onSelect={setSelectedDay}
+          onMonthChange={(m) => {
+            setGridMonth(m)
+            setSelectedDay(null)
+          }}
+        />
+        {gridMonth !== now.slice(0, 7) && (
+          <button
+            type="button"
+            onClick={() => {
+              setGridMonth(now.slice(0, 7))
+              setSelectedDay(null)
+            }}
+            className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
+            style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+          >
+            Back to this month
+          </button>
+        )}
+        <div
+          className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px]"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {[
+            ['Instalment', 'var(--cat-installment)'],
+            ['Apple Card', 'var(--cat-revolving)'],
+            ['Personal', 'var(--cat-personal)'],
+            ['Unconfirmed', 'var(--status-warning)'],
+          ].map(([label, color]) => (
+            <span key={label} className="flex items-center gap-1">
+              <span
+                className="inline-block h-[3px] w-[3px] rounded-full"
+                style={{ background: color }}
+              />
+              {label}
+            </span>
+          ))}
+          <span className="flex items-center gap-1">
+            <span
+              className="inline-block h-2 w-2 rounded-sm"
+              style={{ outline: '1.5px solid var(--status-good)', outlineOffset: '-1.5px' }}
+            />
+            Today
+          </span>
+        </div>
       </Card>
 
       {months.length === 0 && (

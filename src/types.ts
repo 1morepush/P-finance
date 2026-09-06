@@ -158,6 +158,11 @@ export function categoryOf(debt: Debt): DebtCategory {
   return PRODUCT_CATEGORY[debt.product]
 }
 
+/** Category for a bare product, where no full debt record is to hand. */
+export function categoryOfProduct(product: DebtProduct): DebtCategory {
+  return PRODUCT_CATEGORY[product]
+}
+
 export const PRODUCT_LABEL: Record<DebtProduct, string> = {
   personal: 'Personal',
   credit_card: 'Credit card',
