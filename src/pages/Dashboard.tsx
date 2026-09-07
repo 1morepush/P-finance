@@ -16,6 +16,14 @@ import {
 } from '../lib/finance'
 import { dueWithin, installmentFreeDate, today } from '../lib/schedule'
 import { applyPayment } from '../lib/payments'
+import { generateInsights, type InsightKind } from '../lib/insights'
+
+const INSIGHT_COLOR: Record<InsightKind, string> = {
+  warning: 'var(--status-critical)',
+  opportunity: 'var(--status-good)',
+  milestone: 'var(--cat-installment)',
+  context: 'var(--text-muted)',
+}
 
 export function Dashboard({
   state,
@@ -41,6 +49,8 @@ export function Dashboard({
   const balanceAfterApplying =
     state.bankBalance.amount + incomeAmount - split.toExtraDebt - split.toSavings
   const leavesShort = balanceAfterApplying < due14
+
+  const insights = useMemo(() => generateInsights(state), [state])
 
   const appleCard = state.debts.find((d) => d.id === 'apple_card')
   const appleMonths =
@@ -351,6 +361,33 @@ export function Dashboard({
           </p>
         )}
       </Card>
+
+      {insights.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            What the numbers say
+          </h2>
+          {insights.map((insight) => (
+            <Card key={insight.id}>
+              <div className="flex items-start gap-2">
+                <span
+                  className="mt-[3px] inline-block h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: INSIGHT_COLOR[insight.kind] }}
+                />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold">{insight.title}</h3>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {insight.detail}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ))}
+          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Worked out from your own figures — nothing is sent anywhere.
+          </p>
+        </section>
+      )}
 
       {appleCard && appleCard.balance > 0 && (
         <Card>
