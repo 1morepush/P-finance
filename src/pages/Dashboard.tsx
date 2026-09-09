@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { AppState } from '../types'
 import { categoryOf } from '../types'
 import { Card } from '../components/Card'
+import { CommandBar } from '../components/CommandBar'
 import { StatTile } from '../components/StatTile'
 import { CategoryBar } from '../components/CategoryBar'
 import {
@@ -155,6 +156,8 @@ export function Dashboard({
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
+      <CommandBar state={state} setState={setState} />
+
       <Card>
         <div className="flex items-center justify-between">
           <StatTile
