@@ -6,6 +6,7 @@ export type DebtProduct =
   | 'affirm_pay_monthly'
   | 'affirm_pay_in_4'
   | 'klarna_pay_in_4'
+  | 'event_installment'
   | 'credit_card'
 
 /** Coarse grouping used for the dashboard breakdown and colour coding. */
@@ -175,6 +176,7 @@ const PRODUCT_CATEGORY: Record<DebtProduct, DebtCategory> = {
   affirm_pay_monthly: 'installment',
   affirm_pay_in_4: 'installment',
   klarna_pay_in_4: 'installment',
+  event_installment: 'installment',
 }
 
 export function categoryOf(debt: Debt): DebtCategory {
@@ -194,6 +196,7 @@ export const PRODUCT_LABEL: Record<DebtProduct, string> = {
   affirm_pay_monthly: 'Affirm Pay Monthly',
   affirm_pay_in_4: 'Affirm Pay in 4',
   klarna_pay_in_4: 'Klarna Pay in 4',
+  event_installment: 'Event plan',
 }
 
 export const TIER_LABEL: Record<PriorityTier, string> = {
