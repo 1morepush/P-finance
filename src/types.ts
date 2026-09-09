@@ -77,6 +77,28 @@ export interface Payment {
   auto?: boolean
 }
 
+/** One gig-work shift: what came in, what the driving cost, and what is left. */
+export interface Shift {
+  id: string
+  /** ISO date the shift was worked. */
+  date: string
+  /** DoorDash, Uber Eats, and so on. */
+  platform: string
+  /** Gross payout including tips. */
+  earnings: number
+  /** Fuel bought for this shift. */
+  gasCost: number
+  /** Miles driven, if tracked — needed for the mileage deduction at tax time. */
+  miles?: number
+  /** Hours online, if tracked — needed for net per hour. */
+  hours?: number
+  /** The net was added to the bank balance, so deleting it must take it back out. */
+  addedToBank: boolean
+  /** The income entry the banked net created, so deleting the shift removes that too. */
+  incomeEntryId?: string
+  notes?: string
+}
+
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly' | 'variable' | 'one-time'
 
 export interface IncomeSource {
@@ -140,6 +162,7 @@ export interface AppState {
   payments: Payment[]
   incomeSources: IncomeSource[]
   incomeEntries: IncomeEntry[]
+  shifts: Shift[]
   pendingClaims: PendingClaim[]
   settings: Settings
 }
