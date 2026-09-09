@@ -14,6 +14,9 @@ export const PAYMENT_CADENCE: Record<DebtProduct, Cadence> = {
   paypal_pay_in_4: 'biweekly',
   affirm_pay_in_4: 'biweekly',
   klarna_pay_in_4: 'biweekly',
+  // A single remaining instalment, so the cadence never actually steps. Marked
+  // monthly rather than null so a passed due date auto-settles like any other plan.
+  event_installment: 'monthly',
   personal: null,
 }
 

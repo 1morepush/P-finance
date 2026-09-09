@@ -1,18 +1,28 @@
 import type { AppState } from '../types'
 
-// Source of truth: the confirmed debt table supplied Aug 2026.
-// Totals this data produces (asserted in the app, verified against the source):
-//   active             $12,153.41
-//   monthly minimums      $719.26   (weekly share $165.54)
+// Source of truth: the reconciled debt dump supplied 2026-09-09.
+// Totals this data produces (verified against the source before seeding):
+//   active             $11,844.34   (source stated $12,140.34, which counts the
+//                                    $296.00 potential New Friend row)
+//   potential             $296.00
+//   monthly minimums      $812.49   (weekly share $186.99)
 //   installment-free    2027-07-29
 //   cleared to date     $1,641.56
+//
+// Four lender-stated final dates disagree with the arithmetic of their own
+// balance and payment. They are stored as supplied and surfaced by the Schedule
+// check on the Calendar rather than silently corrected:
+//   Omio     stated 2027-08-29, computed 2027-07-29 (11 payments, not 12)
+//   Atlanta  stated 2027-02-20, computed 2027-04-20 (8 payments, not 6)
+//   Tokyo    stated 2026-11-03, computed 2027-01-03 (4 payments, not 2)
+//   Klarna L stated 2026-10-06, computed 2026-10-09 (due date moved, end date did not)
 /**
  * Bump whenever the figures below change. Devices carrying an older stamp are
  * offered the update rather than silently keeping their copy: saved state
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-04'
+export const SEED_VERSION = '2026-09-09'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
@@ -101,9 +111,9 @@ export const seedState: AppState = {
       apr: 35.99,
       monthlyPayment: 52.7,
       nextDue: '2026-09-29',
-      finalPaymentDate: '2027-07-29',
+      finalPaymentDate: '2027-08-29',
       notes:
-        'Confirmed Aug 2026 — 2 of 12 payments made. 11 remaining at $52.70 run Sep 29, 2026 to Jul 29, 2027; making a payment does not move the final date later.',
+        'Lender date stored as supplied. $579.57 at $52.70 is 11 payments, which run Sep 29, 2026 to Jul 29, 2027 — a month short of the stated date. Worth confirming with PayPal.',
     },
     {
       id: 'affirm_atlanta',
@@ -115,7 +125,9 @@ export const seedState: AppState = {
       apr: 36.0,
       monthlyPayment: 36.28,
       nextDue: '2026-09-20',
-      finalPaymentDate: '2027-04-20',
+      finalPaymentDate: '2027-02-20',
+      notes:
+        'Lender date stored as supplied. $289.91 at $36.28 is 8 payments ending Apr 20, 2027; the stated Feb 20 date would only cover 6.',
     },
     {
       id: 'affirm_columbia',
@@ -135,11 +147,13 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 267.25,
+      balance: 213.8,
       apr: 36.0,
       monthlyPayment: 53.45,
       nextDue: '2026-10-03',
-      finalPaymentDate: '2027-02-03',
+      finalPaymentDate: '2026-11-03',
+      notes:
+        'One payment made since the last update. Lender date stored as supplied, but $213.80 at $53.45 is exactly 4 payments, ending Jan 3, 2027 — the stated Nov 3 date covers only 2.',
     },
     {
       id: 'affirm_airbnb_cousin',
@@ -150,8 +164,8 @@ export const seedState: AppState = {
       balance: 799.07,
       apr: 0,
       monthlyPayment: 133.28,
-      nextDue: '2026-09-12',
-      finalPaymentDate: '2027-02-12',
+      nextDue: '2026-09-17',
+      finalPaymentDate: '2027-02-17',
     },
     {
       id: 'klarna_ace_large',
@@ -162,8 +176,10 @@ export const seedState: AppState = {
       balance: 272.04,
       apr: 0,
       monthlyPayment: 90.68,
-      nextDue: '2026-09-08',
+      nextDue: '2026-09-11',
       finalPaymentDate: '2026-10-06',
+      notes:
+        'Due date moved to Sep 11 but the end date did not follow: three biweekly payments from Sep 11 land Oct 9, not Oct 6.',
     },
     {
       id: 'klarna_ace_small',
@@ -183,11 +199,36 @@ export const seedState: AppState = {
       product: 'paypal_pay_in_4',
       status: 'active',
       priorityTier: 2,
-      balance: 105.7,
+      balance: 52.85,
       apr: 0,
       monthlyPayment: 52.85,
-      nextDue: '2026-09-22',
+      nextDue: '2026-10-08',
       finalPaymentDate: '2026-10-08',
+      notes: 'One instalment left. The date now reconciles — the earlier Oct 6/Oct 8 disagreement is resolved.',
+    },
+    {
+      id: 'edco_tix_1',
+      name: 'EDC Orlando Tickets #1',
+      product: 'event_installment',
+      status: 'active',
+      priorityTier: 2,
+      balance: 34.75,
+      apr: 0,
+      monthlyPayment: 34.75,
+      nextDue: '2026-09-11',
+      finalPaymentDate: '2026-09-11',
+    },
+    {
+      id: 'edco_tix_2',
+      name: 'EDC Orlando Tickets #2',
+      product: 'event_installment',
+      status: 'active',
+      priorityTier: 2,
+      balance: 58.48,
+      apr: 0,
+      monthlyPayment: 58.48,
+      nextDue: '2026-09-25',
+      finalPaymentDate: '2026-09-25',
     },
     {
       id: 'apple_card',
@@ -197,8 +238,12 @@ export const seedState: AppState = {
       priorityTier: 3,
       balance: 7341.0,
       apr: 22.49,
+      // Sep 1 has passed and the source still reports it outstanding at $7,341,
+      // so it is left standing rather than auto-settled — a card is paid by hand,
+      // not on autopay. Log the payment if it did go through.
+      autoMarkPaid: false,
       monthlyPayment: 212.0,
-      nextDue: '2026-10-01',
+      nextDue: '2026-09-01',
       notes:
         'Revolving — no lender-set payoff date. Held flat at $212/mo it clears in about 57 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
     },
@@ -246,7 +291,7 @@ export const seedState: AppState = {
       id: 'new_friend',
       name: 'New Friend',
       product: 'personal',
-      status: 'active',
+      status: 'potential',
       priorityTier: 4,
       balance: 296.0,
       apr: 0,
@@ -260,15 +305,15 @@ export const seedState: AppState = {
       name: 'Cousin',
       product: 'personal',
       amountCleared: 350.0,
-      dateCleared: '2026-09-04',
-      notes: 'Forgiven — no longer owed.',
+      dateCleared: '2026-08-27',
+      notes: 'Forgiven — cousin said keep the money.',
     },
     {
       id: 'affirm_dc',
       name: 'Affirm Holiday Inn Express DC',
       product: 'affirm_pay_monthly',
       amountCleared: 89.87,
-      dateCleared: '2026-08-28',
+      dateCleared: '2026-08-27',
       notes:
         'Confirmed $0.00 remaining. $89.87 was the balance still outstanding here; $191.39 was paid across the life of the plan.',
     },
