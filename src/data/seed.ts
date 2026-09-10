@@ -5,7 +5,10 @@ import type { AppState } from '../types'
 //   active             $11,844.34   (source stated $12,140.34, which counts the
 //                                    $296.00 potential New Friend row)
 //   potential             $296.00
-//   monthly minimums      $812.49   (weekly share $186.99)
+//   monthly minimums    $1,011.37   (weekly share $232.77) — weighted by billing
+//                                    cadence: the three Pay-in-4 plans bill every
+//                                    14 days, so they cost 2.17x their instalment
+//                                    per month while they run
 //   installment-free    2027-07-29
 //   cleared to date     $1,641.56
 //

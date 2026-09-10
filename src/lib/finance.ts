@@ -6,7 +6,7 @@ import type {
   ExpenseCadence,
   PriorityTier,
 } from '../types'
-import { categoryOf } from '../types'
+import { categoryOf, CADENCE_PER_MONTH, PRODUCT_CADENCE } from '../types'
 
 const WEEKS_PER_MONTH = 4.345
 
@@ -25,8 +25,17 @@ export function scheduledDebts(debts: Debt[]): Debt[] {
   return activeDebts(debts).filter((d) => categoryOf(d) !== 'personal' && d.monthlyPayment)
 }
 
+/**
+ * What the scheduled plans cost per month, weighted by how often each actually
+ * bills. A Pay-in-4 instalment lands every 14 days — 2.17 times a month, not
+ * once — so counting it once understates the real commitment badly.
+ */
 export function totalMonthlyMinimum(debts: Debt[]): number {
-  return scheduledDebts(debts).reduce((sum, d) => sum + (d.monthlyPayment ?? 0), 0)
+  return scheduledDebts(debts).reduce((sum, d) => {
+    const cadence = PRODUCT_CADENCE[d.product]
+    if (!cadence) return sum
+    return sum + (d.monthlyPayment ?? 0) * CADENCE_PER_MONTH[cadence]
+  }, 0)
 }
 
 export function weeklyMinimumObligation(debts: Debt[]): number {

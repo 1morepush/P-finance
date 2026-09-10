@@ -221,6 +221,29 @@ export const PRODUCT_LABEL: Record<DebtProduct, string> = {
   event_installment: 'Event plan',
 }
 
+/** How often each product bills. Null means no recurring schedule at all. */
+export type Cadence = 'monthly' | 'biweekly' | null
+
+/**
+ * Lives here rather than in ./lib/schedule so ./lib/finance can weight a
+ * monthly total by it without the two modules importing each other.
+ */
+export const PRODUCT_CADENCE: Record<DebtProduct, Cadence> = {
+  paypal_pay_monthly: 'monthly',
+  affirm_pay_monthly: 'monthly',
+  credit_card: 'monthly',
+  paypal_pay_in_4: 'biweekly',
+  affirm_pay_in_4: 'biweekly',
+  klarna_pay_in_4: 'biweekly',
+  // A single remaining instalment, so the cadence never actually steps. Marked
+  // monthly rather than null so a passed due date auto-settles like any other plan.
+  event_installment: 'monthly',
+  personal: null,
+}
+
+/** Billing occurrences per month, by cadence. Pay-in-4 bills 26 times a year. */
+export const CADENCE_PER_MONTH = { monthly: 1, biweekly: 26 / 12 } as const
+
 export const TIER_LABEL: Record<PriorityTier, string> = {
   0: 'Urgent',
   1: 'High interest (~36%)',
