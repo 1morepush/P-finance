@@ -3,6 +3,7 @@ import type { AppState } from '../types'
 import { categoryOf } from '../types'
 import { Card } from '../components/Card'
 import { CommandBar } from '../components/CommandBar'
+import { RunwayCard } from '../components/RunwayCard'
 import { StatTile } from '../components/StatTile'
 import { CategoryBar } from '../components/CategoryBar'
 import {
@@ -29,9 +30,11 @@ const INSIGHT_COLOR: Record<InsightKind, string> = {
 export function Dashboard({
   state,
   setState,
+  onGoToIncome,
 }: {
   state: AppState
   setState: React.Dispatch<React.SetStateAction<AppState>>
+  onGoToIncome: () => void
 }) {
   const [incomeInput, setIncomeInput] = useState('')
   const [balanceEdit, setBalanceEdit] = useState(false)
@@ -158,6 +161,8 @@ export function Dashboard({
     <div className="flex flex-col gap-4 p-4 pb-24">
       <CommandBar state={state} setState={setState} />
 
+      <RunwayCard state={state} onAddExpenses={onGoToIncome} />
+
       <Card>
         <div className="flex items-center justify-between">
           <StatTile
@@ -245,9 +250,9 @@ export function Dashboard({
           </p>
           {split.available > 0 && split.shortfall > 0 && (
             <p className="mb-2 text-xs font-medium" style={{ color: 'var(--status-critical)' }}>
-              ⚠ This check is {formatCurrency(split.shortfall)} short of the weekly share of your
-              minimum debt payments ({formatCurrency(split.weeklyMinimum)}/wk) — cover the gap from
-              your checking balance.
+              ⚠ This check is {formatCurrency(split.shortfall)} short of what it has to cover
+              this week ({formatCurrency(split.weeklyCommitted)}/wk in debt minimums and living
+              costs) — the gap comes out of your checking balance.
             </p>
           )}
           {split.available > 0 ? (
@@ -258,6 +263,17 @@ export function Dashboard({
                     Minimum debt payments (weekly share)
                   </span>
                   <span className="tabular-nums">{formatCurrency(split.weeklyMinimum)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Living costs (weekly share)
+                    {split.weeklyExpenses === 0 && (
+                      <span className="ml-1 text-xs" style={{ color: 'var(--status-warning)' }}>
+                        none entered
+                      </span>
+                    )}
+                  </span>
+                  <span className="tabular-nums">{formatCurrency(split.weeklyExpenses)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span style={{ color: 'var(--text-secondary)' }}>

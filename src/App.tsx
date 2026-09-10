@@ -120,7 +120,9 @@ function App() {
         </div>
       )}
 
-      {tab === 'dashboard' && <Dashboard state={state} setState={setState} />}
+      {tab === 'dashboard' && (
+        <Dashboard state={state} setState={setState} onGoToIncome={() => setTab('income')} />
+      )}
       {tab === 'debts' && <Debts state={state} setState={setState} />}
       {tab === 'calendar' && <Calendar state={state} />}
       {tab === 'income' && <Income state={state} setState={setState} />}

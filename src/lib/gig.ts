@@ -111,6 +111,16 @@ export function removeShift(state: AppState, shiftId: string): AppState {
   }
 }
 
+/**
+ * Replaces a shift's figures. Routed through remove-then-add so the bank
+ * balance and income entry are unwound and reapplied by the same tested code
+ * rather than patched in place.
+ */
+export function updateShift(state: AppState, shiftId: string, input: ShiftInput): AppState {
+  if (!state.shifts.some((s) => s.id === shiftId)) return state
+  return addShift(removeShift(state, shiftId), input)
+}
+
 /** Recent shifts, newest first. */
 export function recentShifts(shifts: Shift[], limit = 10): Shift[] {
   return [...shifts].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit)

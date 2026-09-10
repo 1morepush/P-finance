@@ -1,10 +1,20 @@
 import { useState } from 'react'
-import type { AppState, IncomeSource } from '../types'
+import type { AppState, Expense, IncomeSource, Shift } from '../types'
 import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
 import { IncomeForm } from '../components/IncomeForm'
 import { ShiftForm } from '../components/ShiftForm'
+import { ExpenseForm } from '../components/ExpenseForm'
 import { formatCurrency, formatDate } from '../lib/finance'
+import {
+  addExpense,
+  CADENCE_LABEL,
+  expenseMonthly,
+  monthlyExpenses,
+  removeExpense,
+  updateExpense,
+  type ExpenseInput,
+} from '../lib/budget'
 import {
   addShift,
   last7Days,
@@ -13,6 +23,7 @@ import {
   shiftNet,
   shiftsInMonth,
   summarize,
+  updateShift,
   type ShiftInput,
 } from '../lib/gig'
 import { formatMonth, formatShortDate, today } from '../lib/schedule'
@@ -25,7 +36,8 @@ export function Income({
   setState: React.Dispatch<React.SetStateAction<AppState>>
 }) {
   const [editing, setEditing] = useState<IncomeSource | 'new' | null>(null)
-  const [loggingShift, setLoggingShift] = useState(false)
+  const [shiftModal, setShiftModal] = useState<Shift | 'new' | null>(null)
+  const [expenseModal, setExpenseModal] = useState<Expense | 'new' | null>(null)
 
   function save(form: Omit<IncomeSource, 'id'>) {
     setState((s) => {
@@ -47,13 +59,30 @@ export function Income({
     setEditing(null)
   }
 
-  function logShift(input: ShiftInput) {
-    setState((s) => addShift(s, input))
-    setLoggingShift(false)
+  function saveShift(input: ShiftInput) {
+    setState((s) =>
+      shiftModal && shiftModal !== 'new' ? updateShift(s, shiftModal.id, input) : addShift(s, input),
+    )
+    setShiftModal(null)
   }
 
   function deleteShift(id: string) {
     setState((s) => removeShift(s, id))
+    setShiftModal(null)
+  }
+
+  function saveExpense(input: ExpenseInput) {
+    setState((s) =>
+      expenseModal && expenseModal !== 'new'
+        ? updateExpense(s, expenseModal.id, input)
+        : addExpense(s, input),
+    )
+    setExpenseModal(null)
+  }
+
+  function deleteExpense(id: string) {
+    setState((s) => removeExpense(s, id))
+    setExpenseModal(null)
   }
 
   const recentEntries = [...state.incomeEntries].reverse().slice(0, 10)
@@ -63,6 +92,8 @@ export function Income({
   const week = summarize(last7Days(state.shifts))
   const allTime = summarize(state.shifts)
   const shiftLog = recentShifts(state.shifts)
+  const expenseTotal = monthlyExpenses(state)
+  const expenses = [...state.expenses].sort((a, b) => expenseMonthly(b) - expenseMonthly(a))
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
@@ -101,6 +132,11 @@ export function Income({
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {src.frequency}
                 </div>
+                {src.endsOn && (
+                  <div className="text-xs font-medium" style={{ color: 'var(--status-warning)' }}>
+                    ends {formatDate(src.endsOn)}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -109,11 +145,71 @@ export function Income({
 
       <div className="mt-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          Living costs
+        </h2>
+        <button
+          type="button"
+          onClick={() => setExpenseModal('new')}
+          className="rounded-lg px-3 py-1.5 text-sm font-medium"
+          style={{ background: 'var(--cat-installment)', color: 'white' }}
+        >
+          + Add expense
+        </button>
+      </div>
+
+      <Card>
+        {expenses.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Nothing entered yet. Rent, groceries, phone, insurance — until these are here the app
+            treats every dollar after debt minimums as spare, which it is not.
+          </p>
+        ) : (
+          <>
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Total each month
+              </span>
+              <span className="tabular-nums text-xl font-semibold">
+                {formatCurrency(expenseTotal)}
+              </span>
+            </div>
+            <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+              {expenses.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => setExpenseModal(e)}
+                  className="flex items-center justify-between gap-2 py-2 text-left text-sm first:pt-0 last:pb-0"
+                >
+                  <span className="min-w-0">
+                    <span className="truncate font-medium">{e.name}</span>
+                    {!e.essential && (
+                      <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        optional
+                      </span>
+                    )}
+                    <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {formatCurrency(e.amount)} {CADENCE_LABEL[e.cadence]}
+                    </span>
+                  </span>
+                  <span className="tabular-nums shrink-0">
+                    {formatCurrency(expenseMonthly(e))}
+                    <span style={{ color: 'var(--text-muted)' }}>/mo</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </Card>
+
+      <div className="mt-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           Gig work
         </h2>
         <button
           type="button"
-          onClick={() => setLoggingShift(true)}
+          onClick={() => setShiftModal('new')}
           className="rounded-lg px-3 py-1.5 text-sm font-medium"
           style={{ background: 'var(--status-good)', color: 'white' }}
         >
@@ -176,14 +272,18 @@ export function Income({
                 key={shift.id}
                 className="flex items-center justify-between gap-2 py-2 text-sm first:pt-0 last:pb-0"
               >
-                <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShiftModal(shift)}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <div className="truncate font-medium">{shift.platform}</div>
                   <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {formatShortDate(shift.date)} · {formatCurrency(shift.earnings)} −{' '}
                     {formatCurrency(shift.gasCost)} gas
                     {shift.hours ? ` · ${shift.hours}h` : ''}
                   </div>
-                </div>
+                </button>
                 <div className="flex items-center gap-3">
                   <span
                     className="tabular-nums font-semibold"
@@ -244,9 +344,49 @@ export function Income({
         </Modal>
       )}
 
-      {loggingShift && (
-        <Modal title="Log a shift" onClose={() => setLoggingShift(false)}>
-          <ShiftForm onSave={logShift} onCancel={() => setLoggingShift(false)} />
+      {shiftModal && (
+        <Modal
+          title={shiftModal === 'new' ? 'Log a shift' : 'Edit shift'}
+          onClose={() => setShiftModal(null)}
+        >
+          <ShiftForm
+            initial={shiftModal === 'new' ? undefined : shiftModal}
+            onSave={saveShift}
+            onCancel={() => setShiftModal(null)}
+          />
+          {shiftModal !== 'new' && (
+            <button
+              type="button"
+              onClick={() => deleteShift(shiftModal.id)}
+              className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
+              style={{ background: 'transparent', color: 'var(--status-critical)' }}
+            >
+              Delete shift
+            </button>
+          )}
+        </Modal>
+      )}
+
+      {expenseModal && (
+        <Modal
+          title={expenseModal === 'new' ? 'Add a living cost' : 'Edit living cost'}
+          onClose={() => setExpenseModal(null)}
+        >
+          <ExpenseForm
+            initial={expenseModal === 'new' ? undefined : expenseModal}
+            onSave={saveExpense}
+            onCancel={() => setExpenseModal(null)}
+          />
+          {expenseModal !== 'new' && (
+            <button
+              type="button"
+              onClick={() => deleteExpense(expenseModal.id)}
+              className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
+              style={{ background: 'transparent', color: 'var(--status-critical)' }}
+            >
+              Delete
+            </button>
+          )}
         </Modal>
       )}
     </div>

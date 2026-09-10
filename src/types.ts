@@ -109,6 +109,25 @@ export interface IncomeSource {
   amount: number
   frequency: IncomeFrequency
   active: boolean
+  /**
+   * ISO date of the last payment expected from this source, when it has a known
+   * end — benefits that run out, a contract that finishes. Without it the app
+   * projects the income forward forever, which is how a cliff gets missed.
+   */
+  endsOn?: string
+  notes?: string
+}
+
+export type ExpenseCadence = 'weekly' | 'biweekly' | 'monthly'
+
+/** A recurring cost. Without these the leftover in the split is fiction. */
+export interface Expense {
+  id: string
+  name: string
+  amount: number
+  cadence: ExpenseCadence
+  /** True for rent, utilities, insurance — the ones that cannot simply be skipped. */
+  essential: boolean
   notes?: string
 }
 
@@ -163,9 +182,12 @@ export interface AppState {
   payments: Payment[]
   incomeSources: IncomeSource[]
   incomeEntries: IncomeEntry[]
+  expenses: Expense[]
   shifts: Shift[]
   pendingClaims: PendingClaim[]
   settings: Settings
+  /** ISO date of the last export. Only this device holds the data, so staleness matters. */
+  lastBackupAt?: string
 }
 
 const PRODUCT_CATEGORY: Record<DebtProduct, DebtCategory> = {
