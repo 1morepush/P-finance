@@ -3,6 +3,7 @@ import type { AppState } from '../types'
 import { PRODUCT_LABEL } from '../types'
 import { Card } from '../components/Card'
 import { MonthGrid } from '../components/MonthGrid'
+import { applyPayment } from '../lib/payments'
 import { StatTile } from '../components/StatTile'
 import { activeDebts, formatCurrency, formatDate, formatDue } from '../lib/finance'
 import {
@@ -33,7 +34,13 @@ const DETAIL_MONTHS = 6
 /** How far into the following month each month block looks ahead. */
 const LOOKAHEAD_DAYS = 14
 
-export function Calendar({ state }: { state: AppState }) {
+export function Calendar({
+  state,
+  setState,
+}: {
+  state: AppState
+  setState: React.Dispatch<React.SetStateAction<AppState>>
+}) {
   const now = today()
   const [gridMonth, setGridMonth] = useState(now.slice(0, 7))
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -116,6 +123,19 @@ export function Calendar({ state }: { state: AppState }) {
             setGridMonth(m)
             setSelectedDay(null)
           }}
+          onPay={(p) =>
+            // Routed through applyPayment like any other, so it lands in history
+            // and can be undone from the Debts tab. Dated the day it was due.
+            setState((s) =>
+              applyPayment(s, {
+                debtId: p.debtId,
+                amount: p.amount,
+                date: p.date,
+                fromBank: true,
+                advanceDue: true,
+              }),
+            )
+          }
         />
         {gridMonth !== now.slice(0, 7) && (
           <button

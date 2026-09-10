@@ -1,6 +1,6 @@
 import type { Debt } from '../types'
 import { activeDebts } from './finance'
-import { PAYMENT_CADENCE, projectPayments } from './schedule'
+import { addMonths, PAYMENT_CADENCE, projectPayments, today } from './schedule'
 
 /** Compounding periods per year for each billing cadence. */
 const PERIODS_PER_YEAR = { monthly: 12, biweekly: 26 } as const
@@ -70,6 +70,49 @@ export function earlyPayoff(debt: Debt): EarlyPayoff {
   // Each instalment discounted by the number of periods until it falls due.
   const today = payments.reduce((s, p, i) => s + p.amount / (1 + rate) ** (i + 1), 0)
   return { today, scheduled, saved: Math.max(scheduled - today, 0) }
+}
+
+export interface ExtraPaymentEffect {
+  extra: number
+  /** Null when the payment never covers the interest. */
+  months: number | null
+  totalPaid: number
+  interest: number
+  payoffDate: string | null
+  /** Against paying the scheduled amount alone. */
+  monthsSaved: number
+  interestSaved: number
+}
+
+/**
+ * What adding a fixed amount each month does to a revolving balance.
+ *
+ * Only meaningful for revolving credit: a fixed plan's balance already contains
+ * its financing charge, so paying it faster finishes sooner without costing
+ * less. Here every extra dollar is interest that is never charged.
+ */
+export function extraPaymentEffect(
+  debt: Debt,
+  extra: number,
+  now = today(),
+): ExtraPaymentEffect {
+  const payment = debt.monthlyPayment ?? 0
+  const base = amortizeRevolving(debt.balance, debt.apr, payment)
+  const withExtra = amortizeRevolving(debt.balance, debt.apr, payment + Math.max(extra, 0))
+
+  const months = Number.isFinite(withExtra.months) ? withExtra.months : null
+  return {
+    extra,
+    months,
+    totalPaid: withExtra.totalPaid,
+    interest: withExtra.totalPaid - debt.balance,
+    payoffDate: months === null ? null : addMonths(now, months),
+    monthsSaved:
+      Number.isFinite(base.months) && months !== null ? Math.max(base.months - months, 0) : 0,
+    interestSaved: Number.isFinite(base.totalPaid)
+      ? Math.max(base.totalPaid - withExtra.totalPaid, 0)
+      : 0,
+  }
 }
 
 export interface PayoffSummary {

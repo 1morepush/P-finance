@@ -7,7 +7,9 @@ import { DebtForm } from '../components/DebtForm'
 import { PaymentForm } from '../components/PaymentForm'
 import { applyPayment, undoPayment, type PaymentInput } from '../lib/payments'
 import { earlyPayoff, payoffSummary } from '../lib/payoff'
+import { WhatIfCard } from '../components/WhatIfCard'
 import {
+  activeDebts,
   formatCurrency,
   formatDate,
   formatDue,
@@ -131,6 +133,11 @@ export function Debts({
   }
 
   const payoff = payoffSummary(state.debts)
+  // The what-if only means anything for revolving credit; a fixed plan's balance
+  // already contains its charge, so paying it faster costs no less.
+  const revolving = activeDebts(state.debts).find(
+    (d) => d.product === 'credit_card' && d.apr > 0 && d.monthlyPayment,
+  )
   const ordered = orderByStrategy(state.debts, state.settings.strategy)
   const potential = potentialDebts(state.debts)
   const byTier = state.settings.strategy === 'tier'
@@ -233,6 +240,8 @@ export function Debts({
           simply the interest never accrued.
         </p>
       </Card>
+
+      {revolving && <WhatIfCard debt={revolving} />}
 
       {byTier ? (
         tiers.map(({ tier, debts }) => (
