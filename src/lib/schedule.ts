@@ -1,24 +1,14 @@
 import type { Debt, DebtProduct } from '../types'
+import { PRODUCT_CADENCE, type Cadence } from '../types'
 import { activeDebts, estimatePayoffMonths, potentialDebts } from './finance'
 
-export type Cadence = 'monthly' | 'biweekly' | null
+export type { Cadence }
 
 /**
  * How often each product bills. Pay-in-4 plans run every two weeks, not monthly —
  * modelling them as monthly would put their payments in the wrong months entirely.
  */
-export const PAYMENT_CADENCE: Record<DebtProduct, Cadence> = {
-  paypal_pay_monthly: 'monthly',
-  affirm_pay_monthly: 'monthly',
-  credit_card: 'monthly',
-  paypal_pay_in_4: 'biweekly',
-  affirm_pay_in_4: 'biweekly',
-  klarna_pay_in_4: 'biweekly',
-  // A single remaining instalment, so the cadence never actually steps. Marked
-  // monthly rather than null so a passed due date auto-settles like any other plan.
-  event_installment: 'monthly',
-  personal: null,
-}
+export const PAYMENT_CADENCE: Record<DebtProduct, Cadence> = PRODUCT_CADENCE
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
