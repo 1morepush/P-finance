@@ -6,7 +6,7 @@ import type {
   ExpenseCadence,
   PriorityTier,
 } from '../types'
-import { categoryOf, CADENCE_PER_MONTH, PRODUCT_CADENCE } from '../types'
+import { categoryOf } from '../types'
 
 const WEEKS_PER_MONTH = 4.345
 
@@ -23,23 +23,6 @@ export function potentialDebts(debts: Debt[]): Debt[] {
 /** Active debts carrying a real recurring payment obligation (excludes informal personal debts). */
 export function scheduledDebts(debts: Debt[]): Debt[] {
   return activeDebts(debts).filter((d) => categoryOf(d) !== 'personal' && d.monthlyPayment)
-}
-
-/**
- * What the scheduled plans cost per month, weighted by how often each actually
- * bills. A Pay-in-4 instalment lands every 14 days — 2.17 times a month, not
- * once — so counting it once understates the real commitment badly.
- */
-export function totalMonthlyMinimum(debts: Debt[]): number {
-  return scheduledDebts(debts).reduce((sum, d) => {
-    const cadence = PRODUCT_CADENCE[d.product]
-    if (!cadence) return sum
-    return sum + (d.monthlyPayment ?? 0) * CADENCE_PER_MONTH[cadence]
-  }, 0)
-}
-
-export function weeklyMinimumObligation(debts: Debt[]): number {
-  return totalMonthlyMinimum(debts) / WEEKS_PER_MONTH
 }
 
 /** Occurrences per month for each expense cadence. */
@@ -92,68 +75,6 @@ export function totalByTier(debts: Debt[], tier: PriorityTier): number {
 
 export function totalCleared(cleared: ClearedDebt[]): number {
   return cleared.reduce((sum, c) => sum + c.amountCleared, 0)
-}
-
-export interface WeeklySplit {
-  available: number
-  weeklyMinimum: number
-  /** Weekly share of recurring living costs. Zero until expenses are entered. */
-  weeklyExpenses: number
-  /** Minimums plus living costs — everything this check has to cover first. */
-  weeklyCommitted: number
-  shortfall: number
-  afterMinimum: number
-  toSavings: number
-  /** Left in checking on purpose, to build a cushion. Needs no action — it simply stays. */
-  toChecking: number
-  toExtraDebt: number
-  priorityDebt: Debt | null
-}
-
-/**
- * Suggests how to split THIS CHECK across this month's minimum debt
- * obligations and recurring living costs (each spread evenly over ~4.3 weeks),
- * savings, and extra toward the top-priority debt.
- *
- * Deliberately ignores the existing bank balance: splitting the whole balance
- * would sweep the account every week and stop the checking cushion from ever
- * building. Only new income is allocated; whatever is already banked stays put.
- *
- * Living costs come out before anything is called leftover. Without them the
- * split hands rent money to savings and calls it a surplus.
- */
-export function calculateWeeklySplit(state: AppState, incomeAmount: number): WeeklySplit {
-  const available = Math.max(incomeAmount, 0)
-  const weeklyMinimum = weeklyMinimumObligation(state.debts)
-  const weeklyExpenses = weeklyExpenseObligation(state)
-  const weeklyCommitted = weeklyMinimum + weeklyExpenses
-  const shortfall = Math.max(weeklyCommitted - available, 0)
-  const afterMinimum = Math.max(available - weeklyCommitted, 0)
-
-  // Clamp so the two reserved shares can never exceed the leftover and drive
-  // extra-debt negative, however the sliders are set.
-  const savingsPct = Math.max(state.settings.savingsPercent || 0, 0)
-  const checkingPct = Math.max(state.settings.keepInCheckingPercent || 0, 0)
-  const reservedPct = Math.min(savingsPct + checkingPct, 100)
-  const scale = savingsPct + checkingPct > 100 ? reservedPct / (savingsPct + checkingPct) : 1
-
-  const toSavings = afterMinimum * ((savingsPct * scale) / 100)
-  const toChecking = afterMinimum * ((checkingPct * scale) / 100)
-  const toExtraDebt = Math.max(afterMinimum - toSavings - toChecking, 0)
-  const ordered = orderByStrategy(state.debts, state.settings.strategy)
-
-  return {
-    available,
-    weeklyMinimum,
-    weeklyExpenses,
-    weeklyCommitted,
-    shortfall,
-    afterMinimum,
-    toSavings,
-    toChecking,
-    toExtraDebt,
-    priorityDebt: ordered[0] ?? null,
-  }
 }
 
 /** Amortizes a revolving balance at a fixed monthly payment; returns months to payoff, or null if payment never clears interest. */

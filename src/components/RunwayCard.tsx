@@ -1,6 +1,7 @@
 import type { AppState } from '../types'
 import { Card } from './Card'
 import { formatCurrency, formatDate } from '../lib/finance'
+import { formatMonth } from '../lib/schedule'
 import { minimumsShareOfIncome, runway } from '../lib/budget'
 import { daysUntil } from '../lib/schedule'
 
@@ -34,7 +35,10 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
 
       <div className="mt-2 flex flex-col gap-1 text-sm">
         <Row label="Income" value={formatCurrency(r.monthlyIncome)} suffix="/mo" />
-        <Row label="Debt minimums" value={`− ${formatCurrency(r.monthlyMinimums)}`} suffix="/mo" />
+        <Row
+          label="Debt due, next 30 days"
+          value={`− ${formatCurrency(r.monthlyMinimums)}`}
+        />
         <Row
           label="Living costs"
           value={noExpenses ? 'not entered' : `− ${formatCurrency(r.monthlyExpenses)}`}
@@ -54,6 +58,21 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
           </span>
         </div>
       </div>
+
+      {r.nextMonthMinimums > 0 && Math.abs(r.nextMonthMinimums - r.monthlyMinimums) > 1 && (
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {formatMonth(r.nextMonthLabel)} is {formatCurrency(r.nextMonthMinimums)} — these plans
+          finish at different times, so the figure moves month to month. The calendar has the exact
+          dates.
+        </p>
+      )}
+
+      {r.monthlyIncome <= 0 && (
+        <p className="mt-2 rounded-lg p-2 text-xs" style={{ background: 'var(--surface-page)', color: 'var(--status-critical)' }}>
+          No active income recorded, so every figure here is a pure drawdown. If something is
+          coming in, add or reactivate it on the Income tab.
+        </p>
+      )}
 
       {noExpenses && (
         <div className="mt-3 rounded-lg p-2 text-xs" style={{ background: 'var(--surface-page)' }}>
@@ -86,7 +105,7 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
           </p>
           <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
             Income drops to {formatCurrency(r.incomeAfterEnd)}/mo against{' '}
-            {formatCurrency(r.monthlyMinimums + r.monthlyExpenses)} of commitments — a{' '}
+            {formatCurrency(r.monthlyMinimums + r.monthlyExpenses)} of near-term commitments — a{' '}
             <strong style={{ color: tone }}>
               {r.netAfterEnd < 0 ? `${formatCurrency(-r.netAfterEnd)} monthly gap` : 'surplus'}
             </strong>
@@ -94,7 +113,7 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
           </p>
           {r.monthsOfCover !== null && (
             <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-              {formatCurrency(r.reserves)} on hand covers that for{' '}
+              {formatCurrency(r.reserves)} on hand covers the bills, as they actually fall, for{' '}
               <strong style={{ color: 'var(--text-primary)' }}>
                 {r.monthsOfCover < 1
                   ? `${Math.round(r.monthsOfCover * 4.345)} weeks`

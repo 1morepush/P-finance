@@ -4,10 +4,9 @@ import {
   estimatePayoffMonths,
   formatCurrency,
   formatDate,
-  totalMonthlyMinimum,
 } from './finance'
 import { earlyPayoff } from './payoff'
-import { addDays, dueWithin, projectedPayoffDate, today } from './schedule'
+import { addDays, dueWithin, projectedPayoffDate, scheduledInDays, today } from './schedule'
 
 export type InsightKind = 'opportunity' | 'warning' | 'milestone' | 'context'
 
@@ -158,7 +157,7 @@ export function generateInsights(state: AppState, now = today()): Insight[] {
 
   // How much of predictable income the minimums consume.
   const income = monthlyIncome(state)
-  const minimums = totalMonthlyMinimum(state.debts)
+  const minimums = scheduledInDays(state.debts, 30, now)
   if (income > 0 && minimums > 0) {
     const share = minimums / income
     out.push({

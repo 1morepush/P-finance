@@ -1,5 +1,5 @@
 import type { AppState } from '../types'
-import { weeklyExpenseObligation, weeklyMinimumObligation } from './finance'
+import { weeklyExpenseObligation } from './finance'
 import { summarize } from './gig'
 import {
   addDays,
@@ -8,6 +8,7 @@ import {
   sumConfirmed,
   sumPotential,
   today,
+  weeklyCommitment,
   type ScheduledPayment,
 } from './schedule'
 
@@ -52,7 +53,7 @@ export function weekTarget(state: AppState, now = today(), weeksAhead = 0): Week
   const livingCosts = weeklyExpenseObligation(state)
   const total = debtDue + livingCosts
 
-  const averageWeek = weeklyMinimumObligation(state.debts) + livingCosts
+  const averageWeek = weeklyCommitment(state.debts, now) + livingCosts
   const { netPerHour } = summarize(state.shifts)
 
   return {
