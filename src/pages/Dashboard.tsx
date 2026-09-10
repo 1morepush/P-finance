@@ -5,6 +5,7 @@ import { Card } from '../components/Card'
 import { CommandBar } from '../components/CommandBar'
 import { RunwayCard } from '../components/RunwayCard'
 import { WeekTargetCard } from '../components/WeekTargetCard'
+import { ProgressChart } from '../components/ProgressChart'
 import { StatTile } from '../components/StatTile'
 import { CategoryBar } from '../components/CategoryBar'
 import {
@@ -383,6 +384,8 @@ export function Dashboard({
           </p>
         )}
       </Card>
+
+      <ProgressChart state={state} />
 
       {insights.length > 0 && (
         <section className="flex flex-col gap-2">

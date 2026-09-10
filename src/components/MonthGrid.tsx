@@ -41,6 +41,7 @@ export function MonthGrid({
   selected,
   onSelect,
   onMonthChange,
+  onPay,
 }: {
   month: string
   payments: ScheduledPayment[]
@@ -48,6 +49,8 @@ export function MonthGrid({
   selected: string | null
   onSelect: (date: string | null) => void
   onMonthChange: (month: string) => void
+  /** Logs one scheduled payment as made. Omitted where the grid is read-only. */
+  onPay?: (payment: ScheduledPayment) => void
 }) {
   const weeks = buildWeeks(month)
   const byDate = new Map<string, ScheduledPayment[]>()
@@ -201,8 +204,34 @@ export function MonthGrid({
                   )}
                 </span>
                 <span className="tabular-nums shrink-0">{formatCurrency(p.amount)}</span>
+                {onPay && !p.isPotential && (
+                  <button
+                    type="button"
+                    onClick={() => onPay(p)}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ background: 'var(--status-good)', color: 'white' }}
+                  >
+                    Pay
+                  </button>
+                )}
               </div>
             ))
+          )}
+          {onPay && (byDate.get(selected) ?? []).filter((p) => !p.isPotential).length > 1 && (
+            <button
+              type="button"
+              onClick={() => (byDate.get(selected) ?? []).filter((p) => !p.isPotential).forEach(onPay)}
+              className="mt-2 w-full rounded-lg py-1.5 text-[11px] font-medium"
+              style={{ background: 'var(--status-good)', color: 'white' }}
+            >
+              Mark all{' '}
+              {(byDate.get(selected) ?? []).filter((p) => !p.isPotential).length} paid —{' '}
+              {formatCurrency(
+                (byDate.get(selected) ?? [])
+                  .filter((p) => !p.isPotential)
+                  .reduce((s, p) => s + p.amount, 0),
+              )}
+            </button>
           )}
         </div>
       )}
