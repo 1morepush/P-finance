@@ -76,6 +76,21 @@ export function IncomeForm({
         </label>
       </div>
 
+      <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        Last payment expected (optional)
+        <input
+          type="date"
+          value={form.endsOn ?? ''}
+          onChange={(e) => setForm({ ...form, endsOn: e.target.value || undefined })}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={inputStyle}
+        />
+        <span style={{ color: 'var(--text-muted)' }}>
+          Set this for anything that runs out — benefits, a contract. The Runway card on Home uses
+          it to show the drop before it happens.
+        </span>
+      </label>
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"

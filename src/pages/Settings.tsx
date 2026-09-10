@@ -1,7 +1,10 @@
-import { useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { AppState, DebtStrategy } from '../types'
 import { Card } from '../components/Card'
-import { exportStateAsJson, parseImportedState, resetToSeed } from '../lib/storage'
+import { formatCurrency, formatDate } from '../lib/finance'
+import { compareStrategies, STRATEGY_LABEL } from '../lib/strategy'
+import { daysUntil } from '../lib/schedule'
+import { exportStateAsJson, markBackedUp, parseImportedState, resetToSeed } from '../lib/storage'
 
 export function Settings({
   state,
@@ -11,6 +14,13 @@ export function Settings({
   setState: React.Dispatch<React.SetStateAction<AppState>>
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [extra, setExtra] = useState('100')
+
+  const extraPerMonth = Number(extra) || 0
+  const comparison = useMemo(() => compareStrategies(state, extraPerMonth), [state, extraPerMonth])
+
+  const backupAge = state.lastBackupAt ? -daysUntil(state.lastBackupAt) : null
+  const backupStale = backupAge === null || backupAge > 30
 
   function setStrategy(strategy: DebtStrategy) {
     setState((s) => ({ ...s, settings: { ...s.settings, strategy } }))
@@ -48,6 +58,7 @@ export function Settings({
     a.download = `p-finance-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
+    setState(markBackedUp)
   }
 
   function importBackup(file: File) {
@@ -95,6 +106,108 @@ export function Settings({
       </Card>
 
       <Card>
+        <h2 className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          What each one costs
+        </h2>
+        <p className="mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Run forward from today's balances, paying every minimum plus this much extra each month.
+          A 0% plan costs nothing to carry, so finishing one early saves nothing — only the Apple
+          Card's interest actually responds to where the extra goes.
+        </p>
+
+        <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          Extra per month ($)
+          <input
+            type="number"
+            inputMode="decimal"
+            step="10"
+            value={extra}
+            onChange={(e) => setExtra(e.target.value)}
+            className="w-24 rounded-lg border px-2 py-1 text-sm"
+            style={{
+              background: 'var(--surface-page)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </label>
+
+        <div className="mt-3 flex flex-col gap-1">
+          {comparison.results.map((r) => {
+            const isCurrent = r.strategy === state.settings.strategy
+            const isBest = r.strategy === comparison.best.strategy
+            const diff = r.totalPaid - comparison.best.totalPaid
+            return (
+              <div
+                key={r.strategy}
+                className="flex items-baseline justify-between gap-2 rounded-lg px-2 py-2 text-sm"
+                style={{ background: isCurrent ? 'var(--surface-page)' : 'transparent' }}
+              >
+                <span className="min-w-0">
+                  <span className="font-medium">{STRATEGY_LABEL[r.strategy]}</span>
+                  {isCurrent && (
+                    <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      current
+                    </span>
+                  )}
+                  {isBest && (
+                    <span className="ml-1 text-xs font-medium" style={{ color: 'var(--status-good)' }}>
+                      cheapest
+                    </span>
+                  )}
+                  <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {Number.isFinite(r.months) ? `${r.months} months` : 'never clears'}
+                    {!r.clearsEverything && Number.isFinite(r.leftStanding) && (
+                      <span style={{ color: 'var(--status-warning)' }}>
+                        {' '}
+                        · leaves {formatCurrency(r.leftStanding)} untouched
+                      </span>
+                    )}
+                    {r.firstTarget ? ` · extra goes to ${r.firstTarget}` : ''}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="tabular-nums font-semibold">
+                    {Number.isFinite(r.interest) ? formatCurrency(r.interest) : '—'}
+                  </span>
+                  <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                    interest
+                    {diff > 0.5 && (
+                      <span style={{ color: 'var(--status-warning)' }}>
+                        {' '}
+                        +{formatCurrency(diff)}
+                      </span>
+                    )}
+                  </span>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        {comparison.costOfCurrent > 0.5 ? (
+          <p
+            className="mt-3 rounded-lg p-2 text-xs"
+            style={{ background: 'var(--surface-page)', color: 'var(--status-warning)' }}
+          >
+            Staying on {STRATEGY_LABEL[comparison.current.strategy]} costs about{' '}
+            <strong>{formatCurrency(comparison.costOfCurrent)}</strong> more than{' '}
+            {STRATEGY_LABEL[comparison.best.strategy]} at this rate
+            {comparison.monthsLost > 0 && <> and takes {comparison.monthsLost} months longer</>}.
+          </p>
+        ) : (
+          <p
+            className="mt-3 rounded-lg p-2 text-xs"
+            style={{ background: 'var(--surface-page)', color: 'var(--status-good)' }}
+          >
+            {STRATEGY_LABEL[comparison.current.strategy]} is as cheap as any of the three at this
+            rate — the orderings only diverge once the extra outpaces your 0% plans, which finish
+            on their own minimums.
+          </p>
+        )}
+      </Card>
+
+      <Card>
         <h2 className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           Savings rate
         </h2>
@@ -136,6 +249,12 @@ export function Settings({
           the money simply stays put.
         </p>
 
+        <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          These two only differ if the savings share actually leaves your checking account. Tapping
+          "Move to savings" on Home moves it in the app; do the transfer in your bank too, or the
+          two are the same pile of money counted twice.
+        </p>
+
         <p
           className="mt-3 rounded-lg p-2 text-xs"
           style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
@@ -152,9 +271,21 @@ export function Settings({
         <h2 className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           Backup &amp; restore
         </h2>
+        <p
+          className="mb-2 text-xs font-medium"
+          style={{ color: backupStale ? 'var(--status-warning)' : 'var(--status-good)' }}
+        >
+          {backupAge === null
+            ? '⚠ Never backed up on this device.'
+            : backupAge === 0
+              ? '✓ Backed up today.'
+              : `${backupStale ? '⚠' : '✓'} Last backup ${backupAge} day${backupAge === 1 ? '' : 's'} ago (${formatDate(state.lastBackupAt!)}).`}
+        </p>
         <p className="mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Everything is stored only on this device. Download a backup to move data to another
-          phone, or before clearing your browser data.
+          Everything is stored only on this device, and a browser can clear it without warning. The
+          debt figures can be re-seeded; your {state.payments.length} logged payment
+          {state.payments.length === 1 ? '' : 's'} and {state.shifts.length} shift
+          {state.shifts.length === 1 ? '' : 's'} cannot.
         </p>
         <div className="flex gap-2">
           <button

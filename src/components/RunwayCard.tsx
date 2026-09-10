@@ -1,0 +1,144 @@
+import type { AppState } from '../types'
+import { Card } from './Card'
+import { formatCurrency, formatDate } from '../lib/finance'
+import { minimumsShareOfIncome, runway } from '../lib/budget'
+import { daysUntil } from '../lib/schedule'
+
+/**
+ * Whether the plan survives the next few months, as opposed to how the debt is
+ * going. It leads the dashboard because a payoff order is beside the point if
+ * the income behind it stops.
+ */
+export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExpenses: () => void }) {
+  const r = runway(state)
+  const share = minimumsShareOfIncome(state)
+  const noExpenses = state.expenses.length === 0
+
+  const daysToCliff = r.incomeEndsOn ? daysUntil(r.incomeEndsOn) : null
+  const cliffSoon = daysToCliff !== null && daysToCliff <= 45
+
+  const tone = r.netAfterEnd < 0 ? 'var(--status-critical)' : 'var(--status-good)'
+
+  return (
+    <Card>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          Runway
+        </h2>
+        {share !== null && (
+          <span className="text-xs" style={{ color: share > 0.4 ? 'var(--status-warning)' : 'var(--text-muted)' }}>
+            {Math.round(share * 100)}% of income to minimums
+          </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-col gap-1 text-sm">
+        <Row label="Income" value={formatCurrency(r.monthlyIncome)} suffix="/mo" />
+        <Row label="Debt minimums" value={`− ${formatCurrency(r.monthlyMinimums)}`} suffix="/mo" />
+        <Row
+          label="Living costs"
+          value={noExpenses ? 'not entered' : `− ${formatCurrency(r.monthlyExpenses)}`}
+          suffix={noExpenses ? '' : '/mo'}
+          muted={noExpenses}
+        />
+        <div
+          className="mt-1 flex items-center justify-between border-t pt-2"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <span className="font-medium">Left over</span>
+          <span
+            className="tabular-nums font-semibold"
+            style={{ color: r.monthlyNet < 0 ? 'var(--status-critical)' : 'var(--status-good)' }}
+          >
+            {formatCurrency(r.monthlyNet)}/mo
+          </span>
+        </div>
+      </div>
+
+      {noExpenses && (
+        <div className="mt-3 rounded-lg p-2 text-xs" style={{ background: 'var(--surface-page)' }}>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            No rent, food or transport entered, so this figure is too generous — and so is every
+            split the app suggests.
+          </p>
+          <button
+            type="button"
+            onClick={onAddExpenses}
+            className="mt-2 rounded-lg px-2 py-1 text-xs font-medium"
+            style={{ background: 'var(--cat-installment)', color: 'white' }}
+          >
+            Add living costs
+          </button>
+        </div>
+      )}
+
+      {r.incomeEndsOn && (
+        <div
+          className="mt-3 rounded-lg p-3 text-xs"
+          style={{ background: 'var(--surface-page)', borderLeft: `3px solid ${tone}` }}
+        >
+          <p className="font-semibold" style={{ color: tone }}>
+            {r.endingSourceName} ends {formatDate(r.incomeEndsOn)}
+            {daysToCliff !== null && daysToCliff >= 0 && (
+              <> — {daysToCliff === 0 ? 'today' : `${daysToCliff} day${daysToCliff === 1 ? '' : 's'} away`}</>
+            )}
+            {daysToCliff !== null && daysToCliff < 0 && <> — already passed</>}
+          </p>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Income drops to {formatCurrency(r.incomeAfterEnd)}/mo against{' '}
+            {formatCurrency(r.monthlyMinimums + r.monthlyExpenses)} of commitments — a{' '}
+            <strong style={{ color: tone }}>
+              {r.netAfterEnd < 0 ? `${formatCurrency(-r.netAfterEnd)} monthly gap` : 'surplus'}
+            </strong>
+            .
+          </p>
+          {r.monthsOfCover !== null && (
+            <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+              {formatCurrency(r.reserves)} on hand covers that for{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>
+                {r.monthsOfCover < 1
+                  ? `${Math.round(r.monthsOfCover * 4.345)} weeks`
+                  : `${r.monthsOfCover.toFixed(1)} months`}
+              </strong>
+              {r.coveredUntil && <> — into {formatDate(r.coveredUntil)}</>}.
+            </p>
+          )}
+          {cliffSoon && noExpenses && (
+            <p className="mt-1" style={{ color: 'var(--status-warning)' }}>
+              With living costs entered the gap will be larger than shown.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!r.incomeEndsOn && (
+        <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          No income source has an end date set. If one runs out — benefits, a contract — set it on
+          the Income tab so this card can see it coming.
+        </p>
+      )}
+    </Card>
+  )
+}
+
+function Row({
+  label,
+  value,
+  suffix,
+  muted,
+}: {
+  label: string
+  value: string
+  suffix?: string
+  muted?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span className="tabular-nums" style={{ color: muted ? 'var(--text-muted)' : undefined }}>
+        {value}
+        {suffix && <span style={{ color: 'var(--text-muted)' }}>{suffix}</span>}
+      </span>
+    </div>
+  )
+}

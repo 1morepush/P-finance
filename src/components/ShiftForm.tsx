@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { Shift } from '../types'
 import { formatCurrency } from '../lib/finance'
 import { MILEAGE_RATE, type ShiftInput } from '../lib/gig'
 import { today } from '../lib/schedule'
@@ -12,19 +13,21 @@ const inputStyle = {
 const PLATFORMS = ['DoorDash', 'Uber Eats', 'Instacart', 'Grubhub', 'Amazon Flex', 'Other']
 
 export function ShiftForm({
+  initial,
   onSave,
   onCancel,
 }: {
+  initial?: Shift
   onSave: (input: ShiftInput) => void
   onCancel: () => void
 }) {
-  const [date, setDate] = useState(today())
-  const [platform, setPlatform] = useState(PLATFORMS[0])
-  const [earnings, setEarnings] = useState('')
-  const [gasCost, setGasCost] = useState('')
-  const [hours, setHours] = useState('')
-  const [miles, setMiles] = useState('')
-  const [addedToBank, setAddedToBank] = useState(true)
+  const [date, setDate] = useState(initial?.date ?? today())
+  const [platform, setPlatform] = useState(initial?.platform ?? PLATFORMS[0])
+  const [earnings, setEarnings] = useState(initial ? String(initial.earnings) : '')
+  const [gasCost, setGasCost] = useState(initial ? String(initial.gasCost) : '')
+  const [hours, setHours] = useState(initial?.hours ? String(initial.hours) : '')
+  const [miles, setMiles] = useState(initial?.miles ? String(initial.miles) : '')
+  const [addedToBank, setAddedToBank] = useState(initial?.addedToBank ?? true)
 
   const gross = Number(earnings) || 0
   const gas = Number(gasCost) || 0
@@ -69,7 +72,7 @@ export function ShiftForm({
             className="rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           >
-            {PLATFORMS.map((p) => (
+            {(PLATFORMS.includes(platform) ? PLATFORMS : [platform, ...PLATFORMS]).map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>
@@ -187,7 +190,7 @@ export function ShiftForm({
           className="flex-1 rounded-lg py-2 text-sm font-medium disabled:opacity-40"
           style={{ background: 'var(--status-good)', color: 'white' }}
         >
-          Log shift
+          {initial ? 'Save shift' : 'Log shift'}
         </button>
       </div>
     </form>

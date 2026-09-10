@@ -62,7 +62,12 @@ export const seedState: AppState = {
       amount: 335,
       frequency: 'weekly',
       active: true,
-      notes: 'Confirmation #45287027. Est. $320–350/week, up to 12 weeks.',
+      // Placeholder, not a confirmed figure: 12 weeks from the first full week
+      // after the June 15 job loss. Correct it on the Income tab once the real
+      // last-payment date is known — everything on the Runway card hangs on it.
+      endsOn: '2026-09-14',
+      notes:
+        'Confirmation #45287027. Est. $320–350/week, up to 12 weeks. End date is an estimate — confirm the actual final payment week and update it.',
     },
     {
       id: 'income-freelance',
@@ -85,6 +90,10 @@ export const seedState: AppState = {
   incomeEntries: [],
   payments: [],
   shifts: [],
+  // Left empty deliberately: no figures for rent, food or transport have been
+  // supplied, and inventing them would make the split look precise while being
+  // wrong. Until these are entered the Runway card says so rather than guessing.
+  expenses: [],
 
   // Tier 0 — urgent · Tier 1 — ~36% APR · Tier 2 — 0% promo BNPL
   // Tier 3 — Apple Card · Tier 4 — personal / flexible

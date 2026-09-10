@@ -36,6 +36,9 @@ function merge(parsed: Partial<AppState>): AppState {
     // predates stamping would hand it the current version and the device would
     // never be told its figures are stale — the very failure this guards against.
     seedVersion: parsed.seedVersion,
+    // Same reasoning as seedVersion: taking this from the seed would tell a
+    // device that has never exported that it is safely backed up.
+    lastBackupAt: parsed.lastBackupAt,
     settings: { ...seedState.settings, ...parsed.settings },
   }
 }
@@ -78,6 +81,11 @@ export function skipSeedUpdate(state: AppState): AppState {
 
 export function exportStateAsJson(state: AppState): string {
   return JSON.stringify(state, null, 2)
+}
+
+/** Records that a backup was taken, so the app can say how stale the last one is. */
+export function markBackedUp(state: AppState, when = new Date().toISOString().slice(0, 10)): AppState {
+  return { ...state, lastBackupAt: when }
 }
 
 export function parseImportedState(raw: string): AppState {

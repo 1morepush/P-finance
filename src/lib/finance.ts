@@ -1,4 +1,11 @@
-import type { AppState, ClearedDebt, Debt, DebtStrategy, PriorityTier } from '../types'
+import type {
+  AppState,
+  ClearedDebt,
+  Debt,
+  DebtStrategy,
+  ExpenseCadence,
+  PriorityTier,
+} from '../types'
 import { categoryOf } from '../types'
 
 const WEEKS_PER_MONTH = 4.345
@@ -24,6 +31,20 @@ export function totalMonthlyMinimum(debts: Debt[]): number {
 
 export function weeklyMinimumObligation(debts: Debt[]): number {
   return totalMonthlyMinimum(debts) / WEEKS_PER_MONTH
+}
+
+/** Occurrences per month for each expense cadence. */
+const EXPENSE_PER_MONTH: Record<ExpenseCadence, number> = {
+  weekly: 52 / 12,
+  biweekly: 26 / 12,
+  monthly: 1,
+}
+
+// Defined here rather than imported from ./budget, which already depends on this
+// module — the split needs the figure, and a cycle would be the price of sharing it.
+export function weeklyExpenseObligation(state: AppState): number {
+  const monthly = state.expenses.reduce((sum, e) => sum + e.amount * EXPENSE_PER_MONTH[e.cadence], 0)
+  return monthly / WEEKS_PER_MONTH
 }
 
 /**
@@ -67,6 +88,10 @@ export function totalCleared(cleared: ClearedDebt[]): number {
 export interface WeeklySplit {
   available: number
   weeklyMinimum: number
+  /** Weekly share of recurring living costs. Zero until expenses are entered. */
+  weeklyExpenses: number
+  /** Minimums plus living costs — everything this check has to cover first. */
+  weeklyCommitted: number
   shortfall: number
   afterMinimum: number
   toSavings: number
@@ -78,18 +103,23 @@ export interface WeeklySplit {
 
 /**
  * Suggests how to split THIS CHECK across this month's minimum debt
- * obligations (spread evenly over ~4.3 weeks), savings, and extra toward the
- * top-priority debt.
+ * obligations and recurring living costs (each spread evenly over ~4.3 weeks),
+ * savings, and extra toward the top-priority debt.
  *
  * Deliberately ignores the existing bank balance: splitting the whole balance
  * would sweep the account every week and stop the checking cushion from ever
  * building. Only new income is allocated; whatever is already banked stays put.
+ *
+ * Living costs come out before anything is called leftover. Without them the
+ * split hands rent money to savings and calls it a surplus.
  */
 export function calculateWeeklySplit(state: AppState, incomeAmount: number): WeeklySplit {
   const available = Math.max(incomeAmount, 0)
   const weeklyMinimum = weeklyMinimumObligation(state.debts)
-  const shortfall = Math.max(weeklyMinimum - available, 0)
-  const afterMinimum = Math.max(available - weeklyMinimum, 0)
+  const weeklyExpenses = weeklyExpenseObligation(state)
+  const weeklyCommitted = weeklyMinimum + weeklyExpenses
+  const shortfall = Math.max(weeklyCommitted - available, 0)
+  const afterMinimum = Math.max(available - weeklyCommitted, 0)
 
   // Clamp so the two reserved shares can never exceed the leftover and drive
   // extra-debt negative, however the sliders are set.
@@ -106,6 +136,8 @@ export function calculateWeeklySplit(state: AppState, incomeAmount: number): Wee
   return {
     available,
     weeklyMinimum,
+    weeklyExpenses,
+    weeklyCommitted,
     shortfall,
     afterMinimum,
     toSavings,
