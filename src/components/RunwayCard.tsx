@@ -5,6 +5,14 @@ import { formatMonth } from '../lib/schedule'
 import { minimumsShareOfIncome, runway } from '../lib/budget'
 import { daysUntil } from '../lib/schedule'
 
+/** Cover expressed in whatever unit is legible at that length. */
+function coverPhrase(months: number): string {
+  const days = Math.round(months * 30.44)
+  if (days <= 13) return `${days} day${days === 1 ? '' : 's'}`
+  if (months < 1.5) return `${Math.round(months * 4.345)} weeks`
+  return `${months.toFixed(1)} months`
+}
+
 /**
  * Whether the plan survives the next few months, as opposed to how the debt is
  * going. It leads the dashboard because a payoff order is beside the point if
@@ -67,18 +75,44 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
         </p>
       )}
 
+      {/* With nothing coming in there is no cliff ahead — the drawdown is
+          already happening, and how long the balance lasts is the whole story.
+          This block used to be nested inside the income-ends case, which is
+          exactly when it is least needed. */}
       {r.monthlyIncome <= 0 && (
-        <p className="mt-2 rounded-lg p-2 text-xs" style={{ background: 'var(--surface-page)', color: 'var(--status-critical)' }}>
-          No active income recorded, so every figure here is a pure drawdown. If something is
-          coming in, add or reactivate it on the Income tab.
-        </p>
+        <div
+          className="mt-3 rounded-lg p-3 text-xs"
+          style={{ background: 'var(--surface-page)', borderLeft: '3px solid var(--status-critical)' }}
+        >
+          <p className="font-semibold" style={{ color: 'var(--status-critical)' }}>
+            No income coming in
+          </p>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {formatCurrency(r.reserves)} on hand against{' '}
+            {formatCurrency(r.monthlyMinimums + r.monthlyExpenses)} due in the next 30 days.
+            {r.monthsOfCover !== null && (
+              <>
+                {' '}
+                At the rate the bills actually fall, that lasts{' '}
+                <strong style={{ color: 'var(--status-critical)' }}>
+                  {coverPhrase(r.monthsOfCover)}
+                </strong>
+                {r.coveredUntil && <> — to {formatDate(r.coveredUntil)}</>}.
+              </>
+            )}
+          </p>
+          <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+            Anything earned goes straight against this. Log gig shifts on the Income tab and the
+            figure moves.
+          </p>
+        </div>
       )}
 
       {noExpenses && (
         <div className="mt-3 rounded-lg p-2 text-xs" style={{ background: 'var(--surface-page)' }}>
           <p style={{ color: 'var(--text-secondary)' }}>
-            No rent, food or transport entered, so this figure is too generous — and so is every
-            split the app suggests.
+            Nothing entered for food, phone or transport, so this figure is still a little
+            generous — and so is every split the app suggests.
           </p>
           <button
             type="button"
@@ -115,9 +149,7 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
             <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
               {formatCurrency(r.reserves)} on hand covers the bills, as they actually fall, for{' '}
               <strong style={{ color: 'var(--text-primary)' }}>
-                {r.monthsOfCover < 1
-                  ? `${Math.round(r.monthsOfCover * 4.345)} weeks`
-                  : `${r.monthsOfCover.toFixed(1)} months`}
+                {coverPhrase(r.monthsOfCover)}
               </strong>
               {r.coveredUntil && <> — into {formatDate(r.coveredUntil)}</>}.
             </p>
@@ -130,7 +162,7 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
         </div>
       )}
 
-      {!r.incomeEndsOn && (
+      {!r.incomeEndsOn && r.monthlyIncome > 0 && (
         <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
           No income source has an end date set. If one runs out — benefits, a contract — set it on
           the Income tab so this card can see it coming.
