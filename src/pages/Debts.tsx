@@ -8,6 +8,7 @@ import { PaymentForm } from '../components/PaymentForm'
 import { applyPayment, undoPayment, type PaymentInput } from '../lib/payments'
 import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import { WhatIfCard } from '../components/WhatIfCard'
+import { uid } from '../lib/id'
 import {
   activeDebts,
   formatCurrency,
@@ -154,7 +155,7 @@ export function Debts({
           debts: s.debts.map((d) => (d.id === editing.id ? { ...form, id: editing.id } : d)),
         }
       }
-      return { ...s, debts: [...s.debts, { ...form, id: crypto.randomUUID() }] }
+      return { ...s, debts: [...s.debts, { ...form, id: uid() }] }
     })
     setEditing(null)
   }

@@ -1,6 +1,7 @@
 import type { AppState, Debt, Payment } from '../types'
 import { activeDebts } from './finance'
 import { PAYMENT_CADENCE, addDays, addMonths, isDate, today } from './schedule'
+import { uid } from './id'
 
 export interface PaymentInput {
   debtId: string
@@ -39,7 +40,7 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
   const advanced = input.advanceDue && !clears ? nextDueAfter(debt) : null
 
   const payment: Payment = {
-    id: crypto.randomUUID(),
+    id: uid(),
     debtId: debt.id,
     debtName: debt.name,
     amount: applied,

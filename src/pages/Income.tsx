@@ -27,6 +27,7 @@ import {
   type ShiftInput,
 } from '../lib/gig'
 import { formatMonth, formatShortDate, today } from '../lib/schedule'
+import { uid } from '../lib/id'
 
 export function Income({
   state,
@@ -49,7 +50,7 @@ export function Income({
           ),
         }
       }
-      return { ...s, incomeSources: [...s.incomeSources, { ...form, id: crypto.randomUUID() }] }
+      return { ...s, incomeSources: [...s.incomeSources, { ...form, id: uid() }] }
     })
     setEditing(null)
   }

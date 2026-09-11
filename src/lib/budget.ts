@@ -1,5 +1,6 @@
 import type { AppState, Expense, ExpenseCadence, IncomeFrequency } from '../types'
-import { addDays, monthlyScheduled, scheduledInDays, today } from './schedule'
+import { addDays, monthlyScheduled, nextMonth, scheduledInDays, today } from './schedule'
+import { uid } from './id'
 
 export const WEEKS_PER_MONTH = 4.345
 
@@ -115,8 +116,11 @@ export function runway(state: AppState, now = today()): Runway {
   const minimums = scheduledInDays(state.debts, 30, now)
   const reserves = state.bankBalance.amount + state.savingsBalance
 
-  const ahead = monthlyScheduled(state.debts, 3, addDays(now, 1))
-  const nextMonthRow = ahead[1] ?? ahead[0]
+  // Anchored on the first of next month, not on tomorrow: on the 30th,
+  // `addDays(now, 1)` already lands in next month and the row after it would be
+  // the month *after* that, skipping October entirely.
+  const following = nextMonth(now.slice(0, 7))
+  const nextMonthRow = monthlyScheduled(state.debts, 1, `${following}-01`)[0]
 
   const ending = state.incomeSources
     .filter((s) => s.active && s.endsOn && s.endsOn >= now && s.amount > 0)
@@ -182,7 +186,7 @@ export function minimumsShareOfIncome(state: AppState, now = today()): number | 
 export type ExpenseInput = Omit<Expense, 'id'>
 
 export function addExpense(state: AppState, input: ExpenseInput): AppState {
-  return { ...state, expenses: [...state.expenses, { ...input, id: crypto.randomUUID() }] }
+  return { ...state, expenses: [...state.expenses, { ...input, id: uid() }] }
 }
 
 export function updateExpense(state: AppState, id: string, input: ExpenseInput): AppState {

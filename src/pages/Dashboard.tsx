@@ -21,6 +21,7 @@ import { dueWithin, installmentFreeDate, today } from '../lib/schedule'
 import { calculateWeeklySplit } from '../lib/split'
 import { applyPayment } from '../lib/payments'
 import { generateInsights, type InsightKind } from '../lib/insights'
+import { uid } from '../lib/id'
 
 const INSIGHT_COLOR: Record<InsightKind, string> = {
   warning: 'var(--status-critical)',
@@ -102,7 +103,7 @@ export function Dashboard({
       incomeEntries: [
         ...s.incomeEntries,
         {
-          id: crypto.randomUUID(),
+          id: uid(),
           date: new Date().toISOString().slice(0, 10),
           amount: incomeAmount,
         },

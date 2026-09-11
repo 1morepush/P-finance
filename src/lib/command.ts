@@ -4,6 +4,7 @@ import { activeDebts, formatCurrency, orderByStrategy } from './finance'
 import { addShift, type ShiftInput } from './gig'
 import { applyPayment, nextDueAfter, type PaymentInput } from './payments'
 import { addDays, formatShortDate, today } from './schedule'
+import { uid } from './id'
 
 /**
  * Turns a typed sentence into one concrete change to the app.
@@ -51,7 +52,7 @@ export function applyAction(state: AppState, action: Action): AppState {
         incomeEntries: [
           ...state.incomeEntries,
           {
-            id: crypto.randomUUID(),
+            id: uid(),
             date: action.date,
             amount: action.amount,
             ...(action.note ? { note: action.note } : {}),
@@ -524,7 +525,7 @@ function newDebt(s: Scan, state: AppState, raw: string): ParseResult {
 
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
   const debt: Debt = {
-    id: `${base || 'debt'}_${crypto.randomUUID().slice(0, 6)}`,
+    id: `${base || 'debt'}_${uid().slice(0, 6)}`,
     name,
     product,
     status,
