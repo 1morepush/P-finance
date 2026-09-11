@@ -2,12 +2,21 @@ import type { AppState } from '../types'
 import { totalDebt } from './finance'
 import { addDays, today } from './schedule'
 
+/** One reduction on a given day — which debt, how much, and whether it finished it. */
+export interface DebtEntry {
+  name: string
+  amount: number
+  cleared: boolean
+}
+
 export interface DebtPoint {
   date: string
   /** Total active debt outstanding on that date. */
   total: number
   /** What came off on that date. */
   paid: number
+  /** Every reduction recorded that day, so a selected point can explain itself. */
+  entries: DebtEntry[]
   /** Debts that finished on that date. */
   cleared: string[]
 }
@@ -31,19 +40,21 @@ export function debtHistory(state: AppState, now = today()): DebtPoint[] {
     state.payments.filter((p) => p.clearedDebt).map((p) => p.debtId),
   )
 
-  type Event = { date: string; amount: number; cleared?: string }
+  type Event = { date: string; amount: number; name: string; cleared: boolean }
   const events: Event[] = [
     ...state.payments.map((p) => ({
       date: p.date,
       amount: p.amount,
-      cleared: p.clearedDebt ? p.debtName : undefined,
+      name: p.debtName,
+      cleared: p.clearedDebt,
     })),
     ...state.clearedDebts
       .filter((c) => !clearedByPayment.has(c.id))
-      .map((c) => ({ date: c.dateCleared, amount: c.amountCleared, cleared: c.name })),
+      .map((c) => ({ date: c.dateCleared, amount: c.amountCleared, name: c.name, cleared: true })),
   ].sort((a, b) => a.date.localeCompare(b.date))
 
-  if (events.length === 0) return [{ date: now, total: current, paid: 0, cleared: [] }]
+  if (events.length === 0)
+    return [{ date: now, total: current, paid: 0, entries: [], cleared: [] }]
 
   // Everything paid, added back on, is where the line starts. Dated the day
   // before the first payment: on the day itself the total is already lower, and
@@ -51,27 +62,26 @@ export function debtHistory(state: AppState, now = today()): DebtPoint[] {
   let running = current + events.reduce((s, e) => s + e.amount, 0)
 
   const points: DebtPoint[] = [
-    { date: addDays(events[0].date, -1), total: running, paid: 0, cleared: [] },
+    { date: addDays(events[0].date, -1), total: running, paid: 0, entries: [], cleared: [] },
   ]
 
   for (const e of events) {
     running -= e.amount
     const last = points[points.length - 1]
+    const entry = { name: e.name, amount: e.amount, cleared: e.cleared }
     // One point per date, however many payments landed on it.
-    if (last.date === e.date && last.paid > 0) {
+    if (last.date === e.date) {
       last.total = running
       last.paid += e.amount
-      if (e.cleared) last.cleared.push(e.cleared)
-    } else if (last.date === e.date) {
-      last.total = running
-      last.paid = e.amount
-      if (e.cleared) last.cleared.push(e.cleared)
+      last.entries.push(entry)
+      if (e.cleared) last.cleared.push(e.name)
     } else {
       points.push({
         date: e.date,
         total: running,
         paid: e.amount,
-        cleared: e.cleared ? [e.cleared] : [],
+        entries: [entry],
+        cleared: e.cleared ? [e.name] : [],
       })
     }
   }
@@ -83,7 +93,7 @@ export function debtHistory(state: AppState, now = today()): DebtPoint[] {
   const lastEvent = points[points.length - 1]
   const endDate = lastEvent.date > now ? lastEvent.date : now
   if (lastEvent.date !== endDate) {
-    points.push({ date: endDate, total: current, paid: 0, cleared: [] })
+    points.push({ date: endDate, total: current, paid: 0, entries: [], cleared: [] })
   }
 
   return points
