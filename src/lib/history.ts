@@ -76,8 +76,15 @@ export function debtHistory(state: AppState, now = today()): DebtPoint[] {
     }
   }
 
-  const last = points[points.length - 1]
-  if (last.date !== now) points.push({ date: now, total: current, paid: 0, cleared: [] })
+  // The closing point sits at whichever is later: today, or the last recorded
+  // payment. A payment dated ahead of today is already reflected in the balance,
+  // so anchoring the end at `now` would put it left of a point it comes after
+  // and the line would double back on itself.
+  const lastEvent = points[points.length - 1]
+  const endDate = lastEvent.date > now ? lastEvent.date : now
+  if (lastEvent.date !== endDate) {
+    points.push({ date: endDate, total: current, paid: 0, cleared: [] })
+  }
 
   return points
 }

@@ -1,5 +1,6 @@
 import type { AppState, Shift } from '../types'
 import { addDays, today } from './schedule'
+import { uid } from './id'
 
 /** What a shift actually put in your pocket. */
 export function shiftNet(shift: Shift): number {
@@ -71,13 +72,13 @@ export type ShiftInput = Omit<Shift, 'id'>
  * the weekly split and everything downstream see it like any other earnings.
  */
 export function addShift(state: AppState, input: ShiftInput): AppState {
-  const shift: Shift = { ...input, id: crypto.randomUUID() }
+  const shift: Shift = { ...input, id: uid() }
   const net = shiftNet(shift)
   if (!shift.addedToBank) return { ...state, shifts: [...state.shifts, shift] }
 
   // The entry id is held on the shift so deleting the shift can retract exactly
   // this entry — reversing the balance alone would leave the income double-counted.
-  const incomeEntryId = crypto.randomUUID()
+  const incomeEntryId = uid()
   return {
     ...state,
     shifts: [...state.shifts, { ...shift, incomeEntryId }],

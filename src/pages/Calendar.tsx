@@ -125,12 +125,17 @@ export function Calendar({
           }}
           onPay={(p) =>
             // Routed through applyPayment like any other, so it lands in history
-            // and can be undone from the Debts tab. Dated the day it was due.
+            // and can be undone from the Debts tab.
+            //
+            // Dated today when the instalment is still ahead: tapping a future
+            // one means paying it early, and stamping it with its own due date
+            // would put a payment in the future — which the progress chart then
+            // plots to the right of today and draws backwards.
             setState((s) =>
               applyPayment(s, {
                 debtId: p.debtId,
                 amount: p.amount,
-                date: p.date,
+                date: p.date > now ? now : p.date,
                 fromBank: true,
                 advanceDue: true,
               }),

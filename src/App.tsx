@@ -14,7 +14,7 @@ import { formatCurrency, formatDate } from './lib/finance'
 
 
 function App() {
-  const [state, setState] = useAppState()
+  const [state, setState, persisted] = useAppState()
   const [tab, setTab] = useState<Tab>('dashboard')
   const [autoSettled, setAutoSettled] = useState<AutoSettlement[]>([])
   const settledOnce = useRef(false)
@@ -41,6 +41,22 @@ function App() {
       <header className="sticky top-0 z-10 border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
         <h1 className="text-base font-semibold">P-Finance</h1>
       </header>
+
+      {!persisted && (
+        <div
+          className="mx-4 mt-4 rounded-xl border p-3"
+          style={{ background: 'var(--surface-card)', borderColor: 'var(--status-critical)' }}
+        >
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--status-critical)' }}>
+            This browser is not saving your data
+          </h2>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Writes to local storage are being refused — usually private browsing, or Safari set to
+            block all cookies. The app still works, but everything you enter will be gone when you
+            close it. Open it in a normal tab, or add it to your home screen.
+          </p>
+        </div>
+      )}
 
       {needsSeedUpdate && (
         <div
