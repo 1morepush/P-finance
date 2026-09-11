@@ -5,6 +5,7 @@ import type { AppState } from '../types'
 //   active             $11,844.34   (source stated $12,140.34, which counts the
 //                                    $296.00 potential New Friend row)
 //   potential             $296.00
+//   income                   $0.00   unemployment ended Sep 2026; no rent owed
 //   debt due, next 30d    $1,047.73   (weekly share $219.32) — read off the real
 //                                    schedule, not a smoothed rate. It falls to
 //                                    $719.26 in October and $548.79 from November
@@ -25,7 +26,7 @@ import type { AppState } from '../types'
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-11'
+export const SEED_VERSION = '2026-09-11b'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
@@ -64,13 +65,12 @@ export const seedState: AppState = {
       name: 'Unemployment insurance',
       amount: 335,
       frequency: 'weekly',
-      active: true,
-      // Placeholder, not a confirmed figure: 12 weeks from the first full week
-      // after the June 15 job loss. Correct it on the Income tab once the real
-      // last-payment date is known — everything on the Runway card hangs on it.
-      endsOn: '2026-09-14',
+      // Confirmed ended Sep 2026 — the payments have stopped. Kept as an
+      // inactive record rather than deleted, so the history of what was coming
+      // in is not lost, and so it can be switched back on if it resumes.
+      active: false,
       notes:
-        'Confirmation #45287027. Est. $320–350/week, up to 12 weeks. End date is an estimate — confirm the actual final payment week and update it.',
+        'Confirmation #45287027. Ran ~12 weeks from the June 15 job loss and has now ended. No further payments expected.',
     },
     {
       id: 'income-freelance',
@@ -93,9 +93,9 @@ export const seedState: AppState = {
   incomeEntries: [],
   payments: [],
   shifts: [],
-  // Left empty deliberately: no figures for rent, food or transport have been
-  // supplied, and inventing them would make the split look precise while being
-  // wrong. Until these are entered the Runway card says so rather than guessing.
+  // Rent is confirmed as nil — not an omission. Food, phone and transport have
+  // not been supplied and are deliberately not guessed at: a made-up figure
+  // would make the split look precise while being wrong.
   expenses: [],
 
   // Tier 0 — urgent · Tier 1 — ~36% APR · Tier 2 — 0% promo BNPL

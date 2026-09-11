@@ -145,6 +145,11 @@ export function dueWithin(debts: Debt[], days: number, todayISO = today()): numb
   return sumPayments(paymentsBetween(allPayments(debts), todayISO, addDays(todayISO, days)))
 }
 
+/** The Sunday on or before the given date. Weeks run Sunday to Saturday. */
+export function startOfWeek(iso: string): string {
+  return addDays(iso, -new Date(`${iso}T00:00:00Z`).getUTCDay())
+}
+
 /**
  * What is actually scheduled in a forward window, from real due dates.
  *
@@ -159,8 +164,8 @@ export function scheduledInDays(debts: Debt[], days: number, from = today()): nu
 
 /**
  * The weekly share of what is genuinely coming. A 28-day window over exactly 4
- * weeks, so this is the mean of the next four weeks rather than an approximation
- * of one.
+ * weeks, so this is the mean of four whole weeks rather than an approximation
+ * of one. Pass a Sunday to make it the mean of four calendar weeks.
  */
 export function weeklyCommitment(debts: Debt[], from = today()): number {
   return scheduledInDays(debts, 28, from) / 4
