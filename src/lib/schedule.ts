@@ -145,6 +145,48 @@ export function dueWithin(debts: Debt[], days: number, todayISO = today()): numb
   return sumPayments(paymentsBetween(allPayments(debts), todayISO, addDays(todayISO, days)))
 }
 
+/**
+ * What is actually scheduled in a forward window, from real due dates.
+ *
+ * Replaces the old smoothed estimate. Spreading a monthly rate over the year
+ * assumes every plan bills forever; the Pay-in-4 plans here are three payments
+ * that finish in October, so any rate-based figure disagrees with the calendar
+ * the moment you look at a specific month.
+ */
+export function scheduledInDays(debts: Debt[], days: number, from = today()): number {
+  return sumConfirmed(paymentsBetween(allPayments(debts), from, addDays(from, days - 1)))
+}
+
+/**
+ * The weekly share of what is genuinely coming. A 28-day window over exactly 4
+ * weeks, so this is the mean of the next four weeks rather than an approximation
+ * of one.
+ */
+export function weeklyCommitment(debts: Debt[], from = today()): number {
+  return scheduledInDays(debts, 28, from) / 4
+}
+
+/** Actual scheduled total for each of the next `count` calendar months. */
+export function monthlyScheduled(
+  debts: Debt[],
+  count: number,
+  from = today(),
+): { month: string; total: number }[] {
+  const all = allPayments(debts)
+  const out: { month: string; total: number }[] = []
+  let month = from.slice(0, 7)
+  for (let i = 0; i < count; i++) {
+    const start = i === 0 ? from : `${month}-01`
+    const end = `${nextMonth(month)}-01`
+    out.push({
+      month,
+      total: sumConfirmed(paymentsBetween(all, start, addDays(end, -1))),
+    })
+    month = nextMonth(month)
+  }
+  return out
+}
+
 /** The computed final payment date for one debt, or null if it has no schedule. */
 export function projectedPayoffDate(debt: Debt): string | null {
   const p = projectPayments(debt)

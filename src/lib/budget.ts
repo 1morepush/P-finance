@@ -1,6 +1,5 @@
 import type { AppState, Expense, ExpenseCadence, IncomeFrequency } from '../types'
-import { totalMonthlyMinimum } from './finance'
-import { today } from './schedule'
+import { addDays, monthlyScheduled, scheduledInDays, today } from './schedule'
 
 export const WEEKS_PER_MONTH = 4.345
 
@@ -45,10 +44,33 @@ export function monthlyIncomeOn(state: AppState, onDate: string): number {
     .reduce((sum, s) => sum + s.amount * INCOME_PER_MONTH[s.frequency], 0)
 }
 
+/**
+ * Income received across a forward window, pro-rated for any source that stops
+ * partway through it.
+ */
+function incomeAcross(state: AppState, from: string, days: number): number {
+  const to = addDays(from, days - 1)
+  return state.incomeSources
+    .filter((s) => s.active)
+    .reduce((sum, s) => {
+      const perMonth = s.amount * INCOME_PER_MONTH[s.frequency]
+      if (!s.endsOn) return sum + perMonth
+      if (s.endsOn < from) return sum
+      if (s.endsOn >= to) return sum + perMonth
+      const covered = (new Date(`${s.endsOn}T00:00:00Z`).getTime() -
+        new Date(`${from}T00:00:00Z`).getTime()) / 86400000 + 1
+      return sum + perMonth * (covered / days)
+    }, 0)
+}
+
 export interface Runway {
   monthlyIncome: number
   monthlyExpenses: number
+  /** Debt actually scheduled over the next 30 days, from real due dates. */
   monthlyMinimums: number
+  /** The following calendar month, which is usually lower as short plans finish. */
+  nextMonthMinimums: number
+  nextMonthLabel: string
   /** What is left each month once minimums and recurring costs are met. */
   monthlyNet: number
   /** Everything on hand — banked plus set aside. */
@@ -63,11 +85,11 @@ export interface Runway {
   /** Monthly surplus (or deficit) once that income stops. */
   netAfterEnd: number
   /**
-   * Months the reserves cover the gap once income stops. Null when there is no
-   * gap — nothing is being drawn down, so nothing runs out.
+   * Months the reserves last, walking the real schedule forward. Null when
+   * nothing is being drawn down.
    */
   monthsOfCover: number | null
-  /** The month reserves are exhausted at that burn rate. */
+  /** The month reserves are exhausted. */
   coveredUntil: string | null
 }
 
@@ -82,15 +104,19 @@ function addMonthsApprox(iso: string, months: number): string {
 /**
  * What the figures say about staying afloat, rather than about paying debt off.
  *
- * The app otherwise projects every income source forward forever, so a benefit
- * that runs out simply never shows up — which is exactly the thing worth seeing
- * early enough to act on.
+ * Debt is taken from the actual schedule month by month rather than a smoothed
+ * rate: these plans finish at different times, so the commitment falls from
+ * about $1,048 over the next 30 days to $549 by November, and any single rate
+ * would be wrong for every real month.
  */
 export function runway(state: AppState, now = today()): Runway {
   const income = monthlyIncomeOn(state, now)
   const expenses = monthlyExpenses(state)
-  const minimums = totalMonthlyMinimum(state.debts)
+  const minimums = scheduledInDays(state.debts, 30, now)
   const reserves = state.bankBalance.amount + state.savingsBalance
+
+  const ahead = monthlyScheduled(state.debts, 3, addDays(now, 1))
+  const nextMonthRow = ahead[1] ?? ahead[0]
 
   const ending = state.incomeSources
     .filter((s) => s.active && s.endsOn && s.endsOn >= now && s.amount > 0)
@@ -104,16 +130,37 @@ export function runway(state: AppState, now = today()): Runway {
   const monthlyNet = income - expenses - minimums
   const netAfterEnd = incomeAfterEnd - expenses - minimums
 
-  // Only a negative net burns through reserves.
-  const burn = netAfterEnd < 0 ? -netAfterEnd : 0
-  const monthsOfCover = burn > 0 ? reserves / burn : null
-  const coveredUntil =
-    monthsOfCover === null ? null : addMonthsApprox(incomeEndsOn ?? now, monthsOfCover)
+  // Walk forward in 30-day windows, spending each window's actual scheduled debt
+  // plus living costs against reserves. Income is pro-rated across the window a
+  // source ends in — crediting a whole month for four remaining days of benefit
+  // is how a drawdown gets hidden.
+  let pot = reserves
+  let monthsOfCover: number | null = null
+  let coveredUntil: string | null = null
+  for (let i = 0; i < 60; i++) {
+    const start = addDays(now, i * 30)
+    const inflow = incomeAcross(state, start, 30)
+    const outflow = scheduledInDays(state.debts, 30, start) + expenses
+    const delta = inflow - outflow
+    if (delta >= 0) {
+      pot += delta
+      continue
+    }
+    if (pot + delta < 0) {
+      // Runs out partway through this window.
+      monthsOfCover = i + pot / -delta
+      coveredUntil = addDays(now, Math.round(monthsOfCover * 30))
+      break
+    }
+    pot += delta
+  }
 
   return {
     monthlyIncome: income,
     monthlyExpenses: expenses,
     monthlyMinimums: minimums,
+    nextMonthMinimums: nextMonthRow?.total ?? 0,
+    nextMonthLabel: nextMonthRow?.month ?? '',
     monthlyNet,
     reserves,
     incomeEndsOn,
@@ -129,7 +176,7 @@ export function runway(state: AppState, now = today()): Runway {
 export function minimumsShareOfIncome(state: AppState, now = today()): number | null {
   const income = monthlyIncomeOn(state, now)
   if (income <= 0) return null
-  return totalMonthlyMinimum(state.debts) / income
+  return scheduledInDays(state.debts, 30, now) / income
 }
 
 export type ExpenseInput = Omit<Expense, 'id'>

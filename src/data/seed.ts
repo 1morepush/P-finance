@@ -5,10 +5,10 @@ import type { AppState } from '../types'
 //   active             $11,844.34   (source stated $12,140.34, which counts the
 //                                    $296.00 potential New Friend row)
 //   potential             $296.00
-//   monthly minimums    $1,011.37   (weekly share $232.77) — weighted by billing
-//                                    cadence: the three Pay-in-4 plans bill every
-//                                    14 days, so they cost 2.17x their instalment
-//                                    per month while they run
+//   debt due, next 30d    $1,047.73   (weekly share $219.32) — read off the real
+//                                    schedule, not a smoothed rate. It falls to
+//                                    $719.26 in October and $548.79 from November
+//                                    as the Pay-in-4 plans and EDC tickets finish
 //   installment-free    2027-07-29
 //   cleared to date     $1,641.56
 //
@@ -25,7 +25,7 @@ import type { AppState } from '../types'
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-09'
+export const SEED_VERSION = '2026-09-11'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,

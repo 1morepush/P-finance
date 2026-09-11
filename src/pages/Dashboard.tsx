@@ -10,7 +10,6 @@ import { StatTile } from '../components/StatTile'
 import { CategoryBar } from '../components/CategoryBar'
 import {
   activeDebts,
-  calculateWeeklySplit,
   estimatePayoffMonths,
   formatCurrency,
   formatDate,
@@ -19,6 +18,7 @@ import {
   totalPotentialDebt,
 } from '../lib/finance'
 import { dueWithin, installmentFreeDate, today } from '../lib/schedule'
+import { calculateWeeklySplit } from '../lib/split'
 import { applyPayment } from '../lib/payments'
 import { generateInsights, type InsightKind } from '../lib/insights'
 
