@@ -22,7 +22,7 @@ export function WeekTargetCard({ state }: { state: AppState }) {
     <Card>
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          {picked === 0 ? 'Need to make this week' : 'That week'}
+          {picked === 0 ? (w.partial ? 'Left to cover this week' : 'Need to make this week') : 'That week'}
         </h2>
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {formatShortDate(w.from)} – {formatShortDate(w.to)}
@@ -31,7 +31,7 @@ export function WeekTargetCard({ state }: { state: AppState }) {
 
       <div className="mt-1 flex items-baseline gap-2">
         <span className="tabular-nums text-3xl font-semibold" style={{ color: tone }}>
-          {formatCurrency(w.total)}
+          {formatCurrency(w.remaining)}
         </span>
         {w.hoursNeeded !== null && (
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -41,7 +41,7 @@ export function WeekTargetCard({ state }: { state: AppState }) {
       </div>
 
       <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-        {formatCurrency(w.debtDue)} of debt actually due
+        {formatCurrency(w.debtRemaining)} of debt
         {w.livingCosts > 0 ? <> + {formatCurrency(w.livingCosts)} living costs</> : ' · no living costs entered'}
         {w.potentialDue > 0 && (
           <span style={{ color: 'var(--status-warning)' }}>
@@ -50,6 +50,15 @@ export function WeekTargetCard({ state }: { state: AppState }) {
           </span>
         )}
       </p>
+
+      {/* A week already underway: say what has gone as well as what is left, so
+          the bar in the strip and the headline are not read as the same number. */}
+      {w.partial && w.debtPassed > 0.005 && (
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {formatCurrency(w.debtPassed)} of this week fell earlier — {formatCurrency(w.total)} across
+          the whole week.
+        </p>
+      )}
 
       <p className="mt-1 text-xs" style={{ color: heavy ? 'var(--status-warning)' : 'var(--text-muted)' }}>
         {Math.abs(w.vsAverage) < 1 ? (
@@ -93,15 +102,15 @@ export function WeekTargetCard({ state }: { state: AppState }) {
               }}
             />
             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {i === 0 ? 'now' : formatShortDate(x.from).replace(/^\w+, /, '')}
+              {i === 0 ? 'this wk' : formatShortDate(x.from).replace(/^\w+, /, '')}
             </span>
           </button>
         ))}
       </div>
 
-      {w.items.length > 0 && (
+      {w.itemsRemaining.length > 0 && (
         <div className="mt-3 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-          {w.items.map((p) => (
+          {w.itemsRemaining.map((p) => (
             <div
               key={`${p.debtId}-${p.date}`}
               className="flex items-center justify-between gap-2 py-1.5 text-xs first:pt-0 last:pb-0"
@@ -116,9 +125,11 @@ export function WeekTargetCard({ state }: { state: AppState }) {
         </div>
       )}
 
-      {w.items.length === 0 && (
+      {w.itemsRemaining.length === 0 && (
         <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Nothing falls due in this window.
+          {w.partial && w.debtPassed > 0.005
+            ? 'Nothing left to pay this week.'
+            : 'Nothing falls due in this week.'}
         </p>
       )}
     </Card>
