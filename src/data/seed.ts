@@ -19,17 +19,21 @@ import type { AppState } from '../types'
 //   Klarna L stated 2026-10-06, computed 2026-10-09 (3 biweekly from Sep 11)
 //   Klarna S stated 2026-09-25, computed 2026-10-09 ($80.82 is 3 payments, not 2)
 //
-// Four instalments were already past due when this was seeded and the source
-// still carried their full balances, so they are flagged `autoMarkPaid: false`.
-// Left to settle automatically they would have taken $187.28 off the total the
-// source states, on the assumption of payments it says have not happened.
+// The four instalments that were past due at the time of the dump — AutoZone
+// Sep 13, and Klarna large, Klarna small and EDC #1 on Sep 11 — have since been
+// confirmed paid, $187.28 in total. They are left unflagged so the app settles
+// them on load, which records each as a payment in history rather than quietly
+// lowering a balance. After that pass:
+//   active             $12,176.53
+//   cleared to date     $1,676.31   (EDC #1 finishes on its Sep 11 payment)
+// The balances below are the lender's last statement, before those four.
 /**
  * Bump whenever the figures below change. Devices carrying an older stamp are
  * offered the update rather than silently keeping their copy: saved state
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-14'
+export const SEED_VERSION = '2026-09-14b'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
@@ -115,8 +119,6 @@ export const seedState: AppState = {
       monthlyPayment: 34.91,
       nextDue: '2026-09-13',
       finalPaymentDate: '2027-07-13',
-      // Past due as seeded, with the balance still standing in the source.
-      autoMarkPaid: false,
     },
     {
       id: 'paypal_omio',
@@ -195,9 +197,8 @@ export const seedState: AppState = {
       monthlyPayment: 90.68,
       nextDue: '2026-09-11',
       finalPaymentDate: '2026-10-06',
-      autoMarkPaid: false,
       notes:
-        'Past due as seeded. Lender date stored as supplied: three biweekly payments from Sep 11 land Oct 9, not Oct 6.',
+        'Lender date stored as supplied: three biweekly payments from Sep 11 land Oct 9, not Oct 6.',
     },
     {
       id: 'klarna_ace_small',
@@ -210,9 +211,8 @@ export const seedState: AppState = {
       monthlyPayment: 26.94,
       nextDue: '2026-09-11',
       finalPaymentDate: '2026-09-25',
-      autoMarkPaid: false,
       notes:
-        'Past due as seeded. New in this update: the lender date moved to Sep 25, which covers only two payments — $80.82 at $26.94 is three, ending Oct 9. Worth checking whether a payment has already been taken.',
+        'The lender date moved to Sep 25, which covers exactly one payment. After the confirmed Sep 11 payment this stands at $53.88 — still two payments, ending Oct 9. For Sep 25 to be right a second payment must also have gone through, leaving $26.94.',
     },
     {
       id: 'klarna_flight',
@@ -251,8 +251,6 @@ export const seedState: AppState = {
       monthlyPayment: 34.75,
       nextDue: '2026-09-11',
       finalPaymentDate: '2026-09-11',
-      // Past due as seeded, with the balance still standing in the source.
-      autoMarkPaid: false,
     },
     {
       id: 'edco_tix_2',
