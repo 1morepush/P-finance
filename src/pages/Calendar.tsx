@@ -3,9 +3,10 @@ import type { AppState } from '../types'
 import { PRODUCT_LABEL } from '../types'
 import { Card } from '../components/Card'
 import { MonthGrid } from '../components/MonthGrid'
-import { applyPayment } from '../lib/payments'
+import { applyPayment, undoPayment } from '../lib/payments'
 import { StatTile } from '../components/StatTile'
 import { activeDebts, formatCurrency, formatDate, formatDue } from '../lib/finance'
+import { calendarEntries, earliestMonth, monthTotals } from '../lib/calendar'
 import {
   addDays,
   addMonths,
@@ -47,6 +48,10 @@ export function Calendar({
   // Unconfirmed debts are included so nothing is a surprise, but every total
   // separates them out from the confirmed figure.
   const payments = useMemo(() => allPayments(state.debts, true), [state.debts])
+  // The grid shows both halves: what has been paid as well as what is coming.
+  // The lists below it stay forward-looking — they answer "what do I owe".
+  const entries = useMemo(() => calendarEntries(state, true), [state])
+  const firstMonth = earliestMonth(entries)
 
   const next7 = paymentsBetween(payments, now, addDays(now, 7))
   const next14 = paymentsBetween(payments, now, addDays(now, 14))
@@ -115,7 +120,7 @@ export function Calendar({
       <Card>
         <MonthGrid
           month={gridMonth}
-          payments={payments}
+          entries={entries}
           today={now}
           selected={selectedDay}
           onSelect={setSelectedDay}
@@ -123,7 +128,7 @@ export function Calendar({
             setGridMonth(m)
             setSelectedDay(null)
           }}
-          onPay={(p) =>
+          onPay={(e) =>
             // Routed through applyPayment like any other, so it lands in history
             // and can be undone from the Debts tab.
             //
@@ -133,14 +138,15 @@ export function Calendar({
             // plots to the right of today and draws backwards.
             setState((s) =>
               applyPayment(s, {
-                debtId: p.debtId,
-                amount: p.amount,
-                date: p.date > now ? now : p.date,
+                debtId: e.debtId,
+                amount: e.amount,
+                date: e.date > now ? now : e.date,
                 fromBank: true,
                 advanceDue: true,
               }),
             )
           }
+          onUndo={(paymentId) => setState((s) => undoPayment(s, paymentId))}
         />
         {gridMonth !== now.slice(0, 7) && (
           <button
@@ -155,11 +161,20 @@ export function Calendar({
             Back to this month
           </button>
         )}
+        {/* Nothing in the header says the arrows go backwards as well as
+            forwards, and a month of settled payments is easy to never find. */}
+        {firstMonth && firstMonth < now.slice(0, 7) && (
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            History runs back to {formatMonth(firstMonth)} — tap ‹ to look at what has already been
+            paid.
+          </p>
+        )}
         <div
           className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px]"
           style={{ color: 'var(--text-muted)' }}
         >
           {[
+            ['Paid', 'var(--status-good)'],
             ['Instalment', 'var(--cat-installment)'],
             ['Apple Card', 'var(--cat-revolving)'],
             ['Personal', 'var(--cat-personal)'],
@@ -194,6 +209,7 @@ export function Calendar({
       {months.map(({ month, items }) => {
         const confirmed = sumConfirmed(items)
         const potential = sumPotential(items)
+        const paidThisMonth = monthTotals(entries, month).paid
         const ahead = openingOfNextMonth(payments, month, LOOKAHEAD_DAYS)
         const aheadConfirmed = sumConfirmed(ahead)
         const aheadPotential = sumPotential(ahead)
@@ -247,11 +263,24 @@ export function Calendar({
             {/* End-of-month total, then what lands immediately after it. */}
             <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm font-semibold">Total due in {formatMonth(month)}</span>
+                <span className="text-sm font-semibold">
+                  {paidThisMonth > 0 ? 'Still due in' : 'Total due in'} {formatMonth(month)}
+                </span>
                 <span className="tabular-nums text-sm font-semibold">
                   {formatCurrency(confirmed)}
                 </span>
               </div>
+              {/* This list starts at today, so in the current month the total
+                  above is the remainder. Without this line it reads as the
+                  whole month and looks lighter than the month actually was. */}
+              {paidThisMonth > 0 && (
+                <div className="mt-1 flex items-baseline justify-between gap-3 text-xs">
+                  <span style={{ color: 'var(--text-muted)' }}>Already paid this month</span>
+                  <span className="tabular-nums" style={{ color: 'var(--status-good)' }}>
+                    {formatCurrency(paidThisMonth)}
+                  </span>
+                </div>
+              )}
               {potential > 0 && (
                 <div className="mt-1 flex items-baseline justify-between gap-3 text-xs">
                   <span style={{ color: 'var(--text-muted)' }}>+ unconfirmed</span>

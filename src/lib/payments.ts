@@ -84,10 +84,26 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
   }
 }
 
-/** Reverses a logged payment, restoring balance, bank, due date and cleared status. */
-export function undoPayment(state: AppState, paymentId: string): AppState {
+/**
+ * Reverses a logged payment, restoring balance, bank, due date and cleared status.
+ *
+ * Undoing has to survive a reload. Restoring a due date that has already gone by
+ * puts the instalment right back in `settleOverduePayments`' path, and the next
+ * time the app opens it would be settled again — silently undoing the undo. So a
+ * debt whose restored date is in the past stops being assumed: `autoMarkPaid`
+ * goes false, which is exactly what the user just said by reversing it, and the
+ * instalment surfaces in the overdue block instead of vanishing again.
+ */
+export function undoPayment(state: AppState, paymentId: string, todayISO = today()): AppState {
   const payment = state.payments.find((p) => p.id === paymentId)
   if (!payment) return state
+
+  // The date the debt is left sitting on once this is reversed. A payment that
+  // cleared a debt never advanced anything, so it stores no previous date and
+  // the debt keeps the one it already has — which is just as much in the past.
+  const debt = state.debts.find((d) => d.id === payment.debtId)
+  const restoredDue = payment.previousNextDue ?? debt?.nextDue
+  const restoresPastDue = isDate(restoredDue) && restoredDue < todayISO
 
   return {
     ...state,
@@ -101,6 +117,7 @@ export function undoPayment(state: AppState, paymentId: string): AppState {
             balance: d.balance + payment.amount,
             status: payment.clearedDebt ? 'active' : d.status,
             ...(payment.previousNextDue ? { nextDue: payment.previousNextDue } : {}),
+            ...(restoresPastDue ? { autoMarkPaid: false } : {}),
           }
         : d,
     ),
