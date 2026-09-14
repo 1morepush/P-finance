@@ -1,32 +1,39 @@
 import type { AppState } from '../types'
 
-// Source of truth: the reconciled debt dump supplied 2026-09-09.
+// Source of truth: the debt dump supplied 2026-09-14.
 // Totals this data produces (verified against the source before seeding):
-//   active             $11,844.34   (source stated $12,140.34, which counts the
-//                                    $296.00 potential New Friend row)
-//   potential             $296.00
-//   income                   $0.00   unemployment ended Sep 2026; no rent owed
-//   debt due, next 30d    $1,047.73   (weekly share $219.32) — read off the real
-//                                    schedule, not a smoothed rate. It falls to
-//                                    $719.26 in October and $548.79 from November
-//                                    as the Pay-in-4 plans and EDC tickets finish
-//   installment-free    2027-07-29
+//   active             $12,363.81   ties to the source's grand total exactly
+//   potential               $0.00   New Friend is now confirmed
+//   income                  $0.00   unemployment ended Sep 2026; no rent owed
 //   cleared to date     $1,641.56
 //
-// Four lender-stated final dates disagree with the arithmetic of their own
-// balance and payment. They are stored as supplied and surfaced by the Schedule
-// check on the Calendar rather than silently corrected:
+// The source's tier 2 subtotal reads $1,322.01; its own rows sum to $1,521.48,
+// $199.47 more. The grand total is the one that ties, so it is the one used.
+//
+// Five lender-stated final dates disagree with the arithmetic of their own
+// balance and payment. Stored as supplied and surfaced by the Schedule check on
+// the Calendar rather than silently corrected — only the lender can settle it:
 //   Omio     stated 2027-08-29, computed 2027-07-29 (11 payments, not 12)
 //   Atlanta  stated 2027-02-20, computed 2027-04-20 (8 payments, not 6)
 //   Tokyo    stated 2026-11-03, computed 2027-01-03 (4 payments, not 2)
-//   Klarna L stated 2026-10-06, computed 2026-10-09 (due date moved, end date did not)
+//   Klarna L stated 2026-10-06, computed 2026-10-09 (3 biweekly from Sep 11)
+//   Klarna S stated 2026-09-25, computed 2026-10-09 ($80.82 is 3 payments, not 2)
+//
+// The four instalments that were past due at the time of the dump — AutoZone
+// Sep 13, and Klarna large, Klarna small and EDC #1 on Sep 11 — have since been
+// confirmed paid, $187.28 in total. They are left unflagged so the app settles
+// them on load, which records each as a payment in history rather than quietly
+// lowering a balance. After that pass:
+//   active             $12,176.53
+//   cleared to date     $1,676.31   (EDC #1 finishes on its Sep 11 payment)
+// The balances below are the lender's last statement, before those four.
 /**
  * Bump whenever the figures below change. Devices carrying an older stamp are
  * offered the update rather than silently keeping their copy: saved state
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-11b'
+export const SEED_VERSION = '2026-09-14b'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
@@ -191,7 +198,7 @@ export const seedState: AppState = {
       nextDue: '2026-09-11',
       finalPaymentDate: '2026-10-06',
       notes:
-        'Due date moved to Sep 11 but the end date did not follow: three biweekly payments from Sep 11 land Oct 9, not Oct 6.',
+        'Lender date stored as supplied: three biweekly payments from Sep 11 land Oct 9, not Oct 6.',
     },
     {
       id: 'klarna_ace_small',
@@ -203,7 +210,22 @@ export const seedState: AppState = {
       apr: 0,
       monthlyPayment: 26.94,
       nextDue: '2026-09-11',
-      finalPaymentDate: '2026-10-09',
+      finalPaymentDate: '2026-09-25',
+      notes:
+        'The lender date moved to Sep 25, which covers exactly one payment. After the confirmed Sep 11 payment this stands at $53.88 — still two payments, ending Oct 9. For Sep 25 to be right a second payment must also have gone through, leaving $26.94.',
+    },
+    {
+      id: 'klarna_flight',
+      name: 'Klarna Flight and Tickets (Ohio)',
+      product: 'klarna_pay_in_4',
+      status: 'active',
+      priorityTier: 2,
+      balance: 223.47,
+      apr: 0,
+      monthlyPayment: 74.49,
+      nextDue: '2026-09-30',
+      finalPaymentDate: '2026-10-28',
+      notes: 'New this update. Three biweekly payments from Sep 30 land Oct 28 — the dates reconcile.',
     },
     {
       id: 'delta_airlines',
@@ -250,12 +272,11 @@ export const seedState: AppState = {
       priorityTier: 3,
       balance: 7341.0,
       apr: 22.49,
-      // Sep 1 has passed and the source still reports it outstanding at $7,341,
-      // so it is left standing rather than auto-settled — a card is paid by hand,
-      // not on autopay. Log the payment if it did go through.
+      // A card is paid by hand, not on autopay, so a passed due date is never
+      // assumed to have gone through.
       autoMarkPaid: false,
       monthlyPayment: 212.0,
-      nextDue: '2026-09-01',
+      nextDue: '2026-09-30',
       notes:
         'Revolving — no lender-set payoff date. Held flat at $212/mo it clears in about 57 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
     },
@@ -303,11 +324,12 @@ export const seedState: AppState = {
       id: 'new_friend',
       name: 'New Friend',
       product: 'personal',
-      status: 'potential',
+      status: 'active',
       priorityTier: 4,
       balance: 296.0,
       apr: 0,
-      nextDue: '2026-09-30',
+      nextDue: '2026-09-25',
+      notes: 'Confirmed in the Sep 14 update — no longer unconfirmed.',
     },
   ],
 

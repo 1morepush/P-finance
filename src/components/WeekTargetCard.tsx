@@ -3,7 +3,7 @@ import type { AppState } from '../types'
 import { Card } from './Card'
 import { formatCurrency } from '../lib/finance'
 import { upcomingWeeks } from '../lib/week'
-import { formatShortDate } from '../lib/schedule'
+import { formatShortDate, overduePayments, overdueTotal } from '../lib/schedule'
 
 /**
  * What this week actually costs, from real due dates. The monthly average
@@ -15,11 +15,49 @@ export function WeekTargetCard({ state }: { state: AppState }) {
   const w = weeks[picked]
   const heaviest = Math.max(...weeks.map((x) => x.total), 1)
 
+  // Everything else on this screen looks forward from today, so a missed
+  // instalment would otherwise appear nowhere at all.
+  const overdue = overduePayments(state.debts)
+  const overdueSum = overdueTotal(state.debts)
+
   const heavy = w.vsAverage > 1
   const tone = heavy ? 'var(--status-warning)' : 'var(--status-good)'
 
   return (
     <Card>
+      {overdue.length > 0 && (
+        <div
+          className="mb-3 rounded-lg p-2"
+          style={{ background: 'var(--surface-page)', borderLeft: '3px solid var(--status-critical)' }}
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-xs font-semibold" style={{ color: 'var(--status-critical)' }}>
+              Already past due
+            </span>
+            <span className="tabular-nums text-sm font-semibold" style={{ color: 'var(--status-critical)' }}>
+              {formatCurrency(overdueSum)}
+            </span>
+          </div>
+          {overdue.map((p) => (
+            <div
+              key={`${p.debtId}-${p.date}`}
+              className="flex items-baseline justify-between gap-2 text-[11px]"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <span className="min-w-0 truncate">{p.debtName}</span>
+              <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>
+                {formatShortDate(p.date)}
+              </span>
+              <span className="tabular-nums shrink-0">{formatCurrency(p.amount)}</span>
+            </div>
+          ))}
+          <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Not counted in the week below, which only looks forward. Mark these paid on the
+            Calendar if they have gone through.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           {picked === 0 ? (w.partial ? 'Left to cover this week' : 'Need to make this week') : 'That week'}

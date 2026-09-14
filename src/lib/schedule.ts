@@ -145,6 +145,22 @@ export function dueWithin(debts: Debt[], days: number, todayISO = today()): numb
   return sumPayments(paymentsBetween(allPayments(debts), todayISO, addDays(todayISO, days)))
 }
 
+/**
+ * Payments whose date has already gone by and that are still standing.
+ *
+ * Only debts flagged `autoMarkPaid: false` can be here: everything else is
+ * settled the moment its date passes. They matter because every other figure in
+ * the app looks forward from today, so an unpaid instalment from last week is
+ * invisible in all of them — the one kind of money most worth seeing.
+ */
+export function overduePayments(debts: Debt[], todayISO = today()): ScheduledPayment[] {
+  return allPayments(debts).filter((p) => p.date < todayISO && !p.isPotential)
+}
+
+export function overdueTotal(debts: Debt[], todayISO = today()): number {
+  return sumPayments(overduePayments(debts, todayISO))
+}
+
 /** The Sunday on or before the given date. Weeks run Sunday to Saturday. */
 export function startOfWeek(iso: string): string {
   return addDays(iso, -new Date(`${iso}T00:00:00Z`).getUTCDay())
