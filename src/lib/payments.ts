@@ -13,6 +13,12 @@ export interface PaymentInput {
   advanceDue: boolean
   /** Settled automatically because the due date passed. */
   auto?: boolean
+  /**
+   * Apply every consequence but leave no Payment behind. Only for settling an
+   * instalment the log already holds — see `settleOverduePayments`. Defaults to
+   * recording, which is what every ordinary payment wants.
+   */
+  record?: boolean
 }
 
 /** The due date one billing cycle on, or null if the debt has no dated schedule. */
@@ -66,21 +72,24 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
           }
         : d,
     ),
-    clearedDebts: clears
-      ? [
-          ...state.clearedDebts,
-          {
-            id: debt.id,
-            name: debt.name,
-            product: debt.product,
-            // The balance that was still outstanding, matching how the rest of
-            // the cleared log is recorded.
-            amountCleared: debt.balance,
-            dateCleared: input.date,
-          },
-        ]
-      : state.clearedDebts,
-    payments: [...state.payments, payment],
+    // The `some` guard matters when a seed update has reset a debt that the
+    // cleared log already holds: clearing it again must not list it twice.
+    clearedDebts:
+      clears && !state.clearedDebts.some((c) => c.id === debt.id)
+        ? [
+            ...state.clearedDebts,
+            {
+              id: debt.id,
+              name: debt.name,
+              product: debt.product,
+              // The balance that was still outstanding, matching how the rest of
+              // the cleared log is recorded.
+              amountCleared: debt.balance,
+              dateCleared: input.date,
+            },
+          ]
+        : state.clearedDebts,
+    payments: input.record === false ? state.payments : [...state.payments, payment],
   }
 }
 
@@ -147,6 +156,12 @@ export interface AutoSettlement {
  *
  * Skips debts flagged `autoMarkPaid: false`. Idempotent — once the due date has
  * been rolled past today there is nothing left to settle.
+ *
+ * Idempotent against the payment log too, not just against the debt's own due
+ * date. A seed update replaces the debts with the source table's pre-settle
+ * figures while deliberately keeping the history, so every instalment this has
+ * already recorded looks overdue all over again. Where the log already holds an
+ * instalment, its effect is applied without logging it a second time.
  */
 export function settleOverduePayments(
   state: AppState,
@@ -154,6 +169,7 @@ export function settleOverduePayments(
 ): { state: AppState; settled: AutoSettlement[] } {
   let next = state
   const settled: AutoSettlement[] = []
+  const alreadyLogged = new Set(state.payments.map((p) => `${p.debtId}|${p.date}`))
 
   for (const original of activeDebts(state.debts)) {
     if (original.autoMarkPaid === false) continue
@@ -167,6 +183,10 @@ export function settleOverduePayments(
       if (!debt || debt.balance <= 0 || !isDate(debt.nextDue) || debt.nextDue >= todayISO) break
       const amount = Math.min(debt.monthlyPayment ?? 0, debt.balance)
       if (amount <= 0) break
+      // Already in the log from a settle that ran before the figures were
+      // replaced. Move the balance and the due date on, but do not log it again
+      // or report it as newly settled — nothing new has happened.
+      const seen = alreadyLogged.has(`${debt.id}|${debt.nextDue}`)
       next = applyPayment(next, {
         debtId: debt.id,
         amount,
@@ -174,9 +194,12 @@ export function settleOverduePayments(
         fromBank: false,
         advanceDue: true,
         auto: true,
+        ...(seen ? { record: false } : {}),
       })
-      count += 1
-      total += amount
+      if (!seen) {
+        count += 1
+        total += amount
+      }
     }
 
     if (count > 0) {
@@ -192,6 +215,64 @@ export function settleOverduePayments(
   }
 
   return { state: next, settled }
+}
+
+export interface Dedupe {
+  removed: number
+  amount: number
+  /** Debt names involved, each once, for saying what was cleaned up. */
+  names: string[]
+}
+
+/**
+ * Removes auto-settlements that record the same instalment more than once, and
+ * cleared debts listed twice.
+ *
+ * Accepting a seed update reset the debts to the source table's pre-settle
+ * figures while keeping the history, so the next load settled every overdue
+ * instalment a second time. The balances stayed right — they were reset and
+ * re-settled — but the payment log grew a duplicate each time, which inflated
+ * everything derived from it: the progress chart's starting total, how much has
+ * been paid off, and the monthly rate the payoff estimate is built on.
+ *
+ * Only `auto` records are touched, and only where the debt and the date both
+ * match one already kept. An auto-settlement is the app's own restatement of a
+ * schedule, never something entered by hand, and one instalment cannot fall due
+ * twice on one day — so a match is always a duplicate. Payments entered by hand
+ * are never removed, however much they look alike: two real payments on one
+ * debt on one day is a thing a person can genuinely do.
+ */
+export function dedupeSettlements(state: AppState): { state: AppState; dedupe: Dedupe } {
+  const seen = new Set<string>()
+  const kept: Payment[] = []
+  const names = new Set<string>()
+  let removed = 0
+  let amount = 0
+
+  for (const p of state.payments) {
+    const key = `${p.debtId}|${p.date}`
+    if (p.auto && seen.has(key)) {
+      removed += 1
+      amount += p.amount
+      names.add(p.debtName)
+      continue
+    }
+    if (p.auto) seen.add(key)
+    kept.push(p)
+  }
+
+  const clearedIds = new Set<string>()
+  const clearedDebts = state.clearedDebts.filter((c) => {
+    if (clearedIds.has(c.id)) return false
+    clearedIds.add(c.id)
+    return true
+  })
+
+  const unchanged = removed === 0 && clearedDebts.length === state.clearedDebts.length
+  return {
+    state: unchanged ? state : { ...state, payments: kept, clearedDebts },
+    dedupe: { removed, amount, names: [...names] },
+  }
 }
 
 /** Total logged against one debt. */

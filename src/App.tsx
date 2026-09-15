@@ -9,7 +9,7 @@ import { Debts } from './pages/Debts'
 import { Calendar } from './pages/Calendar'
 import { Income } from './pages/Income'
 import { Settings } from './pages/Settings'
-import { settleOverduePayments, type AutoSettlement } from './lib/payments'
+import { dedupeSettlements, settleOverduePayments, type AutoSettlement, type Dedupe } from './lib/payments'
 import { formatCurrency, formatDate } from './lib/finance'
 
 
@@ -17,6 +17,7 @@ function App() {
   const [state, setState, persisted] = useAppState()
   const [tab, setTab] = useState<Tab>('dashboard')
   const [autoSettled, setAutoSettled] = useState<AutoSettlement[]>([])
+  const [deduped, setDeduped] = useState<Dedupe | null>(null)
   const settledOnce = useRef(false)
 
   const needsSeedUpdate = seedUpdateAvailable(state)
@@ -27,11 +28,18 @@ function App() {
   useEffect(() => {
     if (needsSeedUpdate || settledOnce.current) return
     settledOnce.current = true
-    const { state: next, settled } = settleOverduePayments(state)
-    if (settled.length > 0) {
-      setState(next)
-      setAutoSettled(settled)
-    }
+
+    // Clear out instalments recorded twice before settling, so the settle that
+    // follows sees one record per instalment and leaves it alone.
+    const { state: clean, dedupe } = dedupeSettlements(state)
+    const { state: next, settled } = settleOverduePayments(clean)
+
+    // Committed whenever anything moved, not only when something was newly
+    // settled: an instalment the log already held still advances a balance and
+    // a due date silently, and gating on `settled` would throw that away.
+    if (next !== state) setState(next)
+    if (settled.length > 0) setAutoSettled(settled)
+    if (dedupe.removed > 0) setDeduped(dedupe)
     // Runs once, as soon as the figures on this device are current.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsSeedUpdate])
@@ -132,6 +140,38 @@ function App() {
           <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
             Your bank balance was left alone, since you enter that from the real account. Anything
             that did not actually go through can be undone under Logged payments.
+          </p>
+        </div>
+      )}
+
+      {/* Only ever shown once per device: the duplicates are gone after this. */}
+      {deduped && (
+        <div
+          className="mx-4 mt-4 rounded-xl border p-3"
+          style={{ background: 'var(--surface-card)', borderColor: 'var(--status-good)' }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--status-good)' }}>
+              Cleaned up {deduped.removed} duplicate payment
+              {deduped.removed === 1 ? '' : 's'}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setDeduped(null)}
+              className="shrink-0 text-xs"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Dismiss
+            </button>
+          </div>
+          <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {deduped.names.join(', ')} had instalments recorded more than once, totalling{' '}
+            {formatCurrency(deduped.amount)}. Taking a figures update reset those debts without
+            clearing the history they had already produced, so the next load logged them again.
+          </p>
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            What you owe was never wrong — only the history was, which made the progress chart and
+            the payoff estimate look better than they are. Both are right now.
           </p>
         </div>
       )}
