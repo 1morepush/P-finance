@@ -39,6 +39,9 @@ export function Income({
   const [editing, setEditing] = useState<IncomeSource | 'new' | null>(null)
   const [shiftModal, setShiftModal] = useState<Shift | 'new' | null>(null)
   const [expenseModal, setExpenseModal] = useState<Expense | 'new' | null>(null)
+  const [allShifts, setAllShifts] = useState(false)
+  /** The shift whose Delete has been armed, so it takes a second tap. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   function save(form: Omit<IncomeSource, 'id'>) {
     setState((s) => {
@@ -60,16 +63,22 @@ export function Income({
     setEditing(null)
   }
 
+  /** Opening or closing the shift editor always disarms a pending delete. */
+  function showShift(target: Shift | 'new' | null) {
+    setShiftModal(target)
+    setConfirmDelete(null)
+  }
+
   function saveShift(input: ShiftInput) {
     setState((s) =>
       shiftModal && shiftModal !== 'new' ? updateShift(s, shiftModal.id, input) : addShift(s, input),
     )
-    setShiftModal(null)
+    showShift(null)
   }
 
   function deleteShift(id: string) {
     setState((s) => removeShift(s, id))
-    setShiftModal(null)
+    showShift(null)
   }
 
   function saveExpense(input: ExpenseInput) {
@@ -92,7 +101,11 @@ export function Income({
   const thisMonth = summarize(shiftsInMonth(state.shifts, month))
   const week = summarize(last7Days(state.shifts))
   const allTime = summarize(state.shifts)
-  const shiftLog = recentShifts(state.shifts)
+  // Capping the log at ten made anything older permanently uneditable, since
+  // opening a shift is the only way to change it.
+  const SHIFT_PREVIEW = 10
+  const shiftLog = recentShifts(state.shifts, allShifts ? state.shifts.length : SHIFT_PREVIEW)
+  const hiddenShifts = state.shifts.length - shiftLog.length
   const expenseTotal = monthlyExpenses(state)
   const expenses = [...state.expenses].sort((a, b) => expenseMonthly(b) - expenseMonthly(a))
 
@@ -210,7 +223,7 @@ export function Income({
         </h2>
         <button
           type="button"
-          onClick={() => setShiftModal('new')}
+          onClick={() => showShift('new')}
           className="rounded-lg px-3 py-1.5 text-sm font-medium"
           style={{ background: 'var(--status-good)', color: 'white' }}
         >
@@ -267,43 +280,65 @@ export function Income({
 
       {shiftLog.length > 0 && (
         <Card>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h3 className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              Shift log
+            </h3>
+            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Tap a shift to edit it
+            </span>
+          </div>
           <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
             {shiftLog.map((shift) => (
-              <div
+              // The whole row opens the editor. It used to share the row with a
+              // Delete button, which both hid the edit and put an irreversible
+              // action under the thumb aiming for it — deleting now lives inside
+              // the editor, behind the tap that opens it.
+              <button
                 key={shift.id}
-                className="flex items-center justify-between gap-2 py-2 text-sm first:pt-0 last:pb-0"
+                type="button"
+                onClick={() => showShift(shift)}
+                className="flex w-full items-center justify-between gap-2 py-2 text-left text-sm first:pt-0 last:pb-0"
               >
-                <button
-                  type="button"
-                  onClick={() => setShiftModal(shift)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <div className="truncate font-medium">{shift.platform}</div>
-                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{shift.platform}</span>
+                  <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
                     {formatShortDate(shift.date)} · {formatCurrency(shift.earnings)} −{' '}
                     {formatCurrency(shift.gasCost)} gas
                     {shift.hours ? ` · ${shift.hours}h` : ''}
-                  </div>
-                </button>
-                <div className="flex items-center gap-3">
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
                   <span
                     className="tabular-nums font-semibold"
                     style={{ color: shiftNet(shift) >= 0 ? 'var(--status-good)' : 'var(--status-critical)' }}
                   >
                     {formatCurrency(shiftNet(shift))}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => deleteShift(shift.id)}
-                    className="rounded-lg px-2 py-1 text-xs"
-                    style={{ background: 'var(--surface-page)', color: 'var(--text-muted)' }}
+                  <span
+                    aria-hidden
+                    className="text-xs leading-none"
+                    style={{ color: 'var(--text-muted)' }}
                   >
-                    Delete
-                  </button>
-                </div>
-              </div>
+                    ›
+                  </span>
+                </span>
+              </button>
             ))}
           </div>
+
+          {(hiddenShifts > 0 || allShifts) && (
+            <button
+              type="button"
+              onClick={() => setAllShifts((v) => !v)}
+              className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
+              style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+            >
+              {allShifts
+                ? `Show the last ${SHIFT_PREVIEW}`
+                : `Show all ${state.shifts.length} shifts`}
+            </button>
+          )}
         </Card>
       )}
 
@@ -348,21 +383,35 @@ export function Income({
       {shiftModal && (
         <Modal
           title={shiftModal === 'new' ? 'Log a shift' : 'Edit shift'}
-          onClose={() => setShiftModal(null)}
+          onClose={() => showShift(null)}
         >
           <ShiftForm
             initial={shiftModal === 'new' ? undefined : shiftModal}
             onSave={saveShift}
-            onCancel={() => setShiftModal(null)}
+            onCancel={() => showShift(null)}
           />
+          {/* Deleting a shift cannot be undone — unlike a payment, there is no
+              record left to restore it from — so it asks once. */}
           {shiftModal !== 'new' && (
             <button
               type="button"
-              onClick={() => deleteShift(shiftModal.id)}
+              onClick={() =>
+                confirmDelete === shiftModal.id
+                  ? deleteShift(shiftModal.id)
+                  : setConfirmDelete(shiftModal.id)
+              }
               className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
-              style={{ background: 'transparent', color: 'var(--status-critical)' }}
+              style={{
+                background:
+                  confirmDelete === shiftModal.id ? 'var(--status-critical)' : 'transparent',
+                color: confirmDelete === shiftModal.id ? 'white' : 'var(--status-critical)',
+              }}
             >
-              Delete shift
+              {confirmDelete !== shiftModal.id
+                ? 'Delete shift'
+                : shiftModal.addedToBank
+                  ? `Delete for good — ${formatCurrency(shiftNet(shiftModal))} comes back off the bank`
+                  : 'Delete for good'}
             </button>
           )}
         </Modal>
