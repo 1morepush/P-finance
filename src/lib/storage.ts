@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { AppState } from '../types'
-import { SEED_VERSION, seedState } from '../data/seed'
+import { SEED_DATE, SEED_VERSION, seedState } from '../data/seed'
+import { replayManualPayments } from './payments'
+import { today } from './schedule'
 
 // v2 introduced products, priority tiers, `potential` status and the cleared-debt
 // log. The key is versioned so a v1 payload is never read as a v2 shape — a stale
@@ -66,6 +68,7 @@ const COLLECTIONS = [
   'expenses',
   'shifts',
   'pendingClaims',
+  'snapshots',
 ] as const
 
 /**
@@ -130,13 +133,19 @@ export function seedUpdateAvailable(state: AppState): boolean {
  * Takes the newer figures, replacing only the seeded collections. Everything
  * earned through use — bank balance, savings, logged payments, income entries
  * and settings — is left untouched.
+ *
+ * Payments logged by hand since the figures' own date are then re-applied to
+ * the fresh balances. The table reflects what the lender knew on that date; a
+ * $500 sent to the card the day after is not in it, and simply keeping the
+ * record while the balance snapped back to the old figure meant the money had
+ * gone out of the bank and not come off the debt.
  */
 export function applySeedUpdate(state: AppState): AppState {
   const next = { ...state, seedVersion: SEED_VERSION, skippedSeedVersion: undefined }
   for (const key of SEEDED_KEYS) {
     Object.assign(next, { [key]: seedState[key] })
   }
-  return next
+  return replayManualPayments(next, SEED_DATE)
 }
 
 /** Keeps this device's own figures, and stops offering this particular update. */
@@ -149,8 +158,29 @@ export function exportStateAsJson(state: AppState): string {
 }
 
 /** Records that a backup was taken, so the app can say how stale the last one is. */
-export function markBackedUp(state: AppState, when = new Date().toISOString().slice(0, 10)): AppState {
+export function markBackedUp(state: AppState, when = today()): AppState {
   return { ...state, lastBackupAt: when }
+}
+
+/**
+ * What an import would replace, so the confirmation can say what is at stake.
+ * Throws the same way `parseImportedState` does on a file that is not ours.
+ */
+export function describeImport(raw: string): {
+  state: AppState
+  debts: number
+  payments: number
+  shifts: number
+  seedVersion: string | null
+} {
+  const state = parseImportedState(raw)
+  return {
+    state,
+    debts: state.debts.length,
+    payments: state.payments.length,
+    shifts: state.shifts.length,
+    seedVersion: state.seedVersion ?? null,
+  }
 }
 
 export function parseImportedState(raw: string): AppState {
@@ -161,9 +191,13 @@ export function parseImportedState(raw: string): AppState {
   return merge(parsed as Partial<AppState>)
 }
 
-/** True when this browser will actually keep what the app writes. */
-export function storageWorks(): boolean {
-  return writeRaw('p-finance/probe', '1')
+/**
+ * The saved payload exactly as the browser holds it, for getting data out of a
+ * device the app can no longer render on. Null when there is nothing stored or
+ * storage cannot be reached.
+ */
+export function rawSavedState(): string | null {
+  return readRaw(STORAGE_KEY)
 }
 
 /** Discards saved data and returns to the seeded source-of-truth figures. */

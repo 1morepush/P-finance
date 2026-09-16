@@ -1,5 +1,12 @@
 import type { AppState, Expense, ExpenseCadence, IncomeFrequency } from '../types'
-import { addDays, monthlyScheduled, nextMonth, scheduledInDays, today } from './schedule'
+import {
+  addDays,
+  monthlyScheduled,
+  nextMonth,
+  overdueTotal,
+  scheduledInDays,
+  today,
+} from './schedule'
 import { uid } from './id'
 
 export const WEEKS_PER_MONTH = 4.345
@@ -67,8 +74,13 @@ function incomeAcross(state: AppState, from: string, days: number): number {
 export interface Runway {
   monthlyIncome: number
   monthlyExpenses: number
-  /** Debt actually scheduled over the next 30 days, from real due dates. */
+  /**
+   * Debt that has to be found in the next 30 days: what is scheduled, plus
+   * anything already past due and still standing.
+   */
   monthlyMinimums: number
+  /** The past-due part of that, so it can be named rather than hidden in the total. */
+  overdue: number
   /** The following calendar month, which is usually lower as short plans finish. */
   nextMonthMinimums: number
   nextMonthLabel: string
@@ -113,7 +125,10 @@ function addMonthsApprox(iso: string, months: number): string {
 export function runway(state: AppState, now = today()): Runway {
   const income = monthlyIncomeOn(state, now)
   const expenses = monthlyExpenses(state)
-  const minimums = scheduledInDays(state.debts, 30, now)
+  // An unpaid instalment from last week is owed now. Every forward figure used
+  // to start at today and lose it entirely the day after it was due.
+  const overdue = overdueTotal(state.debts, now)
+  const minimums = scheduledInDays(state.debts, 30, now) + overdue
   const reserves = state.bankBalance.amount + state.savingsBalance
 
   // Anchored on the first of next month, not on tomorrow: on the 30th,
@@ -144,7 +159,8 @@ export function runway(state: AppState, now = today()): Runway {
   for (let i = 0; i < 60; i++) {
     const start = addDays(now, i * 30)
     const inflow = incomeAcross(state, start, 30)
-    const outflow = scheduledInDays(state.debts, 30, start) + expenses
+    // The past-due amount lands in the first window: it is owed now, not never.
+    const outflow = scheduledInDays(state.debts, 30, start) + expenses + (i === 0 ? overdue : 0)
     const delta = inflow - outflow
     if (delta >= 0) {
       pot += delta
@@ -163,6 +179,7 @@ export function runway(state: AppState, now = today()): Runway {
     monthlyIncome: income,
     monthlyExpenses: expenses,
     monthlyMinimums: minimums,
+    overdue,
     nextMonthMinimums: nextMonthRow?.total ?? 0,
     nextMonthLabel: nextMonthRow?.month ?? '',
     monthlyNet,
@@ -180,7 +197,7 @@ export function runway(state: AppState, now = today()): Runway {
 export function minimumsShareOfIncome(state: AppState, now = today()): number | null {
   const income = monthlyIncomeOn(state, now)
   if (income <= 0) return null
-  return scheduledInDays(state.debts, 30, now) / income
+  return (scheduledInDays(state.debts, 30, now) + overdueTotal(state.debts, now)) / income
 }
 
 export type ExpenseInput = Omit<Expense, 'id'>

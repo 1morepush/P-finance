@@ -1,26 +1,42 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { applySeedUpdate, seedUpdateAvailable, skipSeedUpdate, useAppState } from './lib/storage'
-import { SEED_VERSION } from './data/seed'
-import { totalDebt } from './lib/finance'
-import { seedState } from './data/seed'
+import { SEED_DATE, seedState } from './data/seed'
+import { formatCurrency, formatDate, totalDebt } from './lib/finance'
 import { BottomNav, type Tab } from './components/BottomNav'
 import { Dashboard } from './pages/Dashboard'
 import { Debts } from './pages/Debts'
 import { Calendar } from './pages/Calendar'
 import { Income } from './pages/Income'
 import { Settings } from './pages/Settings'
-import { dedupeSettlements, settleOverduePayments, type AutoSettlement, type Dedupe } from './lib/payments'
-import { formatCurrency, formatDate } from './lib/finance'
-
+import {
+  dedupeSettlements,
+  recordSnapshot,
+  settleOverduePayments,
+  type AutoSettlement,
+  type Dedupe,
+} from './lib/payments'
+import { applyUpdate, subscribeUpdate } from './lib/sw'
 
 function App() {
   const [state, setState, persisted] = useAppState()
   const [tab, setTab] = useState<Tab>('dashboard')
   const [autoSettled, setAutoSettled] = useState<AutoSettlement[]>([])
   const [deduped, setDeduped] = useState<Dedupe | null>(null)
+  const [updateReady, setUpdateReady] = useState(false)
   const settledOnce = useRef(false)
 
   const needsSeedUpdate = seedUpdateAvailable(state)
+
+  // The banner compares this device's total with what the new figures come to
+  // once their own overdue instalments are settled — the number the device will
+  // actually show after loading them. Quoting the raw table made an update
+  // look like $187 of new debt.
+  const seedTotalAfterSettle = useMemo(
+    () => totalDebt(settleOverduePayments(seedState).state.debts),
+    [],
+  )
+
+  useEffect(() => subscribeUpdate(setUpdateReady), [])
 
   // Treat any scheduled payment whose date has passed as made. Held back while
   // newer figures are pending: settling against stale balances and due dates
@@ -32,7 +48,8 @@ function App() {
     // Clear out instalments recorded twice before settling, so the settle that
     // follows sees one record per instalment and leaves it alone.
     const { state: clean, dedupe } = dedupeSettlements(state)
-    const { state: next, settled } = settleOverduePayments(clean)
+    const { state: settledState, settled } = settleOverduePayments(clean)
+    const next = recordSnapshot(settledState)
 
     // Committed whenever anything moved, not only when something was newly
     // settled: an instalment the log already held still advances a balance and
@@ -44,11 +61,44 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsSeedUpdate])
 
+  // Today's snapshot follows the total through the day, so a payment logged
+  // this afternoon is in tonight's record rather than tomorrow's.
+  useEffect(() => {
+    if (needsSeedUpdate || !settledOnce.current) return
+    const next = recordSnapshot(state)
+    if (next !== state) setState(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.debts, needsSeedUpdate])
+
   return (
     <div className="mx-auto min-h-dvh max-w-md" style={{ background: 'var(--surface-page)' }}>
       <header className="sticky top-0 z-10 border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
         <h1 className="text-base font-semibold">P-Finance</h1>
       </header>
+
+      {updateReady && (
+        <div
+          className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-xl border p-3"
+          style={{ background: 'var(--surface-card)', borderColor: 'var(--cat-installment)' }}
+        >
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--cat-installment)' }}>
+              A newer version is ready
+            </h2>
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              This screen is still running the old one.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void applyUpdate()}
+            className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium"
+            style={{ background: 'var(--cat-installment)', color: 'white' }}
+          >
+            Reload
+          </button>
+        </div>
+      )}
 
       {!persisted && (
         <div
@@ -76,12 +126,13 @@ function App() {
           </h2>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
             This device is showing {formatCurrency(totalDebt(state.debts))} of active debt. The
-            reconciled figures dated {formatDate(SEED_VERSION)} total{' '}
-            {formatCurrency(totalDebt(seedState.debts))}.
+            reconciled figures dated {formatDate(SEED_DATE)} come to{' '}
+            {formatCurrency(seedTotalAfterSettle)}.
           </p>
           <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
             Loading them replaces your debts, cleared log, income sources and the wage claim. Your
-            bank balance, savings, logged payments and settings are kept.
+            bank balance, savings, logged payments and settings are kept, and any payment you
+            entered by hand since {formatDate(SEED_DATE)} is re-applied to the new balances.
           </p>
           <div className="mt-3 flex gap-2">
             <button

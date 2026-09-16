@@ -17,11 +17,15 @@ import {
   totalDebt,
   totalPotentialDebt,
 } from '../lib/finance'
-import { dueWithin, installmentFreeDate, today } from '../lib/schedule'
+import { installmentFreeDate, owedWithin, today } from '../lib/schedule'
 import { calculateWeeklySplit } from '../lib/split'
 import { applyPayment } from '../lib/payments'
 import { generateInsights, type InsightKind } from '../lib/insights'
+import { progress } from '../lib/history'
 import { uid } from '../lib/id'
+
+/** A weekly figure kept up every week, as the monthly amount an amortisation wants. */
+const WEEKS_PER_MONTH = 52 / 12
 
 const INSIGHT_COLOR: Record<InsightKind, string> = {
   warning: 'var(--status-critical)',
@@ -51,27 +55,36 @@ export function Dashboard({
   const clearedTotal = totalCleared(state.clearedDebts)
   const lastPayoff = installmentFreeDate(state.debts)
 
-  // Guard against emptying the account into one debt when other payments are imminent.
-  const due14 = useMemo(() => dueWithin(state.debts, 14), [state.debts])
+  // Guard against emptying the account into one debt when other payments are
+  // imminent. Past-due money counts: it is owed now, not never.
+  const owed14 = useMemo(() => owedWithin(state.debts, 14), [state.debts])
+  const due14 = owed14.total
   const balanceAfterApplying =
     state.bankBalance.amount + incomeAmount - split.toExtraDebt - split.toSavings
   const leavesShort = balanceAfterApplying < due14
 
   const insights = useMemo(() => generateInsights(state), [state])
+  const tracked = useMemo(() => progress(state), [state])
 
   const appleCard = state.debts.find((d) => d.id === 'apple_card')
   const appleMonths =
     appleCard && appleCard.apr && appleCard.monthlyPayment
       ? estimatePayoffMonths(appleCard.balance, appleCard.apr, appleCard.monthlyPayment)
       : null
+  // The split is one week's check; the amortisation runs by the month. The
+  // weekly extra is scaled up as if it were kept up every week — feeding it in
+  // unscaled put a $50/week habit at 41 months when it is 21.
+  const extraPerMonth = split.toExtraDebt * WEEKS_PER_MONTH
   const appleMonthsBoosted =
     appleCard && appleCard.apr && appleCard.monthlyPayment
-      ? estimatePayoffMonths(
-          appleCard.balance,
-          appleCard.apr,
-          appleCard.monthlyPayment + split.toExtraDebt,
-        )
+      ? estimatePayoffMonths(appleCard.balance, appleCard.apr, appleCard.monthlyPayment + extraPerMonth)
       : null
+
+  // What the card costs to carry at today's balance — exact per month and per
+  // day, and a rough running total since the app started watching.
+  const cardMonthlyInterest = appleCard ? (appleCard.balance * appleCard.apr) / 100 / 12 : 0
+  const cardDailyInterest = (cardMonthlyInterest * 12) / 365
+  const cardInterestSoFar = cardDailyInterest * tracked.days
 
   const categorySegments = [
     {
@@ -96,28 +109,15 @@ export function Dashboard({
     if (incomeAmount <= 0) return s
     return {
       ...s,
-      bankBalance: {
-        amount: s.bankBalance.amount + incomeAmount,
-        updatedAt: new Date().toISOString().slice(0, 10),
-      },
-      incomeEntries: [
-        ...s.incomeEntries,
-        {
-          id: uid(),
-          date: new Date().toISOString().slice(0, 10),
-          amount: incomeAmount,
-        },
-      ],
+      bankBalance: { amount: s.bankBalance.amount + incomeAmount, updatedAt: today() },
+      incomeEntries: [...s.incomeEntries, { id: uid(), date: today(), amount: incomeAmount }],
     }
   }
 
   function saveBalance() {
     const amount = Number(balanceInput)
     if (Number.isNaN(amount)) return
-    setState((s) => ({
-      ...s,
-      bankBalance: { amount, updatedAt: new Date().toISOString().slice(0, 10) },
-    }))
+    setState((s) => ({ ...s, bankBalance: { amount, updatedAt: today() } }))
     setBalanceEdit(false)
   }
 
@@ -310,6 +310,11 @@ export function Dashboard({
                   <div className="flex items-center justify-between gap-3">
                     <span style={{ color: 'var(--text-secondary)' }}>
                       Due in the next 14 days
+                      {owed14.overdue > 0 && (
+                        <span style={{ color: 'var(--status-critical)' }}>
+                          {' '}· incl. {formatCurrency(owed14.overdue)} past due
+                        </span>
+                      )}
                     </span>
                     <span className="tabular-nums">{formatCurrency(due14)}</span>
                   </div>
@@ -423,6 +428,28 @@ export function Dashboard({
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {formatCurrency(appleCard.balance)} at {appleCard.apr}% APR
           </p>
+
+          {/* The cost of standing still. The balance and the rate were both on
+              screen; the number they multiply to never was. */}
+          {cardMonthlyInterest > 0 && (
+            <div className="mt-2 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+              <div className="flex items-baseline justify-between gap-3 text-xs">
+                <span style={{ color: 'var(--text-secondary)' }}>Interest at this balance</span>
+                <span className="tabular-nums font-semibold" style={{ color: 'var(--status-critical)' }}>
+                  {formatCurrency(cardMonthlyInterest)}/mo
+                </span>
+              </div>
+              <div className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                <span>{formatCurrency(cardDailyInterest)} a day, whatever else happens</span>
+                {tracked.days > 0 && (
+                  <span className="tabular-nums">
+                    ≈ {formatCurrency(cardInterestSoFar)} over the {tracked.days} days tracked
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mt-2 flex flex-wrap gap-4 text-sm">
             <div>
               <span style={{ color: 'var(--text-secondary)' }}>
@@ -434,7 +461,9 @@ export function Dashboard({
             </div>
             {split.toExtraDebt > 0 && split.priorityDebt?.id === appleCard.id && (
               <div>
-                <span style={{ color: 'var(--text-secondary)' }}>With this week's extra: </span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Adding {formatCurrency(split.toExtraDebt)} every week ({formatCurrency(extraPerMonth)}/mo):{' '}
+                </span>
                 <span
                   className="tabular-nums font-medium"
                   style={{ color: 'var(--status-good)' }}

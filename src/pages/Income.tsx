@@ -18,10 +18,12 @@ import {
 import {
   addShift,
   last7Days,
+  MILEAGE_RATE,
   recentShifts,
   removeShift,
   shiftNet,
   shiftsInMonth,
+  shiftsThisYear,
   summarize,
   updateShift,
   type ShiftInput,
@@ -101,6 +103,8 @@ export function Income({
   const thisMonth = summarize(shiftsInMonth(state.shifts, month))
   const week = summarize(last7Days(state.shifts))
   const allTime = summarize(state.shifts)
+  const year = summarize(shiftsThisYear(state.shifts))
+  const yearLabel = today().slice(0, 4)
   // Capping the log at ten made anything older permanently uneditable, since
   // opening a shift is the only way to change it.
   const SHIFT_PREVIEW = 10
@@ -277,6 +281,59 @@ export function Income({
           </div>
         )}
       </Card>
+
+      {/* The figures a Schedule C wants, from the inputs already being logged.
+          Mileage at the standard rate usually beats fuel alone, since it also
+          covers wear — which is why miles are worth writing down. */}
+      {year.count > 0 && (
+        <Card>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h3 className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              {yearLabel} for tax time
+            </h3>
+            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              {year.count} shift{year.count === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Gross</div>
+              <div className="tabular-nums text-sm font-semibold">{formatCurrency(year.gross)}</div>
+            </div>
+            <div>
+              <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Gas</div>
+              <div className="tabular-nums text-sm font-semibold">{formatCurrency(year.gas)}</div>
+            </div>
+            <div>
+              <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Net</div>
+              <div className="tabular-nums text-sm font-semibold" style={{ color: 'var(--status-good)' }}>
+                {formatCurrency(year.net)}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between gap-3 text-xs">
+            <span style={{ color: 'var(--text-secondary)' }}>
+              {year.miles > 0
+                ? `${year.miles.toLocaleString('en-US', { maximumFractionDigits: 0 })} miles × $${MILEAGE_RATE.toFixed(2)}`
+                : 'No miles logged'}
+            </span>
+            <span className="tabular-nums font-medium">
+              {year.miles > 0 ? `${formatCurrency(year.mileageDeduction)} deduction` : '—'}
+            </span>
+          </div>
+          {year.miles > 0 && year.mileageDeduction > year.gas && (
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Mileage beats the {formatCurrency(year.gas)} of fuel by{' '}
+              {formatCurrency(year.mileageDeduction - year.gas)} — claim miles, not gas.
+            </p>
+          )}
+          {year.miles === 0 && (
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--status-warning)' }}>
+              Add miles to each shift — the deduction is usually worth more than the fuel.
+            </p>
+          )}
+        </Card>
+      )}
 
       {shiftLog.length > 0 && (
         <Card>

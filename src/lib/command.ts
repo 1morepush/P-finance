@@ -547,6 +547,11 @@ function newDebt(s: Scan, state: AppState, raw: string): ParseResult {
 
   const existing = state.debts.find((d) => d.name.toLowerCase() === name.toLowerCase())
 
+  // A payment with no date to fall on is a ghost: it sits in the total and
+  // appears in no window, no calendar and no settle. The app's own example
+  // sentence used to produce one without a word.
+  const undated = s.perMonth !== undefined && product !== 'personal' && !s.dateGiven
+
   return {
     status: 'ok',
     understanding: {
@@ -555,7 +560,9 @@ function newDebt(s: Scan, state: AppState, raw: string): ParseResult {
       lines,
       warning: existing
         ? `You already have a debt called ${existing.name}. This adds a second one.`
-        : undefined,
+        : undated
+          ? `No due date, so the ${formatCurrency(s.perMonth!)} a month will not show on the calendar or in any total until one is set — add "due 10/15", or set it on the Debts tab.`
+          : undefined,
     },
   }
 }

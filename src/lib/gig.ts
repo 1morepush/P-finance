@@ -130,3 +130,22 @@ export function recentShifts(shifts: Shift[], limit = 10): Shift[] {
 export function last7Days(shifts: Shift[], now = today()): Shift[] {
   return shiftsSince(shifts, addDays(now, -6))
 }
+
+/** Shifts dated within an inclusive window — a Sunday-to-Saturday week, say. */
+export function shiftsBetween(shifts: Shift[], fromISO: string, toISO: string): Shift[] {
+  return shifts.filter((s) => s.date >= fromISO && s.date <= toISO)
+}
+
+/** Everything worked this calendar year, for the figures a tax return wants. */
+export function shiftsThisYear(shifts: Shift[], now = today()): Shift[] {
+  return shifts.filter((s) => s.date.startsWith(now.slice(0, 4)))
+}
+
+/**
+ * Net per shift, for turning "you still need $X" into "about N more shifts".
+ * Null until there is at least one shift to average.
+ */
+export function averageNetPerShift(shifts: Shift[]): number | null {
+  if (shifts.length === 0) return null
+  return shifts.reduce((s, x) => s + shiftNet(x), 0) / shifts.length
+}

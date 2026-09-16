@@ -1,4 +1,5 @@
 import type { AppState, Debt, DebtStrategy } from '../types'
+import { CADENCE_PER_MONTH, PRODUCT_CADENCE } from '../types'
 import { activeDebts, orderByStrategy } from './finance'
 
 export const STRATEGIES: DebtStrategy[] = ['tier', 'avalanche', 'snowball']
@@ -28,6 +29,12 @@ export interface StrategyResult {
   firstTarget: string | null
 }
 
+function monthlyEquivalent(d: Debt): number {
+  const payment = d.monthlyPayment ?? 0
+  const cadence = PRODUCT_CADENCE[d.product]
+  return cadence ? payment * CADENCE_PER_MONTH[cadence] : payment
+}
+
 interface Sim {
   id: string
   balance: number
@@ -54,7 +61,11 @@ function simulate(debts: Debt[], strategy: DebtStrategy, extraPerMonth: number):
     monthlyRate: d.product === 'credit_card' && d.apr > 0 ? d.apr / 100 / 12 : 0,
     // A debt with no scheduled payment (an informal personal one) is only ever
     // touched by the extra, so it does not stall the simulation.
-    payment: d.monthlyPayment ?? 0,
+    //
+    // The sim steps a month at a time, so a Pay-in-4 instalment — billed every
+    // two weeks — is scaled to its monthly equivalent. Applied once a month it
+    // took a three-payment plan three months to finish instead of six weeks.
+    payment: monthlyEquivalent(d),
     principal: d.balance,
   }))
 
