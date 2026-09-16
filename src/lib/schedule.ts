@@ -115,6 +115,12 @@ export function nextMonth(month: string): string {
   return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7)
 }
 
+/** The YYYY-MM before the given one. */
+export function previousMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7)
+}
+
 /**
  * What lands in the opening stretch of the following month — the figure to have
  * ready before a month closes, so a month-end balance isn't mistaken for slack.
@@ -140,9 +146,30 @@ export function sumPayments(payments: ScheduledPayment[]): number {
   return payments.reduce((s, p) => s + p.amount, 0)
 }
 
-/** Total falling due within the next `days` days — the figure to keep in reserve. */
+/**
+ * Total falling due within the next `days` days, today included — so 14 means
+ * today through the 13th day out, the same count `scheduledInDays` uses. They
+ * used to differ by a day, which put a $286 payment inside one figure and
+ * outside the other on the same screen.
+ */
 export function dueWithin(debts: Debt[], days: number, todayISO = today()): number {
-  return sumPayments(paymentsBetween(allPayments(debts), todayISO, addDays(todayISO, days)))
+  return sumPayments(paymentsBetween(allPayments(debts), todayISO, addDays(todayISO, days - 1)))
+}
+
+/**
+ * Overdue plus what falls in the next `days` days: everything that has to be
+ * found by then. The forward window alone is what every headline figure used,
+ * and an instalment that went unpaid dropped out of all of them the day after
+ * it was due — the one payment most worth seeing.
+ */
+export function owedWithin(
+  debts: Debt[],
+  days: number,
+  todayISO = today(),
+): { overdue: number; upcoming: number; total: number } {
+  const overdue = overdueTotal(debts, todayISO)
+  const upcoming = dueWithin(debts, days, todayISO)
+  return { overdue, upcoming, total: overdue + upcoming }
 }
 
 /**
@@ -249,8 +276,22 @@ export function scheduleMismatches(debts: Debt[]): ScheduleMismatch[] {
   })
 }
 
+/**
+ * The calendar date where the user is, as YYYY-MM-DD.
+ *
+ * Not `toISOString()`, which is UTC: from 8pm Eastern that reads as tomorrow,
+ * so the app settled instalments the night before they fell due, moved the
+ * "today" ring a day early, and started each week on Saturday evening. Every
+ * date the app stamps on a record goes through here.
+ */
+export function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`
+}
+
 export function today(): string {
-  return new Date().toISOString().slice(0, 10)
+  return localDate(new Date())
 }
 
 /** Groups payments by calendar month, preserving date order. */

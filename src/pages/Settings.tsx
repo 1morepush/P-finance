@@ -3,8 +3,9 @@ import type { AppState, DebtStrategy } from '../types'
 import { Card } from '../components/Card'
 import { formatCurrency, formatDate } from '../lib/finance'
 import { compareStrategies, STRATEGY_LABEL } from '../lib/strategy'
-import { daysUntil } from '../lib/schedule'
-import { exportStateAsJson, markBackedUp, parseImportedState, resetToSeed } from '../lib/storage'
+import { daysUntil, today } from '../lib/schedule'
+import { describeImport, exportStateAsJson, markBackedUp, resetToSeed } from '../lib/storage'
+import { copyText, deliverFile } from '../lib/share'
 
 export function Settings({
   state,
@@ -15,6 +16,7 @@ export function Settings({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [extra, setExtra] = useState('100')
+  const [backupNote, setBackupNote] = useState<string | null>(null)
 
   const extraPerMonth = Number(extra) || 0
   const comparison = useMemo(() => compareStrategies(state, extraPerMonth), [state, extraPerMonth])
@@ -50,23 +52,36 @@ export function Settings({
     }))
   }
 
-  function downloadBackup() {
-    const blob = new Blob([exportStateAsJson(state)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `p-finance-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+  // The share sheet is the route that actually works in the iOS home-screen
+  // app; a bare download link there often does nothing. Only a delivery that
+  // happened counts as a backup.
+  async function downloadBackup() {
+    const how = await deliverFile(`p-finance-backup-${today()}.json`, exportStateAsJson(state), 'application/json')
+    if (how === 'cancelled') return
     setState(markBackedUp)
+    setBackupNote(how === 'shared' ? 'Sent to the share sheet.' : 'Downloaded.')
+  }
+
+  async function copyBackup() {
+    const ok = await copyText(exportStateAsJson(state))
+    if (ok) setState(markBackedUp)
+    setBackupNote(ok ? 'Copied — paste it into a note or a message to yourself.' : 'The browser refused the copy.')
   }
 
   function importBackup(file: File) {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const imported = parseImportedState(String(reader.result))
-        setState(imported)
+        const incoming = describeImport(String(reader.result))
+        // Replacing everything on the device deserves one question, with the
+        // shape of what is coming in and what it displaces.
+        const ok = confirm(
+          `Replace everything on this device with this backup?\n\n` +
+            `Incoming: ${incoming.debts} debts, ${incoming.payments} logged payments, ${incoming.shifts} shifts` +
+            `${incoming.seedVersion ? ` (figures ${incoming.seedVersion})` : ''}.\n` +
+            `Here now: ${state.debts.length} debts, ${state.payments.length} payments, ${state.shifts.length} shifts.`,
+        )
+        if (ok) setState(incoming.state)
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Could not import that file.')
       }
@@ -290,7 +305,7 @@ export function Settings({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={downloadBackup}
+            onClick={() => void downloadBackup()}
             className="flex-1 rounded-lg py-2 text-sm font-medium"
             style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
           >
@@ -298,11 +313,19 @@ export function Settings({
           </button>
           <button
             type="button"
+            onClick={() => void copyBackup()}
+            className="flex-1 rounded-lg py-2 text-sm font-medium"
+            style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
+          >
+            Copy as text
+          </button>
+          <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             className="flex-1 rounded-lg py-2 text-sm font-medium"
             style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
           >
-            Import backup
+            Import
           </button>
           <input
             ref={fileRef}
@@ -316,6 +339,11 @@ export function Settings({
             }}
           />
         </div>
+        {backupNote && (
+          <p className="mt-2 text-xs" style={{ color: 'var(--status-good)' }}>
+            ✓ {backupNote}
+          </p>
+        )}
         <button
           type="button"
           onClick={() => {

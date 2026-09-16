@@ -4,6 +4,7 @@ import { Card } from './Card'
 import { formatCurrency } from '../lib/finance'
 import { upcomingWeeks } from '../lib/week'
 import { formatShortDate, overduePayments, overdueTotal } from '../lib/schedule'
+import { averageNetPerShift, shiftNet, shiftsBetween } from '../lib/gig'
 
 /**
  * What this week actually costs, from real due dates. The monthly average
@@ -22,6 +23,14 @@ export function WeekTargetCard({ state }: { state: AppState }) {
 
   const heavy = w.vsAverage > 1
   const tone = heavy ? 'var(--status-warning)' : 'var(--status-good)'
+
+  // What this week's driving has already put toward this week's bill. The
+  // target and the shifts lived on different tabs and never met.
+  const worked = shiftsBetween(state.shifts, w.from, w.to)
+  const earned = worked.reduce((s, x) => s + shiftNet(x), 0)
+  const stillNeeded = Math.max(w.remaining - earned, 0)
+  const perShift = averageNetPerShift(state.shifts)
+  const shiftsToGo = perShift && perShift > 0 ? Math.ceil(stillNeeded / perShift) : null
 
   return (
     <Card>
@@ -96,6 +105,44 @@ export function WeekTargetCard({ state }: { state: AppState }) {
           {formatCurrency(w.debtPassed)} of this week fell earlier — {formatCurrency(w.total)} across
           the whole week.
         </p>
+      )}
+
+      {picked === 0 && (earned > 0 || perShift !== null) && (
+        <div className="mt-2 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+          <div className="flex items-baseline justify-between gap-2 text-xs">
+            <span style={{ color: 'var(--text-secondary)' }}>
+              Earned this week
+              {worked.length > 0 && (
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {' '}· {worked.length} shift{worked.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </span>
+            <span className="tabular-nums font-semibold" style={{ color: 'var(--status-good)' }}>
+              {formatCurrency(earned)}
+            </span>
+          </div>
+          <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs">
+            <span style={{ color: 'var(--text-secondary)' }}>Still to find</span>
+            <span
+              className="tabular-nums font-semibold"
+              style={{ color: stillNeeded > 0 ? 'var(--status-warning)' : 'var(--status-good)' }}
+            >
+              {formatCurrency(stillNeeded)}
+            </span>
+          </div>
+          {stillNeeded > 0 && shiftsToGo !== null && (
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              About {shiftsToGo} more shift{shiftsToGo === 1 ? '' : 's'} at your average of{' '}
+              {formatCurrency(perShift!)} net each.
+            </p>
+          )}
+          {stillNeeded === 0 && earned > 0 && (
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--status-good)' }}>
+              This week is covered.
+            </p>
+          )}
+        </div>
       )}
 
       <p className="mt-1 text-xs" style={{ color: heavy ? 'var(--status-warning)' : 'var(--text-muted)' }}>

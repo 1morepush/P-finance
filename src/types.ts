@@ -44,7 +44,24 @@ export interface Debt {
    * Defaults to true when absent.
    */
   autoMarkPaid?: boolean
+  /** Due dates moved by agreement with the lender, most recent last. */
+  deferrals?: Deferral[]
   notes?: string
+}
+
+/**
+ * A due date pushed back by arrangement — a hardship call, a payment holiday.
+ * Kept as a record rather than folded into the date, so what was agreed, with
+ * whom and when survives the date being moved again.
+ */
+export interface Deferral {
+  /** ISO date the arrangement was made. */
+  date: string
+  /** The due date it moved from. */
+  from: string
+  /** The due date it moved to. */
+  to: string
+  note?: string
 }
 
 /** Historical record of a debt that has been fully paid off. */
@@ -56,7 +73,24 @@ export interface ClearedDebt {
   amountCleared: number
   /** ISO date the debt was cleared. */
   dateCleared: string
+  /**
+   * Written off by the lender rather than paid. Still cleared, still off the
+   * total — but not money that left the account, so it must not count toward
+   * the rate at which debt is being paid down.
+   */
+  forgiven?: boolean
   notes?: string
+}
+
+/**
+ * The active total as it stood on a given day, recorded once a day. The
+ * progress chart used to reconstruct this backwards from the payment log,
+ * which is exactly the figure a duplicated or edited record corrupts; a
+ * snapshot is what was actually on screen.
+ */
+export interface Snapshot {
+  date: string
+  total: number
 }
 
 /** A payment logged against a specific debt. Carries enough to be undone exactly. */
@@ -185,6 +219,8 @@ export interface AppState {
   expenses: Expense[]
   shifts: Shift[]
   pendingClaims: PendingClaim[]
+  /** One per calendar day the app was opened, oldest first. */
+  snapshots: Snapshot[]
   settings: Settings
   /** ISO date of the last export. Only this device holds the data, so staleness matters. */
   lastBackupAt?: string

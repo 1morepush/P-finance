@@ -253,7 +253,11 @@ export function ProgressChart({ state }: { state: AppState }) {
             <div key={i} className="flex items-baseline justify-between gap-2 py-0.5 text-xs">
               <span className="min-w-0 truncate">
                 {e.name}
-                {e.cleared && <span style={{ color: 'var(--status-good)' }}> · cleared 🎉</span>}
+                {e.forgiven ? (
+                  <span style={{ color: 'var(--text-muted)' }}> · forgiven</span>
+                ) : (
+                  e.cleared && <span style={{ color: 'var(--status-good)' }}> · cleared 🎉</span>
+                )}
               </span>
               <span className="tabular-nums shrink-0">−{formatCurrency(e.amount)}</span>
             </div>
@@ -261,20 +265,35 @@ export function ProgressChart({ state }: { state: AppState }) {
         </div>
       )}
 
+      {/* The rate is cash paid in the last month, not the whole history averaged.
+          Averaged from day one it counted August's lump payoffs — one of them
+          forgiven, not paid — and promised "debt free in 8 months" on no income. */}
       <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-        {formatCurrency(p.perMonth)} a month off the total over the last{' '}
-        {p.days < 60 ? `${p.days} days` : `${Math.round(p.days / 30.44)} months`}
-        {p.monthsToZero !== null && (
+        {p.cashInWindow > 0 ? (
           <>
-            {' '}
-            — debt free in about{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>
-              {p.monthsToZero < 24
-                ? `${Math.round(p.monthsToZero)} months`
-                : `${(p.monthsToZero / 12).toFixed(1)} years`}
-            </strong>{' '}
-            at that rate.
+            {formatCurrency(p.cashInWindow)} paid in the last {p.rateDays} day
+            {p.rateDays === 1 ? '' : 's'} — {formatCurrency(p.perMonth)} a month
+            {p.monthsToZero !== null && (
+              <>
+                , which clears the rest in about{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  {p.monthsToZero < 24
+                    ? `${Math.round(p.monthsToZero)} months`
+                    : `${(p.monthsToZero / 12).toFixed(1)} years`}
+                </strong>
+              </>
+            )}
+            .
           </>
+        ) : (
+          <>Nothing paid in the last {p.rateDays} days, so there is no rate to project from.</>
+        )}
+        {p.forgiven > 0 && (
+          <span style={{ color: 'var(--text-muted)' }}>
+            {' '}
+            {formatCurrency(p.forgiven)} of the total paid off was forgiven rather than paid, and is
+            kept out of the rate.
+          </span>
         )}
       </p>
 

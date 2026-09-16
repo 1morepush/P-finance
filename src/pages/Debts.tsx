@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import type { AppState, Debt, PriorityTier } from '../types'
-import { categoryOf, PRODUCT_LABEL, TIER_LABEL } from '../types'
+import { categoryOf, PRODUCT_CADENCE, PRODUCT_LABEL, TIER_LABEL } from '../types'
 import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
 import { DebtForm } from '../components/DebtForm'
 import { PaymentForm } from '../components/PaymentForm'
-import { applyPayment, undoPayment, type PaymentInput } from '../lib/payments'
+import { applyPayment, isOrphaned, undoPayment, type PaymentInput } from '../lib/payments'
 import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import { WhatIfCard } from '../components/WhatIfCard'
+import { byLender } from '../lib/lender'
+import { formatShortDate, isDate, today } from '../lib/schedule'
 import { uid } from '../lib/id'
 import {
   activeDebts,
@@ -18,6 +20,9 @@ import {
   potentialDebts,
   totalCleared,
 } from '../lib/finance'
+
+/** How many logged payments the list shows before it has to be expanded. */
+const PAYMENTS_PREVIEW = 15
 
 const CATEGORY_COLOR = {
   installment: 'var(--cat-installment)',
@@ -104,6 +109,17 @@ function DebtCard({
           {debt.nextDue && <span>next {formatDue(debt.nextDue)}</span>}
           {debt.finalPaymentDate && <span>ends {formatDate(debt.finalPaymentDate)}</span>}
         </div>
+        {/* An agreed deferral is worth more than the date it moved: it is the
+            thing to quote if the lender's system forgets. */}
+        {debt.deferrals && debt.deferrals.length > 0 && (
+          <p className="mt-1 text-xs" style={{ color: 'var(--status-warning)' }}>
+            Deferred {formatShortDate(debt.deferrals.at(-1)!.from)} →{' '}
+            {formatShortDate(debt.deferrals.at(-1)!.to)}
+            {debt.deferrals.at(-1)!.note && (
+              <span style={{ color: 'var(--text-muted)' }}> · {debt.deferrals.at(-1)!.note}</span>
+            )}
+          </p>
+        )}
         {payoff.saved >= 0.01 && (
           <p className="mt-1 text-xs">
             <span style={{ color: 'var(--text-muted)' }}>Settle today </span>
@@ -127,11 +143,56 @@ export function Debts({
 }) {
   const [editing, setEditing] = useState<Debt | 'new' | null>(null)
   const [paying, setPaying] = useState<string | 'any' | null>(null)
+  /** The debt whose Delete has been armed, so it takes a second tap. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [allPayments, setAllPayments] = useState(false)
+  const [deferring, setDeferring] = useState(false)
+  const [deferTo, setDeferTo] = useState('')
+  const [deferNote, setDeferNote] = useState('')
 
   function logPayment(input: PaymentInput) {
     setState((s) => applyPayment(s, input))
     setPaying(null)
   }
+
+  /** Opening or closing the editor always disarms a pending delete and deferral. */
+  function edit(target: Debt | 'new' | null) {
+    setEditing(target)
+    setConfirmDelete(null)
+    setDeferring(false)
+    setDeferTo(target && target !== 'new' && isDate(target.nextDue) ? target.nextDue : '')
+    setDeferNote('')
+  }
+
+  function logDeferral(debt: Debt) {
+    if (!isDate(deferTo) || !isDate(debt.nextDue)) return
+    const from = debt.nextDue
+    const to = deferTo
+    setState((s) => ({
+      ...s,
+      debts: s.debts.map((d) =>
+        d.id === debt.id
+          ? {
+              ...d,
+              nextDue: to,
+              deferrals: [
+                ...(d.deferrals ?? []),
+                { date: today(), from, to, ...(deferNote.trim() ? { note: deferNote.trim() } : {}) },
+              ],
+            }
+          : d,
+      ),
+    }))
+    edit(null)
+  }
+
+  // A scheduled payment with no date to fall on is in the total and nowhere
+  // else — not on the calendar, not in any window, never settled.
+  const undated = activeDebts(state.debts).filter(
+    (d) => PRODUCT_CADENCE[d.product] && d.monthlyPayment && !isDate(d.nextDue),
+  )
+  const lenders = byLender(state.debts, today())
+  const paymentsOwedBy = (id: string) => state.payments.filter((p) => p.debtId === id).length
 
   const payoff = payoffSummary(state.debts)
   // The what-if only means anything for revolving credit; a fixed plan's balance
@@ -162,7 +223,7 @@ export function Debts({
 
   function remove(id: string) {
     setState((s) => ({ ...s, debts: s.debts.filter((d) => d.id !== id) }))
-    setEditing(null)
+    edit(null)
   }
 
   return (
@@ -180,7 +241,7 @@ export function Debts({
           </button>
           <button
             type="button"
-            onClick={() => setEditing('new')}
+            onClick={() => edit('new')}
             className="rounded-lg px-3 py-1.5 text-sm font-medium"
             style={{ background: 'var(--cat-installment)', color: 'white' }}
           >
@@ -188,6 +249,73 @@ export function Debts({
           </button>
         </div>
       </div>
+
+      {undated.length > 0 && (
+        <Card>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--status-warning)' }}>
+            Needs a due date
+          </h2>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {undated.length === 1 ? 'This plan has' : 'These plans have'} a monthly payment but no
+            date for it to fall on, so {undated.length === 1 ? 'it is' : 'they are'} in the total and
+            nowhere else — not on the calendar, not in any window, never settled. Tap to set one.
+          </p>
+          <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+            {undated.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => edit(d)}
+                className="flex items-center justify-between gap-2 py-1.5 text-left text-sm first:pt-0 last:pb-0"
+              >
+                <span className="min-w-0 truncate">{d.name}</span>
+                <span className="tabular-nums shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {formatCurrency(d.monthlyPayment!)}/mo · {formatCurrency(d.balance)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Who the money is owed to, for the call that asks for time. Five
+          Affirm plans are one account and one phone number. */}
+      {lenders.length > 1 && (
+        <Card>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            By lender
+          </h2>
+          <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+            {lenders.map((l) => (
+              <div key={l.lender} className="py-2 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-medium">
+                    {l.lender}
+                    <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      · {l.debts.length} {l.debts.length === 1 ? 'plan' : 'plans'}
+                      {l.apr > 0 && ` · up to ${l.apr}%`}
+                    </span>
+                  </span>
+                  <span className="tabular-nums shrink-0 text-sm font-semibold">
+                    {formatCurrency(l.total)}
+                  </span>
+                </div>
+                <div
+                  className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px]"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <span>
+                    {l.next
+                      ? `next ${formatCurrency(l.next.amount)} on ${formatShortDate(l.next.date)}`
+                      : 'nothing scheduled'}
+                  </span>
+                  <span className="tabular-nums">{formatCurrency(l.next30)} in 30 days</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         {byTier
@@ -266,7 +394,7 @@ export function Debts({
                 key={d.id}
                 debt={d}
                 badge={tier === tiers[0].tier && i === 0 ? 'NEXT TARGET' : undefined}
-                onClick={() => setEditing(d)}
+                onClick={() => edit(d)}
                 onPay={() => setPaying(d.id)}
               />
             ))}
@@ -279,7 +407,7 @@ export function Debts({
               key={d.id}
               debt={d}
               badge={i === 0 ? 'NEXT TARGET' : undefined}
-              onClick={() => setEditing(d)}
+              onClick={() => edit(d)}
               onPay={() => setPaying(d.id)}
             />
           ))}
@@ -292,7 +420,7 @@ export function Debts({
             Unconfirmed — not counted in totals
           </h2>
           {potential.map((d) => (
-            <DebtCard key={d.id} debt={d} onClick={() => setEditing(d)} />
+            <DebtCard key={d.id} debt={d} onClick={() => edit(d)} />
           ))}
         </section>
       )}
@@ -349,38 +477,55 @@ export function Debts({
             <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
               {[...state.payments]
                 .reverse()
-                .slice(0, 15)
-                .map((pay) => (
-                  <div
-                    key={pay.id}
-                    className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate">{pay.debtName}</div>
-                      <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                        {formatDate(pay.date)}
-                        {pay.auto && ' · auto (due date passed)'}
-                        {pay.clearedDebt && ' · cleared it 🎉'}
-                        {!pay.fromBank && !pay.auto && ' · not from bank'}
+                .slice(0, allPayments ? undefined : PAYMENTS_PREVIEW)
+                .map((pay) => {
+                  const orphaned = isOrphaned(state, pay)
+                  return (
+                    <div
+                      key={pay.id}
+                      className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate">{pay.debtName}</div>
+                        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                          {formatDate(pay.date)}
+                          {pay.auto && ' · auto (due date passed)'}
+                          {pay.clearedDebt && ' · cleared it 🎉'}
+                          {!pay.fromBank && !pay.auto && ' · not from bank'}
+                          {orphaned && ' · debt since removed'}
+                        </div>
                       </div>
+                      <span
+                        className="tabular-nums shrink-0 font-medium"
+                        style={{ color: 'var(--status-good)' }}
+                      >
+                        −{formatCurrency(pay.amount)}
+                      </span>
+                      {/* No debt to put the money back onto: history, not reversible. */}
+                      {!orphaned && (
+                        <button
+                          type="button"
+                          onClick={() => setState((s) => undoPayment(s, pay.id))}
+                          className="shrink-0 rounded-md px-2 py-0.5 text-[11px]"
+                          style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+                        >
+                          Undo
+                        </button>
+                      )}
                     </div>
-                    <span
-                      className="tabular-nums shrink-0 font-medium"
-                      style={{ color: 'var(--status-good)' }}
-                    >
-                      −{formatCurrency(pay.amount)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setState((s) => undoPayment(s, pay.id))}
-                      className="shrink-0 rounded-md px-2 py-0.5 text-[11px]"
-                      style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
-                    >
-                      Undo
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
             </div>
+            {(state.payments.length > PAYMENTS_PREVIEW || allPayments) && (
+              <button
+                type="button"
+                onClick={() => setAllPayments((v) => !v)}
+                className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
+                style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+              >
+                {allPayments ? `Show the last ${PAYMENTS_PREVIEW}` : `Show all ${state.payments.length} payments`}
+              </button>
+            )}
           </Card>
         </section>
       )}
@@ -397,20 +542,94 @@ export function Debts({
       )}
 
       {editing && (
-        <Modal title={editing === 'new' ? 'Add debt' : 'Edit debt'} onClose={() => setEditing(null)}>
+        <Modal title={editing === 'new' ? 'Add debt' : 'Edit debt'} onClose={() => edit(null)}>
           <DebtForm
             initial={editing === 'new' ? undefined : editing}
             onSave={save}
-            onCancel={() => setEditing(null)}
+            onCancel={() => edit(null)}
           />
+
+          {/* A due date moved by agreement. Editing the raw date loses the fact
+              that it was agreed, with whom, and from when. */}
+          {editing !== 'new' && isDate(editing.nextDue) && !deferring && (
+            <button
+              type="button"
+              onClick={() => setDeferring(true)}
+              className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
+              style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+            >
+              Log a deferral — the lender agreed to a later date
+            </button>
+          )}
+          {editing !== 'new' && isDate(editing.nextDue) && deferring && (
+            <div className="mt-3 rounded-lg p-3" style={{ background: 'var(--surface-page)' }}>
+              <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Deferral from {formatShortDate(editing.nextDue)}
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  New due date
+                  <input
+                    type="date"
+                    value={deferTo}
+                    min={editing.nextDue}
+                    onChange={(e) => setDeferTo(e.target.value)}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: 'var(--surface-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Who agreed, reference
+                  <input
+                    value={deferNote}
+                    placeholder="Affirm chat, ref 4821"
+                    onChange={(e) => setDeferNote(e.target.value)}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: 'var(--surface-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </label>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeferring(false)}
+                  className="flex-1 rounded-lg py-2 text-xs font-medium"
+                  style={{ background: 'var(--surface-card)', color: 'var(--text-secondary)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!isDate(deferTo) || deferTo <= editing.nextDue}
+                  onClick={() => logDeferral(editing)}
+                  className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
+                  style={{ background: 'var(--status-warning)', color: '#0d0d0d' }}
+                >
+                  Move it to {isDate(deferTo) ? formatShortDate(deferTo) : '…'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Deleting takes its payment history with it in spirit — the records
+              stay, but there is nothing left to undo them onto. So it asks. */}
           {editing !== 'new' && (
             <button
               type="button"
-              onClick={() => remove(editing.id)}
+              onClick={() =>
+                confirmDelete === editing.id ? remove(editing.id) : setConfirmDelete(editing.id)
+              }
               className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
-              style={{ background: 'transparent', color: 'var(--status-critical)' }}
+              style={{
+                background: confirmDelete === editing.id ? 'var(--status-critical)' : 'transparent',
+                color: confirmDelete === editing.id ? 'white' : 'var(--status-critical)',
+              }}
             >
-              Delete debt
+              {confirmDelete !== editing.id
+                ? 'Delete debt'
+                : paymentsOwedBy(editing.id) > 0
+                  ? `Delete for good — its ${paymentsOwedBy(editing.id)} logged payment${paymentsOwedBy(editing.id) === 1 ? '' : 's'} can no longer be undone`
+                  : 'Delete for good'}
             </button>
           )}
         </Modal>

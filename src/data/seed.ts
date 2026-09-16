@@ -33,7 +33,16 @@ import type { AppState } from '../types'
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-14b'
+export const SEED_VERSION = '2026-09-14c'
+
+/**
+ * The date the lender figures below were taken. Separate from the version,
+ * which carries a suffix for revisions of the same table — formatting the
+ * version as a date printed "Invalid Date" on every device that saw an update.
+ * Payments logged by hand on or after this date are not in the table and are
+ * re-applied when it is loaded.
+ */
+export const SEED_DATE = '2026-09-14'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
@@ -100,6 +109,7 @@ export const seedState: AppState = {
   incomeEntries: [],
   payments: [],
   shifts: [],
+  snapshots: [],
   // Rent is confirmed as nil — not an omission. Food, phone and transport have
   // not been supplied and are deliberately not guessed at: a made-up figure
   // would make the split look precise while being wrong.
@@ -340,6 +350,9 @@ export const seedState: AppState = {
       product: 'personal',
       amountCleared: 350.0,
       dateCleared: '2026-08-27',
+      // Off the total, but no money left the account — so it is kept out of
+      // the rate at which debt is actually being paid down.
+      forgiven: true,
       notes: 'Forgiven — cousin said keep the money.',
     },
     {

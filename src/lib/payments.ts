@@ -111,7 +111,10 @@ export function undoPayment(state: AppState, paymentId: string, todayISO = today
   // cleared a debt never advanced anything, so it stores no previous date and
   // the debt keeps the one it already has — which is just as much in the past.
   const debt = state.debts.find((d) => d.id === payment.debtId)
-  const restoredDue = payment.previousNextDue ?? debt?.nextDue
+  // Nothing to put the money back onto. Refunding the bank alone would conjure
+  // cash out of a debt that no longer exists; the record stays as history.
+  if (!debt) return state
+  const restoredDue = payment.previousNextDue ?? debt.nextDue
   const restoresPastDue = isDate(restoredDue) && restoredDue < todayISO
 
   return {
@@ -135,6 +138,68 @@ export function undoPayment(state: AppState, paymentId: string, todayISO = today
       : state.clearedDebts,
     payments: state.payments.filter((p) => p.id !== paymentId),
   }
+}
+
+/** A payment whose debt has since been deleted — history, but not reversible. */
+export function isOrphaned(state: AppState, payment: Payment): boolean {
+  return !state.debts.some((d) => d.id === payment.debtId)
+}
+
+/**
+ * Re-applies payments entered by hand on or after `since` to the current
+ * balances, without logging them again and without touching the bank.
+ *
+ * For a figures update: the new table carries what the lender knew on its own
+ * date, so a payment made after that is not in it. Its record and its bank
+ * deduction survived the update; its effect on the balance did not, and the
+ * money had simply gone missing between the two.
+ *
+ * A payment that advanced a due date moves it again only when the fresh figure
+ * is sitting on exactly the date that was paid — one step, no guessing. Auto
+ * settlements are left to `settleOverduePayments`, which already recognises
+ * instalments it has logged.
+ */
+export function replayManualPayments(state: AppState, since: string): AppState {
+  let next = state
+  const replay = state.payments
+    .filter((p) => !p.auto && p.date >= since)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  for (const p of replay) {
+    const debt = next.debts.find((d) => d.id === p.debtId)
+    if (!debt || debt.balance <= 0) continue
+    const advance = Boolean(p.previousNextDue) && debt.nextDue === p.previousNextDue
+    next = applyPayment(next, {
+      debtId: debt.id,
+      amount: p.amount,
+      date: p.date,
+      fromBank: false,
+      advanceDue: advance,
+      record: false,
+    })
+  }
+  return next
+}
+
+/**
+ * Records today's active total, once per day. The progress chart draws from
+ * these where they exist rather than reconstructing the past from the payment
+ * log — a balance corrected by hand never appears in the log at all, and a
+ * duplicated record inflated the reconstruction while the total on screen was
+ * right the whole time.
+ */
+export function recordSnapshot(state: AppState, todayISO = today()): AppState {
+  const total = activeDebts(state.debts).reduce((s, d) => s + d.balance, 0)
+  const last = state.snapshots[state.snapshots.length - 1]
+  if (last && last.date === todayISO) {
+    return Math.abs(last.total - total) < 0.005
+      ? state
+      : { ...state, snapshots: [...state.snapshots.slice(0, -1), { date: todayISO, total }] }
+  }
+  // Two years is plenty for a chart; older days are already summarised by the
+  // reconstruction anyway.
+  const kept = [...state.snapshots, { date: todayISO, total }].slice(-730)
+  return { ...state, snapshots: kept }
 }
 
 export interface AutoSettlement {

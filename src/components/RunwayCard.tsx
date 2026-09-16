@@ -44,7 +44,18 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
       <div className="mt-2 flex flex-col gap-1 text-sm">
         <Row label="Income" value={formatCurrency(r.monthlyIncome)} suffix="/mo" />
         <Row
-          label="Debt due, next 30 days"
+          label={
+            r.overdue > 0 ? (
+              <>
+                Debt due, next 30 days{' '}
+                <span style={{ color: 'var(--status-critical)' }}>
+                  · incl. {formatCurrency(r.overdue)} past due
+                </span>
+              </>
+            ) : (
+              'Debt due, next 30 days'
+            )
+          }
           value={`− ${formatCurrency(r.monthlyMinimums)}`}
         />
         <Row
@@ -178,7 +189,7 @@ function Row({
   suffix,
   muted,
 }: {
-  label: string
+  label: React.ReactNode
   value: string
   suffix?: string
   muted?: boolean

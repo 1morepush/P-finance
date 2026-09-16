@@ -7,6 +7,8 @@ import { applyPayment, undoPayment } from '../lib/payments'
 import { StatTile } from '../components/StatTile'
 import { activeDebts, formatCurrency, formatDate, formatDue } from '../lib/finance'
 import { calendarEntries, earliestMonth, monthTotals } from '../lib/calendar'
+import { paymentsToICS } from '../lib/ics'
+import { deliverFile } from '../lib/share'
 import {
   addDays,
   addMonths,
@@ -52,10 +54,25 @@ export function Calendar({
   // The lists below it stay forward-looking — they answer "what do I owe".
   const entries = useMemo(() => calendarEntries(state, true), [state])
   const firstMonth = earliestMonth(entries)
+  const [exported, setExported] = useState<string | null>(null)
 
-  const next7 = paymentsBetween(payments, now, addDays(now, 7))
-  const next14 = paymentsBetween(payments, now, addDays(now, 14))
-  const next30 = paymentsBetween(payments, now, addDays(now, 30))
+  // Past due and still standing: owed now, and part of every window. Each
+  // window is N days counting today, the same arithmetic every other figure
+  // uses — these used to run a day longer and disagree with the Runway.
+  const overdue = payments.filter((p) => p.date < now && !p.isPotential)
+  const next7 = [...overdue, ...paymentsBetween(payments, now, addDays(now, 6))]
+  const next14 = [...overdue, ...paymentsBetween(payments, now, addDays(now, 13))]
+  const next30 = [...overdue, ...paymentsBetween(payments, now, addDays(now, 29))]
+  const overdueSum = sumConfirmed(overdue)
+
+  async function exportCalendar() {
+    const { text, count } = paymentsToICS(state.debts, now)
+    const how = await deliverFile(`debt-payments-${now}.ics`, text, 'text/calendar')
+    if (how === 'cancelled') return
+    setExported(
+      `${count} payment${count === 1 ? '' : 's'} ${how === 'shared' ? 'sent to the share sheet' : 'downloaded'} — open the file and your calendar will offer to add them, each with a reminder the evening before.`,
+    )
+  }
 
   const detailEnd = addMonths(now, DETAIL_MONTHS)
   const detail = paymentsBetween(payments, now, detailEnd)
@@ -90,17 +107,16 @@ export function Calendar({
             const confirmed = sumConfirmed(items)
             const potential = sumPotential(items)
             const n = items.filter((i) => !i.isPotential).length
+            const parts = [`${n} payment${n === 1 ? '' : 's'}`]
+            if (overdueSum > 0) parts.push(`${formatCurrency(overdueSum)} past due`)
+            if (potential > 0) parts.push(`+${formatCurrency(potential)} unconfirmed`)
             return (
               <StatTile
                 key={label}
                 label={label}
                 value={formatCurrency(confirmed)}
-                sub={
-                  potential > 0
-                    ? `${n} payment${n === 1 ? '' : 's'} · +${formatCurrency(potential)} unconfirmed`
-                    : `${n} payment${n === 1 ? '' : 's'}`
-                }
-                accent={confirmed > 0 ? accent : undefined}
+                sub={parts.join(' · ')}
+                accent={confirmed > 0 ? (overdueSum > 0 ? 'var(--status-critical)' : accent) : undefined}
               />
             )
           })}
@@ -167,6 +183,21 @@ export function Calendar({
           <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
             History runs back to {formatMonth(firstMonth)} — tap ‹ to look at what has already been
             paid.
+          </p>
+        )}
+
+        {/* Reminders that fire whether or not this app is ever opened again. */}
+        <button
+          type="button"
+          onClick={() => void exportCalendar()}
+          className="mt-3 w-full rounded-lg py-2 text-xs font-medium"
+          style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
+        >
+          Add the next year of payments to my phone's calendar
+        </button>
+        {exported && (
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--status-good)' }}>
+            ✓ {exported}
           </p>
         )}
         <div

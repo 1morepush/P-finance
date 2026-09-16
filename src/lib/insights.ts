@@ -1,4 +1,4 @@
-import type { AppState, Debt, IncomeSource } from '../types'
+import type { AppState, Debt } from '../types'
 import {
   activeDebts,
   estimatePayoffMonths,
@@ -6,7 +6,8 @@ import {
   formatDate,
 } from './finance'
 import { earlyPayoff } from './payoff'
-import { addDays, dueWithin, projectedPayoffDate, scheduledInDays, today } from './schedule'
+import { monthlyIncomeOn } from './budget'
+import { addDays, owedWithin, projectedPayoffDate, scheduledInDays, today } from './schedule'
 
 export type InsightKind = 'opportunity' | 'warning' | 'milestone' | 'context'
 
@@ -19,20 +20,13 @@ export interface Insight {
   weight: number
 }
 
-/** Occurrences per month, for the frequencies that imply one. */
-const PER_MONTH: Record<IncomeSource['frequency'], number> = {
-  weekly: 52 / 12,
-  biweekly: 26 / 12,
-  monthly: 1,
-  variable: 0,
-  'one-time': 0,
-}
-
-/** Income that can be counted on monthly. Variable sources contribute nothing until logged. */
-export function monthlyIncome(state: AppState): number {
-  return state.incomeSources
-    .filter((s) => s.active)
-    .reduce((sum, s) => sum + s.amount * PER_MONTH[s.frequency], 0)
+/**
+ * Income that can be counted on monthly, as of today. The same figure the
+ * Runway uses — this module used to keep its own copy that ignored a source's
+ * end date, so the two cards could name different incomes on one screen.
+ */
+export function monthlyIncome(state: AppState, now = today()): number {
+  return monthlyIncomeOn(state, now)
 }
 
 /** Scheduled plans ending, with the monthly payment each one frees up. */
@@ -141,23 +135,26 @@ export function generateInsights(state: AppState, now = today()): Insight[] {
     }
   }
 
-  // Near-term cash crunch.
-  const due14 = dueWithin(state.debts, 14, now)
-  if (due14 > 0 && state.bankBalance.amount < due14) {
+  // Near-term cash crunch. Past-due money is part of it: it does not stop
+  // being owed because its date went by.
+  const owed = owedWithin(state.debts, 14, now)
+  if (owed.total > 0 && state.bankBalance.amount < owed.total) {
     out.push({
       id: 'crunch',
       kind: 'warning',
-      title: `${formatCurrency(due14)} due in 14 days against ${formatCurrency(state.bankBalance.amount)}`,
+      title: `${formatCurrency(owed.total)} due in 14 days against ${formatCurrency(state.bankBalance.amount)}`,
       detail:
-        `You are ${formatCurrency(due14 - state.bankBalance.amount)} short of what falls due in ` +
-        `the next fortnight. Cover the gap before putting anything extra toward a single debt.`,
+        `You are ${formatCurrency(owed.total - state.bankBalance.amount)} short of what falls due in ` +
+        `the next fortnight${
+          owed.overdue > 0 ? `, ${formatCurrency(owed.overdue)} of it already past due` : ''
+        }. Cover the gap before putting anything extra toward a single debt.`,
       weight: 120,
     })
   }
 
   // How much of predictable income the minimums consume.
-  const income = monthlyIncome(state)
-  const minimums = scheduledInDays(state.debts, 30, now)
+  const income = monthlyIncome(state, now)
+  const minimums = scheduledInDays(state.debts, 30, now) + owed.overdue
   if (income > 0 && minimums > 0) {
     const share = minimums / income
     out.push({

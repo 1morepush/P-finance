@@ -1,5 +1,5 @@
 import { formatCurrency } from '../lib/finance'
-import { formatMonth, nextMonth } from '../lib/schedule'
+import { formatMonth, nextMonth, previousMonth } from '../lib/schedule'
 import { entriesOn, monthTotals, sumEntries, type CalendarEntry } from '../lib/calendar'
 
 const CATEGORY_COLOR = {
@@ -12,12 +12,6 @@ const CATEGORY_COLOR = {
 const PAID_COLOR = 'var(--status-good)'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-
-/** The YYYY-MM before the given one. */
-export function previousMonth(month: string): string {
-  const [y, m] = month.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7)
-}
 
 /**
  * Lays a month out as weeks of ISO dates, padded with nulls so the 1st lands on
@@ -253,7 +247,7 @@ export function MonthGrid({
                 )}
                 {/* Autopay settles these without asking, so the place to correct
                     one that did not actually go through is where it is seen. */}
-                {onUndo && e.paymentId && (
+                {onUndo && e.reversible && e.paymentId && (
                   <button
                     type="button"
                     onClick={() => onUndo(e.paymentId!)}

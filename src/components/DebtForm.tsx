@@ -170,6 +170,13 @@ export function DebtForm({
           className="rounded-lg border px-3 py-2 text-sm"
           style={inputStyle}
         />
+        {/* A scheduled payment with nowhere to fall is in the total and nowhere else. */}
+        {form.monthlyPayment && form.product !== 'personal' && !/^\d{4}-\d{2}-\d{2}$/.test(form.nextDue ?? '') && (
+          <span style={{ color: 'var(--status-warning)' }}>
+            Without a real date the {`$${form.monthlyPayment}`} payment will not appear on the
+            calendar, in any total, or be settled when it falls due.
+          </span>
+        )}
       </label>
 
       <label className="flex items-start gap-2 text-sm">

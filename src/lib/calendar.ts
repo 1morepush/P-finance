@@ -31,10 +31,16 @@ export interface CalendarEntry {
   /** The money left the bank balance too. */
   fromBank: boolean
   /**
-   * Present only where the entry can be reversed — a logged payment. Debts
-   * cleared before the app existed have a record but no payment to undo.
+   * Present only where the entry is a logged payment. Debts cleared before the
+   * app existed have a record but no payment to undo.
    */
   paymentId?: string
+  /**
+   * Whether undoing is possible: a logged payment whose debt still exists. A
+   * payment outliving its debt is history — there is nothing to put the money
+   * back onto, so the calendar shows it and offers no button.
+   */
+  reversible: boolean
   /** The underlying projection, so a due entry can be marked paid in place. */
   scheduled?: ScheduledPayment
 }
@@ -76,6 +82,7 @@ export function paidEntries(state: AppState): CalendarEntry[] {
   const productOf = (debtId: string): AnyProduct | undefined =>
     state.debts.find((d) => d.id === debtId)?.product ??
     state.clearedDebts.find((c) => c.id === debtId)?.product
+  const stillExists = new Set(state.debts.map((d) => d.id))
 
   const logged: CalendarEntry[] = state.payments.map((p) => {
     const product = productOf(p.debtId)
@@ -93,6 +100,7 @@ export function paidEntries(state: AppState): CalendarEntry[] {
       auto: p.auto === true,
       fromBank: p.fromBank,
       paymentId: p.id,
+      reversible: stillExists.has(p.debtId),
     }
   })
 
@@ -113,6 +121,7 @@ export function paidEntries(state: AppState): CalendarEntry[] {
       // Settled before the app was tracking the bank balance, so it never
       // moved that figure and undoing it could not put the money back.
       fromBank: false,
+      reversible: false,
     }))
 
   return [...logged, ...preApp]
@@ -133,6 +142,7 @@ export function dueEntries(state: AppState, includePotential = true): CalendarEn
     isFinal: p.isFinal,
     auto: false,
     fromBank: false,
+    reversible: false,
     scheduled: p,
   }))
 }
