@@ -235,29 +235,50 @@ export interface Dedupe {
  * everything derived from it: the progress chart's starting total, how much has
  * been paid off, and the monthly rate the payoff estimate is built on.
  *
- * Only `auto` records are touched, and only where the debt and the date both
- * match one already kept. An auto-settlement is the app's own restatement of a
- * schedule, never something entered by hand, and one instalment cannot fall due
- * twice on one day — so a match is always a duplicate. Payments entered by hand
- * are never removed, however much they look alike: two real payments on one
- * debt on one day is a thing a person can genuinely do.
+ * Only `auto` records are removed, and only where the debt and the date both
+ * match a payment already kept — automatic or entered by hand. An
+ * auto-settlement is the app's own restatement of a schedule, never something
+ * typed in, and one instalment cannot fall due twice on one day, so a match is
+ * always a duplicate. Payments entered by hand are never removed, however much
+ * they look alike: two real payments on one debt on one day is a thing a person
+ * can genuinely do.
+ *
+ * A manual record counting as a match is the whole point of the second pass:
+ * marking a due date paid from the Calendar writes one, and the settle after
+ * the next figures update then wrote its own copy alongside it.
  */
 export function dedupeSettlements(state: AppState): { state: AppState; dedupe: Dedupe } {
-  const seen = new Set<string>()
+  const key = (p: Payment) => `${p.debtId}|${p.date}`
+
+  // An instalment already covered by a payment entered by hand needs no
+  // assumption on top of it. Marking a due date paid from the Calendar creates
+  // exactly that: a manual record the next settle then duplicates. So the
+  // grouping runs over every payment, not just the automatic ones — keying only
+  // off `auto` meant a manual record never claimed its instalment, and the
+  // automatic copy that followed went unnoticed.
+  const byHand = new Set(state.payments.filter((p) => !p.auto).map(key))
+
   const kept: Payment[] = []
+  const keptAuto = new Set<string>()
   const names = new Set<string>()
   let removed = 0
   let amount = 0
 
   for (const p of state.payments) {
-    const key = `${p.debtId}|${p.date}`
-    if (p.auto && seen.has(key)) {
+    const k = key(p)
+    // Never removed, however alike two of them look: two real payments on one
+    // debt on one day is something a person can genuinely do.
+    if (!p.auto) {
+      kept.push(p)
+      continue
+    }
+    if (byHand.has(k) || keptAuto.has(k)) {
       removed += 1
       amount += p.amount
       names.add(p.debtName)
       continue
     }
-    if (p.auto) seen.add(key)
+    keptAuto.add(k)
     kept.push(p)
   }
 
