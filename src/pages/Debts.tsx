@@ -9,6 +9,8 @@ import { applyPayment, isOrphaned, undoPayment, type PaymentInput } from '../lib
 import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import { WhatIfCard } from '../components/WhatIfCard'
 import { byLender } from '../lib/lender'
+import { LedgerModal } from '../components/LedgerModal'
+import { ledgerMismatches, ledgerTotals, tabs } from '../lib/ledger'
 import { formatShortDate, isDate, today } from '../lib/schedule'
 import { uid } from '../lib/id'
 import {
@@ -43,11 +45,14 @@ function DebtCard({
   badge,
   onClick,
   onPay,
+  onOpenTab,
 }: {
   debt: Debt
   badge?: string
   onClick: () => void
   onPay?: () => void
+  /** Personal debts kept line by line open their tab rather than the editor. */
+  onOpenTab?: () => void
 }) {
   const payoff = earlyPayoff(debt)
   return (
@@ -130,6 +135,26 @@ function DebtCard({
           </p>
         )}
       </div>
+
+      {/* A tab is worth opening far more often than the debt's settings are. */}
+      {onOpenTab && debt.ledger && (
+        <button
+          type="button"
+          onClick={onOpenTab}
+          className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs"
+          style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+        >
+          <span>
+            {debt.ledger.length} line{debt.ledger.length === 1 ? '' : 's'}
+            {ledgerTotals(debt.ledger).payments > 0 && (
+              <span style={{ color: 'var(--text-muted)' }}>
+                {' '}· {formatCurrency(ledgerTotals(debt.ledger).payments)} paid back
+              </span>
+            )}
+          </span>
+          <span style={{ color: 'var(--cat-personal)' }}>Open the tab ›</span>
+        </button>
+      )}
     </Card>
   )
 }
@@ -146,6 +171,7 @@ export function Debts({
   /** The debt whose Delete has been armed, so it takes a second tap. */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [allPayments, setAllPayments] = useState(false)
+  const [openTab, setOpenTab] = useState<string | null>(null)
   const [deferring, setDeferring] = useState(false)
   const [deferTo, setDeferTo] = useState('')
   const [deferNote, setDeferNote] = useState('')
@@ -193,6 +219,12 @@ export function Debts({
   )
   const lenders = byLender(state.debts, today())
   const paymentsOwedBy = (id: string) => state.payments.filter((p) => p.debtId === id).length
+  const people = tabs(state.debts)
+  const peopleTotal = people.reduce((s, d) => s + d.balance, 0)
+  // Nothing in the app should be able to put a tab out of step with its own
+  // lines; this is here so that if something ever does, it is visible.
+  const drifted = ledgerMismatches(state.debts)
+  const tabDebt = openTab ? state.debts.find((d) => d.id === openTab) : null
 
   const payoff = payoffSummary(state.debts)
   // The what-if only means anything for revolving credit; a fixed plan's balance
@@ -274,6 +306,62 @@ export function Debts({
                 </span>
               </button>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {drifted.length > 0 && (
+        <Card>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--status-critical)' }}>
+            A tab disagrees with its own lines
+          </h2>
+          {drifted.map(({ debt, balance, fromLedger }) => (
+            <p key={debt.id} className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              {debt.name} shows {formatCurrency(balance)} but its lines sum to{' '}
+              {formatCurrency(fromLedger)}. Open the tab and add or correct a line — the lines are
+              what the balance means.
+            </p>
+          ))}
+        </Card>
+      )}
+
+      {/* What is owed to people, which is the part with names attached. */}
+      {people.length > 0 && (
+        <Card>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              Owed to people
+            </h2>
+            <span className="tabular-nums text-sm font-semibold" style={{ color: 'var(--cat-personal)' }}>
+              {formatCurrency(peopleTotal)}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+            {people.map((d) => {
+              const t = ledgerTotals(d.ledger!)
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setOpenTab(d.id)}
+                  className="flex items-center justify-between gap-2 py-2 text-left text-sm first:pt-0 last:pb-0"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{d.name}</span>
+                    <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      {t.count} line{t.count === 1 ? '' : 's'}
+                      {t.payments > 0 && ` · ${formatCurrency(t.payments)} paid back`}
+                    </span>
+                  </span>
+                  <span className="tabular-nums shrink-0 font-semibold">
+                    {formatCurrency(d.balance)}
+                  </span>
+                  <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    ›
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </Card>
       )}
@@ -396,6 +484,7 @@ export function Debts({
                 badge={tier === tiers[0].tier && i === 0 ? 'NEXT TARGET' : undefined}
                 onClick={() => edit(d)}
                 onPay={() => setPaying(d.id)}
+                onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
               />
             ))}
           </section>
@@ -409,6 +498,7 @@ export function Debts({
               badge={i === 0 ? 'NEXT TARGET' : undefined}
               onClick={() => edit(d)}
               onPay={() => setPaying(d.id)}
+              onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
             />
           ))}
         </div>
@@ -528,6 +618,10 @@ export function Debts({
             )}
           </Card>
         </section>
+      )}
+
+      {tabDebt && (
+        <LedgerModal debt={tabDebt} setState={setState} onClose={() => setOpenTab(null)} />
       )}
 
       {paying && (
