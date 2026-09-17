@@ -110,6 +110,17 @@ export const seedState: AppState = {
   payments: [],
   shifts: [],
   snapshots: [],
+
+  // EPA 18/26 for the base 3.5L FWD, which combines to 20.9 — the figures the
+  // window sticker carried. The reserve is the usual couple of gallons still in
+  // the tank when the range display gives up; correct it from a real fill-up.
+  vehicle: {
+    name: '2010 Acura TL',
+    cityMpg: 18,
+    highwayMpg: 26,
+    tankGallons: 18.5,
+    reserveGallons: 2,
+  },
   // Rent is confirmed as nil — not an omission. Food, phone and transport have
   // not been supplied and are deliberately not guessed at: a made-up figure
   // would make the split look precise while being wrong.
