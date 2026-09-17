@@ -5,6 +5,7 @@ import { Modal } from '../components/Modal'
 import { IncomeForm } from '../components/IncomeForm'
 import { ShiftForm } from '../components/ShiftForm'
 import { ExpenseForm } from '../components/ExpenseForm'
+import { FuelCard } from '../components/FuelCard'
 import { formatCurrency, formatDate } from '../lib/finance'
 import {
   addExpense,
@@ -234,6 +235,10 @@ export function Income({
           + Log shift
         </button>
       </div>
+
+      {/* Gas sits with the gig work because that is what it is: the cost side
+          of every shift, and the one figure you can check at the pump. */}
+      <FuelCard state={state} setState={setState} />
 
       <Card>
         {allTime.count === 0 ? (

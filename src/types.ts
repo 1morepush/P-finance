@@ -83,6 +83,28 @@ export interface ClearedDebt {
 }
 
 /**
+ * The car, for pricing a tank and a mile of driving.
+ *
+ * City and highway are the EPA pair; the combined figure is derived rather than
+ * stored, so the two cannot drift apart. `observedMpg` is what the trip
+ * computer actually reports, which on an older car doing stop-and-go delivery
+ * work is usually well under the sticker.
+ */
+export interface Vehicle {
+  name: string
+  cityMpg: number
+  highwayMpg: number
+  tankGallons: number
+  /**
+   * Fuel still in the tank when the range display reads zero. Treating the
+   * display as the whole story overstates a fill-up by roughly this much.
+   */
+  reserveGallons: number
+  /** Real-world average, when it is known. Beats any EPA figure. */
+  observedMpg?: number
+}
+
+/**
  * The active total as it stood on a given day, recorded once a day. The
  * progress chart used to reconstruct this backwards from the payment log,
  * which is exactly the figure a duplicated or edited record corrupts; a
@@ -221,6 +243,10 @@ export interface AppState {
   pendingClaims: PendingClaim[]
   /** One per calendar day the app was opened, oldest first. */
   snapshots: Snapshot[]
+  /** The car the fuel calculator prices. */
+  vehicle?: Vehicle
+  /** Last pump price entered, so it need not be typed again every time. */
+  lastGasPrice?: number
   settings: Settings
   /** ISO date of the last export. Only this device holds the data, so staleness matters. */
   lastBackupAt?: string

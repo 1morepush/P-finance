@@ -83,6 +83,20 @@ function sound(parsed: Partial<AppState>): Partial<AppState> {
   }
   if (!out.bankBalance || typeof out.bankBalance.amount !== 'number') delete out.bankBalance
   if (typeof out.savingsBalance !== 'number') delete out.savingsBalance
+  // A vehicle missing its figures would divide by undefined and print NaN
+  // across the fuel card; the seed's own is better than that.
+  const v = out.vehicle
+  if (
+    !v ||
+    typeof v.cityMpg !== 'number' ||
+    typeof v.highwayMpg !== 'number' ||
+    typeof v.tankGallons !== 'number' ||
+    v.cityMpg <= 0 ||
+    v.highwayMpg <= 0 ||
+    v.tankGallons <= 0
+  ) {
+    delete out.vehicle
+  }
   return out
 }
 
