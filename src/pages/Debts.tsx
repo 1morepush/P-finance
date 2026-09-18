@@ -10,7 +10,7 @@ import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import { WhatIfCard } from '../components/WhatIfCard'
 import { byLender } from '../lib/lender'
 import { LedgerModal } from '../components/LedgerModal'
-import { ledgerMismatches, ledgerTotals, tabs } from '../lib/ledger'
+import { ensureLedger, ledgerMismatches, ledgerTotals, tabs } from '../lib/ledger'
 import { formatShortDate, isDate, today } from '../lib/schedule'
 import { uid } from '../lib/id'
 import {
@@ -338,19 +338,30 @@ export function Debts({
           </div>
           <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
             {people.map((d) => {
-              const t = ledgerTotals(d.ledger!)
+              const t = ledgerTotals(d.ledger ?? [])
               return (
                 <button
                   key={d.id}
                   type="button"
-                  onClick={() => setOpenTab(d.id)}
+                  onClick={() => {
+                    // A tab with no lines yet gets one for the balance it
+                    // already carries, before the sheet can add to it.
+                    setState((s) => ensureLedger(s, d.id))
+                    setOpenTab(d.id)
+                  }}
                   className="flex items-center justify-between gap-2 py-2 text-left text-sm first:pt-0 last:pb-0"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{d.name}</span>
                     <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      {t.count} line{t.count === 1 ? '' : 's'}
-                      {t.payments > 0 && ` · ${formatCurrency(t.payments)} paid back`}
+                      {t.count === 0 ? (
+                        'No lines yet — tap to itemise it'
+                      ) : (
+                        <>
+                          {t.count} line{t.count === 1 ? '' : 's'}
+                          {t.payments > 0 && ` · ${formatCurrency(t.payments)} paid back`}
+                        </>
+                      )}
                     </span>
                   </span>
                   <span className="tabular-nums shrink-0 font-semibold">

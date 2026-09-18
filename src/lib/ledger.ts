@@ -185,7 +185,29 @@ export function ledgerMismatches(debts: Debt[]): LedgerMismatch[] {
 
 /** Debts kept as a tab with a person, biggest first. */
 export function tabs(debts: Debt[]): Debt[] {
+  // Anyone you owe belongs here, itemised or not. Hiding the ones without
+  // lines made the whole feature invisible until a figures update happened to
+  // land — which is a long wait to discover something exists.
   return debts
-    .filter((d) => d.ledger && d.status !== 'paid')
+    .filter((d) => (d.product === 'personal' || d.ledger) && d.status !== 'paid')
     .sort((a, b) => b.balance - a.balance)
+}
+
+/**
+ * Gives a debt a ledger if it has none, opening it with a single line for the
+ * balance it already carries.
+ *
+ * Without this the first line added would become the whole tab — a balance of
+ * $548.68 replaced by a $20 dinner, because the balance is the sum of the
+ * lines. The opening line says where the figure came from, and can be broken
+ * into its real parts afterwards.
+ */
+export function ensureLedger(state: AppState, debtId: string): AppState {
+  const debt = state.debts.find((d) => d.id === debtId)
+  if (!debt || debt.ledger) return state
+  const opening: LedgerEntry[] =
+    debt.balance === 0
+      ? []
+      : [{ id: uid(), date: today(), amount: debt.balance, note: 'Balance carried over' }]
+  return writeLedger(state, debtId, opening)
 }
