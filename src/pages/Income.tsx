@@ -29,6 +29,7 @@ import {
   updateShift,
   type ShiftInput,
 } from '../lib/gig'
+import { fuelShares, summariseShares } from '../lib/fuelShare'
 import { formatMonth, formatShortDate, today } from '../lib/schedule'
 import { uid } from '../lib/id'
 
@@ -111,6 +112,10 @@ export function Income({
   const SHIFT_PREVIEW = 10
   const shiftLog = recentShifts(state.shifts, allShifts ? state.shifts.length : SHIFT_PREVIEW)
   const hiddenShifts = state.shifts.length - shiftLog.length
+  // Computed over every shift, never the visible page: a share depends on the
+  // whole stretch it sits in, so paging the list must not change the figures.
+  const shares = fuelShares(state.shifts)
+  const shareSummary = summariseShares(state.shifts)
   const expenseTotal = monthlyExpenses(state)
   const expenses = [...state.expenses].sort((a, b) => expenseMonthly(b) - expenseMonthly(a))
 
@@ -350,6 +355,36 @@ export function Income({
               Tap a shift to edit it
             </span>
           </div>
+
+          {/*
+            Without this the figures look wrong rather than different: a shift
+            that bought fuel shows a profit while the bank says otherwise, and
+            nothing on screen says why.
+          */}
+          {shareSummary.spent > 0 && (
+            <p className="mb-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Fuel is spread across the shifts that burned it, not charged to whichever one
+              stopped at the pump —{' '}
+              {shareSummary.basis === 'miles'
+                ? 'split by miles driven'
+                : shareSummary.basis === 'hours'
+                  ? 'split by hours, since not every shift has miles'
+                  : 'split evenly, since neither miles nor hours are on every shift'}
+              .
+              {shareSummary.perMile !== null &&
+                ` That works out at ${formatCurrency(shareSummary.perMile)} a mile.`}
+              {shareSummary.untracked > 0 &&
+                ` ${shareSummary.untracked} shift${shareSummary.untracked === 1 ? '' : 's'} ran on fuel bought before the log starts, so ${shareSummary.untracked === 1 ? 'it carries' : 'they carry'} none.`}
+            </p>
+          )}
+
+          {shareSummary.basis !== 'miles' && state.shifts.length > 0 && (
+            <p className="mb-2 text-[11px]" style={{ color: 'var(--status-warning)' }}>
+              Add miles to every shift and the split follows the driving instead of the clock —
+              and the mileage deduction at {formatCurrency(MILEAGE_RATE)} a mile is usually worth
+              more than the fuel itself.
+            </p>
+          )}
           <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
             {shiftLog.map((shift) => (
               // The whole row opens the editor. It used to share the row with a
@@ -366,16 +401,29 @@ export function Income({
                   <span className="block truncate font-medium">{shift.platform}</span>
                   <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
                     {formatShortDate(shift.date)} · {formatCurrency(shift.earnings)} −{' '}
-                    {formatCurrency(shift.gasCost)} gas
+                    {/* The share of the tank, not the fill-up. A shift that
+                        stopped at the pump is not the shift that burned it. */}
+                    {formatCurrency(shares.get(shift.id)?.share ?? shift.gasCost)} fuel
                     {shift.hours ? ` · ${shift.hours}h` : ''}
+                    {shift.miles ? ` · ${shift.miles}mi` : ''}
                   </span>
+                  {shift.gasCost > 0 && (
+                    <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      {formatCurrency(shift.gasCost)} left the bank on this one
+                    </span>
+                  )}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span
                     className="tabular-nums font-semibold"
-                    style={{ color: shiftNet(shift) >= 0 ? 'var(--status-good)' : 'var(--status-critical)' }}
+                    style={{
+                      color:
+                        (shares.get(shift.id)?.profit ?? shiftNet(shift)) >= 0
+                          ? 'var(--status-good)'
+                          : 'var(--status-critical)',
+                    }}
                   >
-                    {formatCurrency(shiftNet(shift))}
+                    {formatCurrency(shares.get(shift.id)?.profit ?? shiftNet(shift))}
                   </span>
                   <span
                     aria-hidden
