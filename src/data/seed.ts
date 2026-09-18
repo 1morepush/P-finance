@@ -46,7 +46,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-17'
+export const SEED_VERSION = '2026-09-18'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -267,12 +267,13 @@ export const seedState: AppState = {
       product: 'paypal_pay_in_4',
       status: 'active',
       priorityTier: 2,
-      balance: 52.85,
+      balance: 105.7,
       apr: 0,
       monthlyPayment: 52.85,
-      nextDue: '2026-10-08',
+      nextDue: '2026-09-22',
       finalPaymentDate: '2026-10-08',
-      notes: 'One instalment left. The date now reconciles — the earlier Oct 6/Oct 8 disagreement is resolved.',
+      notes:
+        "Read off PayPal on Sep 18: $211.40 in four, two paid, two left — Sep 22 and Oct 8. The table this app was seeded from had only the Oct 8 payment, so a whole instalment and its date were missing. PayPal's own two dates are 16 days apart rather than 14, so the biweekly projection lands the last one on Oct 6; Oct 8 is what the lender states, and the gap is flagged rather than smoothed.",
     },
     {
       id: 'edco_tix_1',
