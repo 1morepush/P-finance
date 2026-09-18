@@ -40,13 +40,28 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 //   active             $12,176.53
 //   cleared to date     $1,676.31   (EDC #1 finishes on its Sep 11 payment)
 // The balances below are the lender's last statement, before those four.
+//
+// Added since that dump, from the lender screens rather than the table. The
+// first two were always owed and simply unrecorded; only the last two are new
+// borrowing:
+//   friend tabs        +$307.86   Himeth +$317.86, Liv −$10
+//   Delta instalment    +$52.85   the table held one payment; PayPal shows two
+//   Amazon Pay in 4    +$116.09   opened Sep 18
+// The figures at the top of this comment describe the original dump and are
+// left as the record of it; they are no longer what this file totals.
+//
+// "Klarna Flight and Tickets (Ohio)" is the Frontier flight, identified Sep 18
+// and renamed. It was nearly entered a second time: the remainder of that plan
+// is three payments of $74.49, and $74.49 x 3 is $223.47 — this balance, to the
+// cent. A merchant name that does not match the lender's label is how one debt
+// comes to be counted twice.
 /**
  * Bump whenever the figures below change. Devices carrying an older stamp are
  * offered the update rather than silently keeping their copy: saved state
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-18b'
+export const SEED_VERSION = '2026-09-18c'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -250,7 +265,7 @@ export const seedState: AppState = {
     },
     {
       id: 'klarna_flight',
-      name: 'Klarna Flight and Tickets (Ohio)',
+      name: 'Klarna Frontier Airlines (Ohio)',
       product: 'klarna_pay_in_4',
       status: 'active',
       priorityTier: 2,
@@ -259,7 +274,8 @@ export const seedState: AppState = {
       monthlyPayment: 74.49,
       nextDue: '2026-09-30',
       finalPaymentDate: '2026-10-28',
-      notes: 'New this update. Three biweekly payments from Sep 30 land Oct 28 — the dates reconcile.',
+      notes:
+        'Identified Sep 18 as the Frontier flight — $302.95 in four, the first $79.48 paid Sep 12 and three of $74.49 left, which is exactly this balance. Those three run Sep 30, Oct 14 and Oct 28 and reconcile with each other; only the Sep 12 to Sep 30 gap is 18 days rather than 14. The $79.48 is not in the payment history: a plan whose first instalment differs from the rest cannot be modelled here, since a debt carries one payment amount. What is owed, when, and how much each time are all correct.',
     },
     {
       id: 'delta_airlines',
