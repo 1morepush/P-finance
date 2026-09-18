@@ -330,8 +330,9 @@ export const seedState: AppState = {
       ledger: tab('himeth', [
         591, 15, 27, 7.19, 7.19, 6, 6, 21.5, -50, -50.95, -31.25, 317.86,
       ]),
-      notes:
-        'The supplied lines sum to $866.54. The summary alongside them read $548.68, which is exactly the running total before the final +$317.86 — so either that charge is new, or it does not belong. Delete it from the tab if it is the latter.',
+      // $866.54 confirmed on 2026-09-17: the +$317.86 belongs, and the $548.68
+      // quoted alongside was the running total before it.
+      notes: 'Twelve lines as supplied, confirmed at $866.54.',
     },
     {
       id: 'liv',
