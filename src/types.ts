@@ -6,6 +6,7 @@ export type DebtProduct =
   | 'affirm_pay_monthly'
   | 'affirm_pay_in_4'
   | 'klarna_pay_in_4'
+  | 'amazon_pay_in_4'
   | 'event_installment'
   | 'credit_card'
 
@@ -288,6 +289,7 @@ const PRODUCT_CATEGORY: Record<DebtProduct, DebtCategory> = {
   affirm_pay_monthly: 'installment',
   affirm_pay_in_4: 'installment',
   klarna_pay_in_4: 'installment',
+  amazon_pay_in_4: 'installment',
   event_installment: 'installment',
 }
 
@@ -308,6 +310,7 @@ export const PRODUCT_LABEL: Record<DebtProduct, string> = {
   affirm_pay_monthly: 'Affirm Pay Monthly',
   affirm_pay_in_4: 'Affirm Pay in 4',
   klarna_pay_in_4: 'Klarna Pay in 4',
+  amazon_pay_in_4: 'Amazon Pay in 4',
   event_installment: 'Event plan',
 }
 
@@ -325,6 +328,7 @@ export const PRODUCT_CADENCE: Record<DebtProduct, Cadence> = {
   paypal_pay_in_4: 'biweekly',
   affirm_pay_in_4: 'biweekly',
   klarna_pay_in_4: 'biweekly',
+  amazon_pay_in_4: 'biweekly',
   // A single remaining instalment, so the cadence never actually steps. Marked
   // monthly rather than null so a passed due date auto-settles like any other plan.
   event_installment: 'monthly',
