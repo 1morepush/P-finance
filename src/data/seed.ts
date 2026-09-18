@@ -40,13 +40,23 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 //   active             $12,176.53
 //   cleared to date     $1,676.31   (EDC #1 finishes on its Sep 11 payment)
 // The balances below are the lender's last statement, before those four.
+//
+// Added since that dump, from the lender screens rather than the table. The
+// first two were always owed and simply unrecorded; only the last two are new
+// borrowing:
+//   friend tabs        +$307.86   Himeth +$317.86, Liv −$10
+//   Delta instalment    +$52.85   the table held one payment; PayPal shows two
+//   Amazon Pay in 4    +$116.09   opened Sep 18
+//   Klarna Frontier    +$238.44   $317.92 less the Sep 12 payment
+// The figures at the top of this comment describe the original dump and are
+// left as the record of it; they are no longer what this file totals.
 /**
  * Bump whenever the figures below change. Devices carrying an older stamp are
  * offered the update rather than silently keeping their copy: saved state
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-18b'
+export const SEED_VERSION = '2026-09-18c'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -274,6 +284,24 @@ export const seedState: AppState = {
       finalPaymentDate: '2026-10-08',
       notes:
         "Read off PayPal on Sep 18: $211.40 in four, two paid, two left — Sep 22 and Oct 8. The table this app was seeded from had only the Oct 8 payment, so a whole instalment and its date were missing. PayPal's own two dates are 16 days apart rather than 14, so the biweekly projection lands the last one on Oct 6; Oct 8 is what the lender states, and the gap is flagged rather than smoothed.",
+    },
+    {
+      id: 'klarna_frontier',
+      name: 'Klarna Frontier Airlines',
+      product: 'klarna_pay_in_4',
+      status: 'active',
+      priorityTier: 2,
+      // The full plan, not the $238.44 that remains. The Sep 12 instalment is
+      // left for the app to settle on load, which records it as a payment in
+      // history — seeding the lowered balance instead would lose the fact that
+      // $79.48 was ever paid.
+      balance: 317.92,
+      apr: 0,
+      monthlyPayment: 79.48,
+      nextDue: '2026-09-12',
+      finalPaymentDate: '2026-10-24',
+      notes:
+        '$317.92 in four of $79.48. The first was paid Sep 12. Biweekly from there gives Sep 26, Oct 10 and Oct 24 — the app\'s own arithmetic rather than a Klarna statement, so confirm the dates against the plan.',
     },
     {
       id: 'amazon_pay_in_4',
