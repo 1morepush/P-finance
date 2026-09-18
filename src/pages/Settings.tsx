@@ -6,6 +6,8 @@ import { compareStrategies, STRATEGY_LABEL } from '../lib/strategy'
 import { daysUntil, today } from '../lib/schedule'
 import { describeImport, exportStateAsJson, markBackedUp, resetToSeed } from '../lib/storage'
 import { copyText, deliverFile } from '../lib/share'
+import { checkForUpdate } from '../lib/sw'
+import { SEED_VERSION } from '../data/seed'
 
 export function Settings({
   state,
@@ -17,6 +19,7 @@ export function Settings({
   const fileRef = useRef<HTMLInputElement>(null)
   const [extra, setExtra] = useState('100')
   const [backupNote, setBackupNote] = useState<string | null>(null)
+  const [updateNote, setUpdateNote] = useState<string | null>(null)
 
   const extraPerMonth = Number(extra) || 0
   const comparison = useMemo(() => compareStrategies(state, extraPerMonth), [state, extraPerMonth])
@@ -356,6 +359,52 @@ export function Settings({
         >
           Reset to source-of-truth data
         </button>
+      </Card>
+
+      {/*
+        Without this, "did the update arrive?" can only be answered by looking
+        for a change and not finding one — which is also what a broken update
+        looks like. The stamp says which build is running; the button asks the
+        server for a newer one rather than waiting on the next check.
+      */}
+      <Card>
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          App version
+        </h2>
+        <p className="tabular-nums mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Built {__BUILD_STAMP__}
+        </p>
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {/* Printed raw: versions carry suffixes like "2026-09-14c", which is
+              not a date and must not be run through a date formatter. */}
+          Figures on this device: {state.seedVersion}
+        </p>
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Newest available: {SEED_VERSION}
+        </p>
+        <button
+          type="button"
+          onClick={async () => {
+            setUpdateNote('Checking…')
+            const result = await checkForUpdate()
+            setUpdateNote(
+              {
+                asked: 'Asked for the newest build. If one exists, a reload banner appears at the top.',
+                'no-worker': 'No service worker here — pull down to refresh the page instead.',
+                failed: 'Could not reach the server. Try again when you have a connection.',
+              }[result],
+            )
+          }}
+          className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
+          style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
+        >
+          Check for a new version
+        </button>
+        {updateNote && (
+          <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {updateNote}
+          </p>
+        )}
       </Card>
     </div>
   )
