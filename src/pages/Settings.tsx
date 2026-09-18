@@ -4,7 +4,13 @@ import { Card } from '../components/Card'
 import { formatCurrency, formatDate } from '../lib/finance'
 import { compareStrategies, STRATEGY_LABEL } from '../lib/strategy'
 import { daysUntil, today } from '../lib/schedule'
-import { describeImport, exportStateAsJson, markBackedUp, resetToSeed } from '../lib/storage'
+import {
+  applySeedUpdate,
+  describeImport,
+  exportStateAsJson,
+  markBackedUp,
+  resetToSeed,
+} from '../lib/storage'
 import { copyText, deliverFile } from '../lib/share'
 import { checkForUpdate } from '../lib/sw'
 import { SEED_VERSION } from '../data/seed'
@@ -382,6 +388,36 @@ export function Settings({
         <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
           Newest available: {SEED_VERSION}
         </p>
+
+        {/*
+          The banner on Home offers this once, and "Keep mine" hides it for
+          good — leaving no way back to figures you later decide you want.
+          Here the two versions are already printed side by side, so the way to
+          close the gap belongs beside them, skipped or not.
+        */}
+        {state.seedVersion !== SEED_VERSION && (
+          <div className="mt-3 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              {state.skippedSeedVersion === SEED_VERSION
+                ? 'You chose to keep yours when this was offered.'
+                : 'This device is behind the newest figures.'}{' '}
+              Loading them replaces your debts, cleared log, income sources and the wage
+              claim; your bank balance, savings, logged payments and shifts are kept.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setState((s) => applySeedUpdate(s))
+                setUpdateNote(`Loaded the ${SEED_VERSION} figures.`)
+              }}
+              className="mt-2 w-full rounded-lg py-2 text-sm font-medium"
+              style={{ background: 'var(--cat-installment)', color: 'white' }}
+            >
+              Load the newest figures
+            </button>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={async () => {
