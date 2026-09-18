@@ -46,7 +46,33 @@ export interface Debt {
   autoMarkPaid?: boolean
   /** Due dates moved by agreement with the lender, most recent last. */
   deferrals?: Deferral[]
+  /**
+   * The line-by-line record of what this became, oldest first. Where it exists
+   * it is the truth and `balance` is its sum — a running total kept beside an
+   * itemised list drifts from it, and then neither can be trusted.
+   */
+  ledger?: LedgerEntry[]
   notes?: string
+}
+
+/**
+ * One line of a running tab with a person: a thing borrowed, a round paid for,
+ * money handed back.
+ *
+ * Signed rather than typed, because the arithmetic is the point — the tab is
+ * the sum of its lines, and a positive and a negative entry are the same kind
+ * of thing seen from two directions.
+ */
+export interface LedgerEntry {
+  id: string
+  /** ISO date it happened, or was recorded. */
+  date: string
+  /** Positive adds to what is owed; negative is a payment or a credit. */
+  amount: number
+  /** What it was for — the part a number on its own always loses. */
+  note?: string
+  /** A payment that actually left the bank, so deleting it puts the money back. */
+  fromBank?: boolean
 }
 
 /**
@@ -130,6 +156,8 @@ export interface Payment {
   clearedDebt: boolean
   /** The due date before it was advanced, if it was. */
   previousNextDue?: string
+  /** The ledger line this payment wrote, so undoing removes that too. */
+  ledgerEntryId?: string
   /** Settled automatically because its due date passed, rather than entered by hand. */
   auto?: boolean
 }

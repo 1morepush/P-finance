@@ -1,4 +1,17 @@
-import type { AppState } from '../types'
+import type { AppState, LedgerEntry } from '../types'
+
+/**
+ * Turns a list of signed amounts into ledger lines with stable ids, so the
+ * seeded tabs survive a reload and can be edited one line at a time.
+ */
+function tab(who: string, amounts: number[]): LedgerEntry[] {
+  return amounts.map((amount, i) => ({
+    id: `${who}-seed-${i}`,
+    date: '2026-09-17',
+    amount,
+    ...(amount < 0 ? { note: 'Payment' } : {}),
+  }))
+}
 
 // Source of truth: the debt dump supplied 2026-09-14.
 // Totals this data produces (verified against the source before seeding):
@@ -33,7 +46,7 @@ import type { AppState } from '../types'
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-14c'
+export const SEED_VERSION = '2026-09-17'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -301,15 +314,25 @@ export const seedState: AppState = {
       notes:
         'Revolving — no lender-set payoff date. Held flat at $212/mo it clears in about 57 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
     },
+    // The four running tabs, seeded line by line as supplied on 2026-09-17.
+    // No dates or descriptions came with the lines, so each is stamped with the
+    // day it was recorded and left for a note to be added — which is the whole
+    // point of keeping them itemised rather than as a total.
     {
       id: 'himeth',
       name: 'Himeth',
       product: 'personal',
       status: 'active',
       priorityTier: 4,
-      balance: 548.68,
+      balance: 866.54,
       apr: 0,
       nextDue: 'flexible',
+      ledger: tab('himeth', [
+        591, 15, 27, 7.19, 7.19, 6, 6, 21.5, -50, -50.95, -31.25, 317.86,
+      ]),
+      // $866.54 confirmed on 2026-09-17: the +$317.86 belongs, and the $548.68
+      // quoted alongside was the running total before it.
+      notes: 'Twelve lines as supplied, confirmed at $866.54.',
     },
     {
       id: 'liv',
@@ -317,9 +340,10 @@ export const seedState: AppState = {
       product: 'personal',
       status: 'active',
       priorityTier: 4,
-      balance: 378.08,
+      balance: 368.08,
       apr: 0,
       nextDue: 'flexible',
+      ledger: tab('liv', [664.64, -178.56, -74, -34, -10]),
     },
     {
       id: 'aiya',
@@ -330,6 +354,8 @@ export const seedState: AppState = {
       balance: 300.0,
       apr: 0,
       nextDue: 'flexible',
+      // Only a total was supplied, so the tab opens with one line to add to.
+      ledger: tab('aiya', [300]),
     },
     {
       id: 'yuuko',
@@ -340,6 +366,7 @@ export const seedState: AppState = {
       balance: 276.0,
       apr: 0,
       nextDue: 'flexible',
+      ledger: tab('yuuko', [276]),
     },
     {
       id: 'new_friend',

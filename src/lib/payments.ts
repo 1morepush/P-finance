@@ -1,4 +1,4 @@
-import type { AppState, Debt, Payment } from '../types'
+import type { AppState, Debt, LedgerEntry, Payment } from '../types'
 import { activeDebts } from './finance'
 import { PAYMENT_CADENCE, addDays, addMonths, isDate, today } from './schedule'
 import { uid } from './id'
@@ -45,6 +45,12 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
   const clears = remaining === 0
   const advanced = input.advanceDue && !clears ? nextDueAfter(debt) : null
 
+  // A debt kept as a running tab has to hear about this, or its lines and its
+  // balance start disagreeing — the tab's own sum is what the balance means.
+  const ledgerEntry: LedgerEntry | null = debt.ledger
+    ? { id: uid(), date: input.date, amount: -applied, note: 'Payment', fromBank: input.fromBank }
+    : null
+
   const payment: Payment = {
     id: uid(),
     debtId: debt.id,
@@ -55,6 +61,7 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
     clearedDebt: clears,
     ...(advanced ? { previousNextDue: debt.nextDue } : {}),
     ...(input.auto ? { auto: true } : {}),
+    ...(ledgerEntry ? { ledgerEntryId: ledgerEntry.id } : {}),
   }
 
   return {
@@ -69,6 +76,7 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
             balance: remaining,
             status: clears ? 'paid' : d.status,
             ...(advanced ? { nextDue: advanced } : {}),
+            ...(ledgerEntry ? { ledger: [...(d.ledger ?? []), ledgerEntry] } : {}),
           }
         : d,
     ),
@@ -130,6 +138,10 @@ export function undoPayment(state: AppState, paymentId: string, todayISO = today
             status: payment.clearedDebt ? 'active' : d.status,
             ...(payment.previousNextDue ? { nextDue: payment.previousNextDue } : {}),
             ...(restoresPastDue ? { autoMarkPaid: false } : {}),
+            // The line this payment wrote on the tab goes with it.
+            ...(payment.ledgerEntryId && d.ledger
+              ? { ledger: d.ledger.filter((e) => e.id !== payment.ledgerEntryId) }
+              : {}),
           }
         : d,
     ),
