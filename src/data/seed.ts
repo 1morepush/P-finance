@@ -47,9 +47,14 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 //   friend tabs        +$307.86   Himeth +$317.86, Liv −$10
 //   Delta instalment    +$52.85   the table held one payment; PayPal shows two
 //   Amazon Pay in 4    +$116.09   opened Sep 18
-//   Klarna Frontier    +$238.44   $317.92 less the Sep 12 payment
 // The figures at the top of this comment describe the original dump and are
 // left as the record of it; they are no longer what this file totals.
+//
+// "Klarna Flight and Tickets (Ohio)" is the Frontier flight, identified Sep 18
+// and renamed. It was nearly entered a second time: the remainder of that plan
+// is three payments of $74.49, and $74.49 x 3 is $223.47 — this balance, to the
+// cent. A merchant name that does not match the lender's label is how one debt
+// comes to be counted twice.
 /**
  * Bump whenever the figures below change. Devices carrying an older stamp are
  * offered the update rather than silently keeping their copy: saved state
@@ -260,7 +265,7 @@ export const seedState: AppState = {
     },
     {
       id: 'klarna_flight',
-      name: 'Klarna Flight and Tickets (Ohio)',
+      name: 'Klarna Frontier Airlines (Ohio)',
       product: 'klarna_pay_in_4',
       status: 'active',
       priorityTier: 2,
@@ -269,7 +274,8 @@ export const seedState: AppState = {
       monthlyPayment: 74.49,
       nextDue: '2026-09-30',
       finalPaymentDate: '2026-10-28',
-      notes: 'New this update. Three biweekly payments from Sep 30 land Oct 28 — the dates reconcile.',
+      notes:
+        'Identified Sep 18 as the Frontier flight — $302.95 in four, the first $79.48 paid Sep 12 and three of $74.49 left, which is exactly this balance. Those three run Sep 30, Oct 14 and Oct 28 and reconcile with each other; only the Sep 12 to Sep 30 gap is 18 days rather than 14. The $79.48 is not in the payment history: a plan whose first instalment differs from the rest cannot be modelled here, since a debt carries one payment amount. What is owed, when, and how much each time are all correct.',
     },
     {
       id: 'delta_airlines',
@@ -284,24 +290,6 @@ export const seedState: AppState = {
       finalPaymentDate: '2026-10-08',
       notes:
         "Read off PayPal on Sep 18: $211.40 in four, two paid, two left — Sep 22 and Oct 8. The table this app was seeded from had only the Oct 8 payment, so a whole instalment and its date were missing. PayPal's own two dates are 16 days apart rather than 14, so the biweekly projection lands the last one on Oct 6; Oct 8 is what the lender states, and the gap is flagged rather than smoothed.",
-    },
-    {
-      id: 'klarna_frontier',
-      name: 'Klarna Frontier Airlines',
-      product: 'klarna_pay_in_4',
-      status: 'active',
-      priorityTier: 2,
-      // The full plan, not the $238.44 that remains. The Sep 12 instalment is
-      // left for the app to settle on load, which records it as a payment in
-      // history — seeding the lowered balance instead would lose the fact that
-      // $79.48 was ever paid.
-      balance: 317.92,
-      apr: 0,
-      monthlyPayment: 79.48,
-      nextDue: '2026-09-12',
-      finalPaymentDate: '2026-10-24',
-      notes:
-        '$317.92 in four of $79.48. The first was paid Sep 12. Biweekly from there gives Sep 26, Oct 10 and Oct 24 — the app\'s own arithmetic rather than a Klarna statement, so confirm the dates against the plan.',
     },
     {
       id: 'amazon_pay_in_4',
