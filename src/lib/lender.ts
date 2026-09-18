@@ -7,7 +7,14 @@ import { projectPayments, type ScheduledPayment } from './schedule'
  * account, and a hardship call is made to Affirm, not to "Affirm Hotel Keihan
  * Tokyo" — so this is the grouping that call wants on screen.
  */
-export type Lender = 'PayPal' | 'Affirm' | 'Klarna' | 'Apple Card' | 'Event plans' | 'People'
+export type Lender =
+  | 'PayPal'
+  | 'Affirm'
+  | 'Klarna'
+  | 'Amazon'
+  | 'Apple Card'
+  | 'Event plans'
+  | 'People'
 
 const LENDER_OF: Record<DebtProduct, Lender> = {
   paypal_pay_monthly: 'PayPal',
@@ -15,6 +22,7 @@ const LENDER_OF: Record<DebtProduct, Lender> = {
   affirm_pay_monthly: 'Affirm',
   affirm_pay_in_4: 'Affirm',
   klarna_pay_in_4: 'Klarna',
+  amazon_pay_in_4: 'Amazon',
   credit_card: 'Apple Card',
   event_installment: 'Event plans',
   personal: 'People',

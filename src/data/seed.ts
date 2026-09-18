@@ -46,7 +46,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-18'
+export const SEED_VERSION = '2026-09-18b'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -274,6 +274,24 @@ export const seedState: AppState = {
       finalPaymentDate: '2026-10-08',
       notes:
         "Read off PayPal on Sep 18: $211.40 in four, two paid, two left — Sep 22 and Oct 8. The table this app was seeded from had only the Oct 8 payment, so a whole instalment and its date were missing. PayPal's own two dates are 16 days apart rather than 14, so the biweekly projection lands the last one on Oct 6; Oct 8 is what the lender states, and the gap is flagged rather than smoothed.",
+    },
+    {
+      id: 'amazon_pay_in_4',
+      name: 'Amazon Pay in 4',
+      product: 'amazon_pay_in_4',
+      status: 'active',
+      priorityTier: 2,
+      balance: 116.09,
+      apr: 0,
+      monthlyPayment: 29.02,
+      // Opened Sep 18 with the first of four due the same day. A due date equal
+      // to today is not treated as passed, so this stays owed rather than being
+      // assumed paid — which is right for a plan whose first payment may or may
+      // not have been taken at checkout.
+      nextDue: '2026-09-18',
+      finalPaymentDate: '2026-10-30',
+      notes:
+        '$116.09 in four biweekly payments of $29.02, the last $29.03. Opened Sep 18, running Sep 18, Oct 2, Oct 16, Oct 30 — these dates are the app\'s own arithmetic, not Amazon\'s statement, so confirm them against the order.',
     },
     {
       id: 'edco_tix_1',
