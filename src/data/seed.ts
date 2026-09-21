@@ -46,7 +46,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 // borrowing:
 //   friend tabs        +$307.86   Himeth +$317.86, Liv −$10
 //   Delta instalment    +$52.85   the table held one payment; PayPal shows two
-//   Amazon Pay in 4    +$116.09   opened Sep 18
+//   Klarna Amazon       +$97.50   $133.49 bought Sep 18, less the Sep 20 payment
 // The figures at the top of this comment describe the original dump and are
 // left as the record of it; they are no longer what this file totals.
 //
@@ -61,7 +61,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-18c'
+export const SEED_VERSION = '2026-09-21'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -293,21 +293,22 @@ export const seedState: AppState = {
     },
     {
       id: 'amazon_pay_in_4',
-      name: 'Amazon Pay in 4',
-      product: 'amazon_pay_in_4',
+      name: 'Klarna Amazon',
+      // Klarna, not Amazon's own plan. The merchant is Amazon; the lender is
+      // who a dispute or a hardship call goes to, and that is Klarna.
+      product: 'klarna_pay_in_4',
       status: 'active',
       priorityTier: 2,
-      balance: 116.09,
+      // What is left, not the $133.49 total: the Sep 20 instalment was $35.99
+      // against $32.50 for the other three, and a debt here carries one payment
+      // amount. Seeding the total would have projected five payments, not four.
+      balance: 97.5,
       apr: 0,
-      monthlyPayment: 29.02,
-      // Opened Sep 18 with the first of four due the same day. A due date equal
-      // to today is not treated as passed, so this stays owed rather than being
-      // assumed paid — which is right for a plan whose first payment may or may
-      // not have been taken at checkout.
-      nextDue: '2026-09-18',
-      finalPaymentDate: '2026-10-30',
+      monthlyPayment: 32.5,
+      nextDue: '2026-10-08',
+      finalPaymentDate: '2026-11-05',
       notes:
-        '$116.09 in four biweekly payments of $29.02, the last $29.03. Opened Sep 18, running Sep 18, Oct 2, Oct 16, Oct 30 — these dates are the app\'s own arithmetic, not Amazon\'s statement, so confirm them against the order.',
+        "Read off Klarna on Sep 21: $133.49 bought Sep 18, four payments, $35.99 paid Sep 20 and three of $32.50 left on Oct 8, Oct 22 and Nov 5. Those three are exactly biweekly and reconcile; only the Sep 20 to Oct 8 gap is 18 days, the same shape as the Frontier plan. Autopay is on, charging the Klarna balance first and then the card ending 0153. The $35.99 is not in the payment history — an uneven first instalment cannot be modelled here. Ref 1908110699029268.",
     },
     {
       id: 'edco_tix_1',

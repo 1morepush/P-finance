@@ -6,6 +6,12 @@ export type DebtProduct =
   | 'affirm_pay_monthly'
   | 'affirm_pay_in_4'
   | 'klarna_pay_in_4'
+  /**
+   * No seeded debt uses this: the Amazon purchase turned out to be a Klarna
+   * plan. Kept because a device holding the 2026-09-18 figures still has a debt
+   * stamped with it, and dropping the member would leave that debt with no
+   * label and no cadence until the next figures update is taken.
+   */
   | 'amazon_pay_in_4'
   | 'event_installment'
   | 'credit_card'

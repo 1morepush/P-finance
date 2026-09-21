@@ -11,6 +11,7 @@ export type Lender =
   | 'PayPal'
   | 'Affirm'
   | 'Klarna'
+  /** Unused by the seeded data — see the note on `amazon_pay_in_4`. */
   | 'Amazon'
   | 'Apple Card'
   | 'Event plans'
