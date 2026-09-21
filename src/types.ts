@@ -182,6 +182,13 @@ export interface Shift {
   gasCost: number
   /** Miles driven, if tracked — needed for the mileage deduction at tax time. */
   miles?: number
+  /**
+   * The range display before and after the shift. Kept rather than discarded
+   * once `miles` is derived from them, so reopening the shift shows what was
+   * actually read off the dash instead of only the figure it produced.
+   */
+  rangeStart?: number
+  rangeEnd?: number
   /** Hours online, if tracked — needed for net per hour. */
   hours?: number
   /** The net was added to the bank balance, so deleting it must take it back out. */

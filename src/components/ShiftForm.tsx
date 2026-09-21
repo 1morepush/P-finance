@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import type { Shift } from '../types'
+import type { Shift, Vehicle } from '../types'
 import { formatCurrency } from '../lib/finance'
 import { MILEAGE_RATE, type ShiftInput } from '../lib/gig'
+import { mpgFor, fuelFromRange } from '../lib/fuel'
 import { today } from '../lib/schedule'
 
 const inputStyle = {
@@ -14,10 +15,16 @@ const PLATFORMS = ['DoorDash', 'Uber Eats', 'Instacart', 'Grubhub', 'Amazon Flex
 
 export function ShiftForm({
   initial,
+  vehicle,
+  gasPrice,
   onSave,
   onCancel,
 }: {
   initial?: Shift
+  /** Needed to turn a range drop into gallons. Absent if no car is set up. */
+  vehicle?: Vehicle
+  /** Last price paid at the pump, for costing those gallons. */
+  gasPrice?: number
   onSave: (input: ShiftInput) => void
   onCancel: () => void
 }) {
@@ -27,12 +34,25 @@ export function ShiftForm({
   const [gasCost, setGasCost] = useState(initial ? String(initial.gasCost) : '')
   const [hours, setHours] = useState(initial?.hours ? String(initial.hours) : '')
   const [miles, setMiles] = useState(initial?.miles ? String(initial.miles) : '')
+  const [rangeStart, setRangeStart] = useState(initial?.rangeStart ? String(initial.rangeStart) : '')
+  const [rangeEnd, setRangeEnd] = useState(initial?.rangeEnd ? String(initial.rangeEnd) : '')
   const [addedToBank, setAddedToBank] = useState(initial?.addedToBank ?? true)
 
   const gross = Number(earnings) || 0
   const gas = Number(gasCost) || 0
   const hrs = Number(hours) || 0
-  const mi = Number(miles) || 0
+  const before = Number(rangeStart) || 0
+  const after = Number(rangeEnd) || 0
+
+  // The range pair is only readable once both are in and the car is known.
+  const used =
+    vehicle && rangeStart !== '' && rangeEnd !== ''
+      ? fuelFromRange(before, after, mpgFor(vehicle, vehicle.observedMpg ? 'observed' : 'combined'), gasPrice)
+      : null
+
+  // Typed miles win: the odometer is the real figure and the range only ever
+  // stood in for it. Left blank, the range fills the gap.
+  const mi = Number(miles) || (used && !used.refuelled ? Math.round(used.miles) : 0)
   const net = gross - gas
   const perHour = hrs > 0 ? net / hrs : null
 
@@ -49,6 +69,8 @@ export function ShiftForm({
           gasCost: gas,
           hours: hrs > 0 ? hrs : undefined,
           miles: mi > 0 ? mi : undefined,
+          ...(before > 0 ? { rangeStart: before } : {}),
+          ...(rangeEnd !== '' ? { rangeEnd: after } : {}),
           addedToBank,
         })
       }}
@@ -126,12 +148,12 @@ export function ShiftForm({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          Miles (optional)
+          Miles {used && !used.refuelled && miles === '' ? '(from range)' : '(optional)'}
           <input
             type="number"
             inputMode="decimal"
             step="0.1"
-            placeholder="0"
+            placeholder={used && !used.refuelled ? String(Math.round(used.miles)) : '0'}
             value={miles}
             onChange={(e) => setMiles(e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm"
@@ -139,6 +161,80 @@ export function ShiftForm({
           />
         </label>
       </div>
+
+      {/*
+        Two numbers off the dash, which is far less to capture than an odometer
+        pair, and enough to price the shift on its own — no fill-up needed.
+      */}
+      {vehicle && (
+        <div className="rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+          <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            Range on the dash
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Before
+              <input
+                type="number"
+                inputMode="decimal"
+                step="1"
+                placeholder="miles"
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={inputStyle}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              After
+              <input
+                type="number"
+                inputMode="decimal"
+                step="1"
+                placeholder="miles"
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={inputStyle}
+              />
+            </label>
+          </div>
+
+          {used?.refuelled && (
+            <p className="mt-2 text-xs" style={{ color: 'var(--status-warning)' }}>
+              The range went up, so you filled up during the shift. The drop cannot be read as
+              fuel used — put the miles in by hand.
+            </p>
+          )}
+
+          {used && !used.refuelled && used.rangeUsed > 0 && (
+            <div className="mt-2 flex flex-col gap-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Used this shift</span>
+                <span className="tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                  {Math.round(used.rangeUsed)} mi · {used.gallons.toFixed(1)} gal
+                  {used.cost !== null && ` · ${formatCurrency(used.cost)}`}
+                </span>
+              </div>
+              {used.cost === null && (
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Price it by running the fill-up calculator once — the pump price it remembers
+                  turns these gallons into dollars.
+                </p>
+              )}
+              {/* The miles hold whatever the mpg; the gallons do not. Saying which
+                  figure rests on the assumption is the difference between an
+                  estimate and a guess. */}
+              <p style={{ color: 'var(--text-muted)' }}>
+                Miles come straight from the range drop. The gallons divide it by{' '}
+                {used.mpg.toFixed(1)} MPG
+                {vehicle.observedMpg ? ' — your observed average' : ', the EPA combined figure'}
+                {!vehicle.observedMpg && ', so correct it from a real fill-up when you can'}.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <label className="flex items-center gap-2 text-sm">
         <input
