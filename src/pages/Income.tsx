@@ -497,6 +497,8 @@ export function Income({
         >
           <ShiftForm
             initial={shiftModal === 'new' ? undefined : shiftModal}
+            vehicle={state.vehicle}
+            gasPrice={state.lastGasPrice}
             onSave={saveShift}
             onCancel={() => showShift(null)}
           />

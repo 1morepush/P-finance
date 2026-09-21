@@ -99,3 +99,63 @@ export function impliedMpg(v: Vehicle, rangeMiles: number): number {
 export function fuelCostFor(miles: number, costPerMile: number): number {
   return Math.max(miles, 0) * costPerMile
 }
+
+export interface RangeUse {
+  /** How far the range display fell over the shift. */
+  rangeUsed: number
+  /**
+   * Miles driven, as the range drop implies.
+   *
+   * This is the sturdy figure here: it needs no mpg at all. The dash computes
+   * range as its own recent-average mpg times the fuel it senses, so when that
+   * average holds steady over a shift the range falls mile for mile with the
+   * odometer — whatever the average happens to be.
+   */
+  miles: number
+  /**
+   * Fuel that accounts for. Unlike the miles, this only holds if the mpg passed
+   * in is the one the car is using; an EPA figure against a car averaging
+   * something else gives the wrong gallons from the right range.
+   */
+  gallons: number
+  mpg: number
+  /** Null when no pump price is known yet. */
+  cost: number | null
+  /** The range rose. Fuel was bought mid-shift, so the drop is not consumption. */
+  refuelled: boolean
+}
+
+/**
+ * What a shift used, read off the range display before and after.
+ *
+ * Two numbers off the dash are far easier to capture than an odometer pair, and
+ * they answer the question a gig driver actually has — what did tonight cost to
+ * run — without needing a fill-up to have happened at all.
+ *
+ * The estimate degrades honestly: the miles hold whatever the mpg, the gallons
+ * need the right mpg, and the cost needs a price as well. Each is reported
+ * separately so a missing input removes one figure rather than corrupting all
+ * three.
+ */
+export function fuelFromRange(
+  rangeBefore: number,
+  rangeAfter: number,
+  mpg: number,
+  pricePerGallon?: number,
+): RangeUse {
+  const safeMpg = mpg > 0 ? mpg : 1
+  const drop = rangeBefore - rangeAfter
+  const refuelled = drop < 0
+  // A mid-shift fill-up makes the drop meaningless rather than negative, so it
+  // is reported as nothing used and flagged, not quietly turned positive.
+  const rangeUsed = refuelled ? 0 : drop
+  const gallons = rangeUsed / safeMpg
+  return {
+    rangeUsed,
+    miles: rangeUsed,
+    gallons,
+    mpg: safeMpg,
+    cost: pricePerGallon && pricePerGallon > 0 ? gallons * pricePerGallon : null,
+    refuelled,
+  }
+}
