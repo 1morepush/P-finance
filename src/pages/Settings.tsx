@@ -14,6 +14,7 @@ import {
 import { copyText, deliverFile } from '../lib/share'
 import { checkForUpdate } from '../lib/sw'
 import { SEED_VERSION } from '../data/seed'
+import { APP_VERSION, RELEASES } from '../version'
 
 export function Settings({
   state,
@@ -26,6 +27,7 @@ export function Settings({
   const [extra, setExtra] = useState('100')
   const [backupNote, setBackupNote] = useState<string | null>(null)
   const [updateNote, setUpdateNote] = useState<string | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
 
   const extraPerMonth = Number(extra) || 0
   const comparison = useMemo(() => compareStrategies(state, extraPerMonth), [state, extraPerMonth])
@@ -374,13 +376,29 @@ export function Settings({
         server for a newer one rather than waiting on the next check.
       */}
       <Card>
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          App version
-        </h2>
-        <p className="tabular-nums mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            App version
+          </h2>
+          <strong className="tabular-nums text-lg" style={{ color: 'var(--text-primary)' }}>
+            v{APP_VERSION}
+          </strong>
+        </div>
+
+        {/*
+          Two different things are versioned here and conflating them has
+          confused this before. The app is the code; the figures are the debt
+          balances, which get corrected on their own schedule when a lender
+          screen says something different.
+        */}
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {RELEASES[0].headline}
+        </p>
+        <p className="tabular-nums mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
           Built {__BUILD_STAMP__}
         </p>
-        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+
+        <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
           {/* Printed raw: versions carry suffixes like "2026-09-14c", which is
               not a date and must not be run through a date formatter. */}
           Figures on this device: {state.seedVersion}
@@ -440,6 +458,41 @@ export function Settings({
           <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
             {updateNote}
           </p>
+        )}
+
+        {/*
+          Folded away by default: it is reference, wanted only when something
+          looks different and the question is when that happened.
+        */}
+        <button
+          type="button"
+          onClick={() => setShowHistory((v) => !v)}
+          className="mt-3 w-full text-left text-xs"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {showHistory ? 'Hide' : 'Show'} what changed in each version
+        </button>
+        {showHistory && (
+          <ul className="mt-2 flex flex-col gap-2">
+            {RELEASES.map((r) => (
+              <li key={r.version} className="flex gap-2 text-xs">
+                <span
+                  className="tabular-nums w-7 shrink-0 font-medium"
+                  style={{ color: r.version === APP_VERSION ? 'var(--status-good)' : 'var(--text-muted)' }}
+                >
+                  {r.version}
+                </span>
+                <span className="min-w-0">
+                  <span className="block" style={{ color: 'var(--text-secondary)' }}>
+                    {r.headline}
+                  </span>
+                  <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    {formatDate(r.date)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
     </div>
