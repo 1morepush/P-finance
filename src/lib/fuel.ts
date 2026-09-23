@@ -134,6 +134,28 @@ export interface RangeUse {
    * zero in that case rather than guessed at.
    */
   unexplained: boolean
+  /**
+   * The miles came from readings alone, with no pump price involved.
+   *
+   * Worth flagging because the alternative is not merely less tidy: backing the
+   * gallons out of dollars uses the last price the app saw, and the same $40
+   * against a price that has since moved thirty cents swings the answer by
+   * about forty miles.
+   */
+  measured: boolean
+}
+
+/**
+ * The dash on both sides of a fill-up: what it read pulling in, and what it
+ * read pulling away.
+ *
+ * Both are needed, and that is less obvious than it looks — either one on its
+ * own cancels out of the arithmetic and leaves the estimate right back on the
+ * pump price. With the pair, what was burned is just the two legs added.
+ */
+export interface PumpStop {
+  atPump: number
+  afterPump: number
 }
 
 /**
@@ -159,19 +181,31 @@ export function fuelFromRange(
    * much went in puts it back on its feet.
    */
   gallonsAdded = 0,
+  /** The dash on both sides of the fill, when it was noted. */
+  stop?: PumpStop,
 ): RangeUse {
   const safeMpg = mpg > 0 ? mpg : 1
   const added = Math.max(gallonsAdded, 0)
-  const rangeAdded = added * safeMpg
+
+  // Two readings at the pump beat any amount of arithmetic: the range the fuel
+  // bought is simply the jump between them, so nothing needs converting.
+  const measured = !!stop
+  const rangeAdded = stop ? stop.afterPump - stop.atPump : added * safeMpg
 
   // What was burned is what the tank started with, plus what went in, less
-  // what is left — the same conservation the odometer would show.
+  // what is left — the same conservation the odometer would show. With a
+  // measured stop it reduces to the two legs added, which is the same sum
+  // written without the middle terms.
   const drop = rangeBefore + rangeAdded - rangeAfter
-  const refuelled = rangeAfter > rangeBefore
+  const refuelled = stop ? stop.afterPump > stop.atPump : rangeAfter > rangeBefore
   // Either the range rose with nothing to explain it, or more rose than the
-  // fuel bought accounts for. Both mean the two readings do not describe one
-  // shift, so nothing is reported rather than a figure that looks computed.
-  const unexplained = drop < 0
+  // fuel bought accounts for. With a stop, a leg running backwards says the
+  // same thing: the readings do not describe one shift. Nothing is reported
+  // rather than a figure that merely looks computed.
+  const legsBackwards = stop
+    ? stop.atPump > rangeBefore || rangeAfter > stop.afterPump
+    : false
+  const unexplained = drop < 0 || legsBackwards
 
   const rangeUsed = unexplained ? 0 : drop
   const gallons = rangeUsed / safeMpg
@@ -182,7 +216,8 @@ export function fuelFromRange(
     mpg: safeMpg,
     cost: pricePerGallon && pricePerGallon > 0 ? gallons * pricePerGallon : null,
     refuelled,
-    rangeAdded,
+    rangeAdded: unexplained ? 0 : rangeAdded,
     unexplained,
+    measured,
   }
 }

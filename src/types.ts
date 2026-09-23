@@ -189,6 +189,13 @@ export interface Shift {
    */
   rangeStart?: number
   rangeEnd?: number
+  /**
+   * The dash on both sides of a mid-shift fill-up. Either alone cancels out of
+   * the arithmetic, so they are only useful as a pair — with both, the shift is
+   * two legs of plain subtraction and the pump price stops mattering.
+   */
+  rangeAtPump?: number
+  rangeAfterPump?: number
   /** Hours online, if tracked — needed for net per hour. */
   hours?: number
   /** The net was added to the bank balance, so deleting it must take it back out. */

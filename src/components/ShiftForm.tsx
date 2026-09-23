@@ -36,6 +36,8 @@ export function ShiftForm({
   const [miles, setMiles] = useState(initial?.miles ? String(initial.miles) : '')
   const [rangeStart, setRangeStart] = useState(initial?.rangeStart ? String(initial.rangeStart) : '')
   const [rangeEnd, setRangeEnd] = useState(initial?.rangeEnd ? String(initial.rangeEnd) : '')
+  const [atPump, setAtPump] = useState(initial?.rangeAtPump ? String(initial.rangeAtPump) : '')
+  const [afterPump, setAfterPump] = useState(initial?.rangeAfterPump ? String(initial.rangeAfterPump) : '')
   const [addedToBank, setAddedToBank] = useState(initial?.addedToBank ?? true)
 
   const gross = Number(earnings) || 0
@@ -48,6 +50,13 @@ export function ShiftForm({
   // be accounted for rather than wrecking the reading.
   const gallonsAdded = gasPrice && gasPrice > 0 ? gas / gasPrice : 0
 
+  // Both pump readings or neither: one alone cancels straight back out of the
+  // arithmetic, so a half-filled pair would imply a precision it cannot deliver.
+  const stop =
+    atPump !== '' && afterPump !== ''
+      ? { atPump: Number(atPump) || 0, afterPump: Number(afterPump) || 0 }
+      : undefined
+
   // The range pair is only readable once both are in and the car is known.
   const used =
     vehicle && rangeStart !== '' && rangeEnd !== ''
@@ -57,6 +66,7 @@ export function ShiftForm({
           mpgFor(vehicle, vehicle.observedMpg ? 'observed' : 'combined'),
           gasPrice,
           gallonsAdded,
+          stop,
         )
       : null
 
@@ -81,6 +91,7 @@ export function ShiftForm({
           miles: mi > 0 ? mi : undefined,
           ...(before > 0 ? { rangeStart: before } : {}),
           ...(rangeEnd !== '' ? { rangeEnd: after } : {}),
+          ...(stop ? { rangeAtPump: stop.atPump, rangeAfterPump: stop.afterPump } : {}),
           addedToBank,
         })
       }}
@@ -210,13 +221,60 @@ export function ShiftForm({
             </label>
           </div>
 
+          {/*
+            Only useful as a pair, so they sit together and say so. Half a pair
+            is worse than none: it reads like extra precision while the estimate
+            quietly falls back on the pump price.
+          */}
+          <div className="mt-2">
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Stopped at the pump? Note the dash on both sides of the fill and the price stops
+              mattering.
+            </p>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Pulling in
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  placeholder="miles"
+                  value={atPump}
+                  onChange={(e) => setAtPump(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Pulling away
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  placeholder="miles"
+                  value={afterPump}
+                  onChange={(e) => setAfterPump(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+            {(atPump !== '') !== (afterPump !== '') && (
+              <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Both, or neither — one on its own cancels out and changes nothing.
+              </p>
+            )}
+          </div>
+
           {used?.unexplained && (
             <p className="mt-2 text-xs" style={{ color: 'var(--status-warning)' }}>
-              {gasPrice && gasPrice > 0
-                ? gas > 0
-                  ? `The range rose by more than ${formatCurrency(gas)} of fuel explains. Check the two readings and what you paid.`
-                  : 'The range went up, so you filled up during the shift. Put what you paid in Gas ($) and this works itself out.'
-                : 'The range went up, so you filled up during the shift. Run the fill-up calculator once so the app knows the pump price, and this works itself out.'}
+              {stop
+                ? 'These four readings do not run in order. The pump ones sit between the start and the end, and the range only rises while fuel is going in.'
+                : gasPrice && gasPrice > 0
+                  ? gas > 0
+                    ? `The range rose by more than ${formatCurrency(gas)} of fuel explains. Check the two readings and what you paid, or note the dash on both sides of the fill.`
+                    : 'The range went up, so you filled up during the shift. Put what you paid in Gas ($), or note the dash on both sides of the fill.'
+                  : 'The range went up, so you filled up during the shift. Note the dash on both sides of the fill, and no pump price is needed.'}
             </p>
           )}
 
@@ -237,9 +295,9 @@ export function ShiftForm({
               )}
               {used.refuelled && (
                 <p style={{ color: 'var(--text-muted)' }}>
-                  Counting the {Math.round(used.rangeAdded)} miles of range the{' '}
-                  {formatCurrency(gas)} of fuel put back — started on {Math.round(before)},
-                  ended on {Math.round(after)}.
+                  {used.measured
+                    ? `Two legs added: ${Math.round(before - (stop?.atPump ?? 0))} miles before the pump and ${Math.round((stop?.afterPump ?? 0) - after)} after. The fill put back ${Math.round(used.rangeAdded)} miles, measured off the dash rather than worked out from the price.`
+                    : `Counting the ${Math.round(used.rangeAdded)} miles of range the ${formatCurrency(gas)} of fuel put back — started on ${Math.round(before)}, ended on ${Math.round(after)}.`}
                 </p>
               )}
               {/* The miles hold whatever the mpg; the gallons do not. Saying which
