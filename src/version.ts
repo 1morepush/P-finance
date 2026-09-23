@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '4.7',
+    date: '2026-09-23',
+    headline: 'Plainer names for the four range readings on a shift',
+  },
+  {
     version: '4.6',
     date: '2026-09-23',
     headline: 'Version numbers, so you can tell what you have and what changed',
