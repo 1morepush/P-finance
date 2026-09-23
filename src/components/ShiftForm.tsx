@@ -44,15 +44,25 @@ export function ShiftForm({
   const before = Number(rangeStart) || 0
   const after = Number(rangeEnd) || 0
 
+  // What the Gas ($) on this shift bought, so a mid-shift stop at the pump can
+  // be accounted for rather than wrecking the reading.
+  const gallonsAdded = gasPrice && gasPrice > 0 ? gas / gasPrice : 0
+
   // The range pair is only readable once both are in and the car is known.
   const used =
     vehicle && rangeStart !== '' && rangeEnd !== ''
-      ? fuelFromRange(before, after, mpgFor(vehicle, vehicle.observedMpg ? 'observed' : 'combined'), gasPrice)
+      ? fuelFromRange(
+          before,
+          after,
+          mpgFor(vehicle, vehicle.observedMpg ? 'observed' : 'combined'),
+          gasPrice,
+          gallonsAdded,
+        )
       : null
 
   // Typed miles win: the odometer is the real figure and the range only ever
   // stood in for it. Left blank, the range fills the gap.
-  const mi = Number(miles) || (used && !used.refuelled ? Math.round(used.miles) : 0)
+  const mi = Number(miles) || (used && !used.unexplained ? Math.round(used.miles) : 0)
   const net = gross - gas
   const perHour = hrs > 0 ? net / hrs : null
 
@@ -148,12 +158,12 @@ export function ShiftForm({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          Miles {used && !used.refuelled && miles === '' ? '(from range)' : '(optional)'}
+          Miles {used && !used.unexplained && miles === '' ? '(from range)' : '(optional)'}
           <input
             type="number"
             inputMode="decimal"
             step="0.1"
-            placeholder={used && !used.refuelled ? String(Math.round(used.miles)) : '0'}
+            placeholder={used && !used.unexplained ? String(Math.round(used.miles)) : '0'}
             value={miles}
             onChange={(e) => setMiles(e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm"
@@ -200,14 +210,17 @@ export function ShiftForm({
             </label>
           </div>
 
-          {used?.refuelled && (
+          {used?.unexplained && (
             <p className="mt-2 text-xs" style={{ color: 'var(--status-warning)' }}>
-              The range went up, so you filled up during the shift. The drop cannot be read as
-              fuel used — put the miles in by hand.
+              {gasPrice && gasPrice > 0
+                ? gas > 0
+                  ? `The range rose by more than ${formatCurrency(gas)} of fuel explains. Check the two readings and what you paid.`
+                  : 'The range went up, so you filled up during the shift. Put what you paid in Gas ($) and this works itself out.'
+                : 'The range went up, so you filled up during the shift. Run the fill-up calculator once so the app knows the pump price, and this works itself out.'}
             </p>
           )}
 
-          {used && !used.refuelled && used.rangeUsed > 0 && (
+          {used && !used.unexplained && used.rangeUsed > 0 && (
             <div className="mt-2 flex flex-col gap-1 text-xs">
               <div className="flex items-center justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Used this shift</span>
@@ -220,6 +233,13 @@ export function ShiftForm({
                 <p style={{ color: 'var(--text-muted)' }}>
                   Price it by running the fill-up calculator once — the pump price it remembers
                   turns these gallons into dollars.
+                </p>
+              )}
+              {used.refuelled && (
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Counting the {Math.round(used.rangeAdded)} miles of range the{' '}
+                  {formatCurrency(gas)} of fuel put back — started on {Math.round(before)},
+                  ended on {Math.round(after)}.
                 </p>
               )}
               {/* The miles hold whatever the mpg; the gallons do not. Saying which

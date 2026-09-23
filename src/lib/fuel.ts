@@ -121,8 +121,19 @@ export interface RangeUse {
   mpg: number
   /** Null when no pump price is known yet. */
   cost: number | null
-  /** The range rose. Fuel was bought mid-shift, so the drop is not consumption. */
+  /** The range ended higher than it started, so fuel went in during the shift. */
   refuelled: boolean
+  /**
+   * Range the fill-up put back, which is what makes a mid-shift stop readable
+   * rather than fatal to the estimate.
+   */
+  rangeAdded: number
+  /**
+   * The readings cannot be made to balance — the range rose with no fuel
+   * accounted for, or more rose than the fuel bought explains. Every figure is
+   * zero in that case rather than guessed at.
+   */
+  unexplained: boolean
 }
 
 /**
@@ -142,13 +153,27 @@ export function fuelFromRange(
   rangeAfter: number,
   mpg: number,
   pricePerGallon?: number,
+  /**
+   * Fuel put in during the shift. Stopping at the pump mid-shift raises the
+   * range, which would otherwise make the whole reading unusable — knowing how
+   * much went in puts it back on its feet.
+   */
+  gallonsAdded = 0,
 ): RangeUse {
   const safeMpg = mpg > 0 ? mpg : 1
-  const drop = rangeBefore - rangeAfter
-  const refuelled = drop < 0
-  // A mid-shift fill-up makes the drop meaningless rather than negative, so it
-  // is reported as nothing used and flagged, not quietly turned positive.
-  const rangeUsed = refuelled ? 0 : drop
+  const added = Math.max(gallonsAdded, 0)
+  const rangeAdded = added * safeMpg
+
+  // What was burned is what the tank started with, plus what went in, less
+  // what is left — the same conservation the odometer would show.
+  const drop = rangeBefore + rangeAdded - rangeAfter
+  const refuelled = rangeAfter > rangeBefore
+  // Either the range rose with nothing to explain it, or more rose than the
+  // fuel bought accounts for. Both mean the two readings do not describe one
+  // shift, so nothing is reported rather than a figure that looks computed.
+  const unexplained = drop < 0
+
+  const rangeUsed = unexplained ? 0 : drop
   const gallons = rangeUsed / safeMpg
   return {
     rangeUsed,
@@ -157,5 +182,7 @@ export function fuelFromRange(
     mpg: safeMpg,
     cost: pricePerGallon && pricePerGallon > 0 ? gallons * pricePerGallon : null,
     refuelled,
+    rangeAdded,
+    unexplained,
   }
 }
