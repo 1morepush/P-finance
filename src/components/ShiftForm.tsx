@@ -154,6 +154,17 @@ export function ShiftForm({
         </label>
       </div>
 
+      {/*
+        The question this answers: gas bought on a day off. It is not a cost of
+        driving for work, and it needs no special handling either — a later
+        dash starts with that fuel already in the tank, so the range drop over
+        that dash never counts it.
+      */}
+      <p className="-mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        Gas ($) is only what you pumped during this dash. Leave out fuel bought on a day you did
+        not drive — the range readings already have it sitting in the tank.
+      </p>
+
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
           Hours (optional)
@@ -190,11 +201,11 @@ export function ShiftForm({
       {vehicle && (
         <div className="rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
           <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            Range on the dash
+            Miles of range showing on the dash
           </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              Before
+              Start of dash
               <input
                 type="number"
                 inputMode="decimal"
@@ -207,7 +218,7 @@ export function ShiftForm({
               />
             </label>
             <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              After
+              End of dash
               <input
                 type="number"
                 inputMode="decimal"
@@ -226,14 +237,22 @@ export function ShiftForm({
             is worse than none: it reads like extra precision while the estimate
             quietly falls back on the pump price.
           */}
-          <div className="mt-2">
-            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Stopped at the pump? Note the dash on both sides of the fill and the price stops
-              mattering.
+          <div className="mt-3">
+            {/*
+              "Pulling in" and "pulling away" read as cute rather than clear —
+              nothing in either phrase says gas station. The heading carries
+              the place, so the two labels only have to carry the moment.
+            */}
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              Only if you stopped for gas mid-dash
+            </p>
+            <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Glance at the dash when you pull up to the pump and again before you drive off. With
+              both, what you paid stops mattering.
             </p>
             <div className="mt-1 grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Pulling in
+                Before filling
                 <input
                   type="number"
                   inputMode="decimal"
@@ -246,7 +265,7 @@ export function ShiftForm({
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Pulling away
+                After filling
                 <input
                   type="number"
                   inputMode="decimal"
@@ -261,7 +280,7 @@ export function ShiftForm({
             </div>
             {(atPump !== '') !== (afterPump !== '') && (
               <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Both, or neither — one on its own cancels out and changes nothing.
+                Fill in both or neither — one on its own cancels out and changes nothing.
               </p>
             )}
           </div>
@@ -269,12 +288,12 @@ export function ShiftForm({
           {used?.unexplained && (
             <p className="mt-2 text-xs" style={{ color: 'var(--status-warning)' }}>
               {stop
-                ? 'These four readings do not run in order. The pump ones sit between the start and the end, and the range only rises while fuel is going in.'
+                ? 'These four readings do not run in order. The two pump ones belong between the start and the end of the dash, and the range only climbs while fuel is going in.'
                 : gasPrice && gasPrice > 0
                   ? gas > 0
-                    ? `The range rose by more than ${formatCurrency(gas)} of fuel explains. Check the two readings and what you paid, or note the dash on both sides of the fill.`
-                    : 'The range went up, so you filled up during the shift. Put what you paid in Gas ($), or note the dash on both sides of the fill.'
-                  : 'The range went up, so you filled up during the shift. Note the dash on both sides of the fill, and no pump price is needed.'}
+                    ? `The range rose by more than ${formatCurrency(gas)} of fuel explains. Check the two readings and what you paid, or fill in the two pump readings above.`
+                    : 'The range went up, so you stopped for gas during the dash. Put what you paid in Gas ($), or fill in the two pump readings above.'
+                  : 'The range went up, so you stopped for gas during the dash. Fill in the two pump readings above and no pump price is needed.'}
             </p>
           )}
 
@@ -296,7 +315,7 @@ export function ShiftForm({
               {used.refuelled && (
                 <p style={{ color: 'var(--text-muted)' }}>
                   {used.measured
-                    ? `Two legs added: ${Math.round(before - (stop?.atPump ?? 0))} miles before the pump and ${Math.round((stop?.afterPump ?? 0) - after)} after. The fill put back ${Math.round(used.rangeAdded)} miles, measured off the dash rather than worked out from the price.`
+                    ? `Two legs added: ${Math.round(before - (stop?.atPump ?? 0))} miles driving to the pump, ${Math.round((stop?.afterPump ?? 0) - after)} after it. The fill put back ${Math.round(used.rangeAdded)} miles, read off the dash rather than worked out from the price.`
                     : `Counting the ${Math.round(used.rangeAdded)} miles of range the ${formatCurrency(gas)} of fuel put back — started on ${Math.round(before)}, ended on ${Math.round(after)}.`}
                 </p>
               )}
