@@ -16,6 +16,7 @@ import {
   type Dedupe,
 } from './lib/payments'
 import { applyUpdate, subscribeUpdate } from './lib/sw'
+import { APP_VERSION, releasesSince } from './version'
 
 function App() {
   const [state, setState, persisted] = useAppState()
@@ -72,8 +73,13 @@ function App() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-md" style={{ background: 'var(--surface-page)' }}>
-      <header className="sticky top-0 z-10 border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
+      <header className="sticky top-0 z-10 flex items-baseline justify-between border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
         <h1 className="text-base font-semibold">P-Finance</h1>
+        {/* Which build is on this phone, answerable without opening Settings —
+            the question comes up every time something is deployed. */}
+        <span className="tabular-nums text-xs" style={{ color: 'var(--text-muted)' }}>
+          v{APP_VERSION}
+        </span>
       </header>
 
       {updateReady && (
@@ -85,8 +91,10 @@ function App() {
             <h2 className="text-sm font-semibold" style={{ color: 'var(--cat-installment)' }}>
               A newer version is ready
             </h2>
+            {/* Only the version being replaced can be named: the running bundle
+                has no way to know the number of the one waiting to load. */}
             <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-              This screen is still running the old one.
+              This screen is still on v{APP_VERSION}. Reload to see what changed.
             </p>
           </div>
           <button
@@ -97,6 +105,42 @@ function App() {
           >
             Reload
           </button>
+        </div>
+      )}
+
+      {/*
+        What the reload actually brought. Without this an update is only ever
+        felt as things having silently moved; the point of numbering them is
+        being able to say what arrived.
+      */}
+      {!updateReady && state.lastSeenVersion !== APP_VERSION && (
+        <div
+          className="mx-4 mt-4 rounded-xl border p-3"
+          style={{ background: 'var(--surface-card)', borderColor: 'var(--status-good)' }}
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--status-good)' }}>
+              Updated to v{APP_VERSION}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setState((s) => ({ ...s, lastSeenVersion: APP_VERSION }))}
+              className="shrink-0 text-xs"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Got it
+            </button>
+          </div>
+          <ul className="mt-2 flex flex-col gap-1">
+            {releasesSince(state.lastSeenVersion).map((r) => (
+              <li key={r.version} className="flex gap-2 text-xs">
+                <span className="tabular-nums shrink-0" style={{ color: 'var(--text-muted)' }}>
+                  {r.version}
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>{r.headline}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

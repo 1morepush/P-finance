@@ -280,6 +280,12 @@ export interface AppState {
   seedVersion?: string
   /** A seed version the user chose to skip, so it is not offered again. */
   skippedSeedVersion?: string
+  /**
+   * The app version whose changes this device has already been shown. Absent
+   * on data saved before versions existed, which reads as "has not seen this
+   * one" — correct, since it hasn't.
+   */
+  lastSeenVersion?: string
   bankBalance: BankBalance
   savingsBalance: number
   debts: Debt[]

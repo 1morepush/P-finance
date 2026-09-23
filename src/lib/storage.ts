@@ -3,6 +3,7 @@ import type { AppState } from '../types'
 import { SEED_DATE, SEED_VERSION, seedState } from '../data/seed'
 import { replayManualPayments } from './payments'
 import { today } from './schedule'
+import { APP_VERSION } from '../version'
 
 // v2 introduced products, priority tiers, `potential` status and the cleared-debt
 // log. The key is versioned so a v1 payload is never read as a v2 shape — a stale
@@ -47,7 +48,11 @@ function loadState(): AppState {
     } catch {
       // Nothing to clean up if storage is unreachable.
     }
-    return seedState
+    // A device opening the app for the first time did not update to this
+    // version, it started on it — so stamp the version rather than greet a
+    // first-time user with a list of what changed since a version they never
+    // had.
+    return { ...seedState, lastSeenVersion: APP_VERSION }
   }
   try {
     const parsed = JSON.parse(raw)
