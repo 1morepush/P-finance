@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '6.1',
+    date: '2026-09-28',
+    headline: 'Figures updated to Sep 28, and your subscriptions counted as living costs',
+  },
+  {
     version: '6.0',
     date: '2026-09-28',
     headline: 'Estimate a FedEx paycheck after tax, see where it goes, and what DoorDash or Depop covers the gap',

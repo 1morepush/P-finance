@@ -170,6 +170,12 @@ export function applySeedUpdate(state: AppState): AppState {
   // still refreshed from them.
   const seeded = new Set(seedState.incomeSources.map((s) => s.id))
   next.incomeSources = [...next.incomeSources, ...state.incomeSources.filter((s) => !seeded.has(s.id))]
+  // Living costs are the device's own list, so the figures only ever add to
+  // it: a cost they carry that this device lacks is added, and nothing already
+  // here is replaced or removed. Without this, costs supplied with the figures
+  // reached a fresh install and never a phone that had opened the app before.
+  const held = new Set(state.expenses.map((e) => e.id))
+  next.expenses = [...state.expenses, ...seedState.expenses.filter((e) => !held.has(e.id))]
   return replayManualPayments(next, SEED_DATE)
 }
 
