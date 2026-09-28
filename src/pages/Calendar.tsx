@@ -32,6 +32,8 @@ import {
 
 /** How far ahead the itemised list runs before collapsing into the payoff summary. */
 const DETAIL_MONTHS = 6
+/** Month grids shown before "Show more" — this month and the next five. */
+const STACKED_MONTHS = 6
 
 /** How far into the following month each month block looks ahead. */
 const LOOKAHEAD_DAYS = 14
@@ -44,8 +46,16 @@ export function Calendar({
   setState: React.Dispatch<React.SetStateAction<AppState>>
 }) {
   const now = today()
-  const [gridMonth, setGridMonth] = useState(now.slice(0, 7))
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const thisMonth = now.slice(0, 7)
+  // Months stacked and scrolled rather than stepped through one at a time:
+  // comparing one month's bills with the next's shouldn't mean tapping back
+  // and forth. Starts at this month; more load on request in either direction.
+  const [monthsBefore, setMonthsBefore] = useState(0)
+  const [monthsAfter, setMonthsAfter] = useState(STACKED_MONTHS - 1)
+  // The month a day was tapped in, not just the date: the last days of one
+  // month also appear at the top of the next, and the detail should open
+  // under the grid that was actually tapped.
+  const [selected, setSelected] = useState<{ month: string; date: string } | null>(null)
   // Unconfirmed debts are included so nothing is a surprise, but every total
   // separates them out from the confirmed figure.
   // Subscriptions with a due date come out of the same account on the same
@@ -55,6 +65,10 @@ export function Calendar({
   // The lists below it stay forward-looking — they answer "what do I owe".
   const entries = useMemo(() => calendarEntries(state, true), [state])
   const firstMonth = earliestMonth(entries)
+  const stackStart = addMonths(`${thisMonth}-01`, -monthsBefore).slice(0, 7)
+  const stack = Array.from({ length: monthsBefore + 1 + monthsAfter }, (_, i) =>
+    addMonths(`${stackStart}-01`, i).slice(0, 7),
+  )
   const [exported, setExported] = useState<string | null>(null)
 
   // Past due and still standing: owed now, and part of every window. Each
@@ -134,75 +148,10 @@ export function Calendar({
         )}
       </Card>
 
+      {/* The key and the export sit above the months they describe. */}
       <Card>
-        <MonthGrid
-          month={gridMonth}
-          entries={entries}
-          today={now}
-          selected={selectedDay}
-          onSelect={setSelectedDay}
-          onMonthChange={(m) => {
-            setGridMonth(m)
-            setSelectedDay(null)
-          }}
-          onPay={(e) =>
-            // Routed through applyPayment like any other, so it lands in history
-            // and can be undone from the Debts tab.
-            //
-            // Dated today when the instalment is still ahead: tapping a future
-            // one means paying it early, and stamping it with its own due date
-            // would put a payment in the future — which the progress chart then
-            // plots to the right of today and draws backwards.
-            setState((s) =>
-              applyPayment(s, {
-                debtId: e.debtId,
-                amount: e.amount,
-                date: e.date > now ? now : e.date,
-                fromBank: true,
-                advanceDue: true,
-              }),
-            )
-          }
-          onUndo={(paymentId) => setState((s) => undoPayment(s, paymentId))}
-        />
-        {gridMonth !== now.slice(0, 7) && (
-          <button
-            type="button"
-            onClick={() => {
-              setGridMonth(now.slice(0, 7))
-              setSelectedDay(null)
-            }}
-            className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
-            style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
-          >
-            Back to this month
-          </button>
-        )}
-        {/* Nothing in the header says the arrows go backwards as well as
-            forwards, and a month of settled payments is easy to never find. */}
-        {firstMonth && firstMonth < now.slice(0, 7) && (
-          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            History runs back to {formatMonth(firstMonth)} — tap ‹ to look at what has already been
-            paid.
-          </p>
-        )}
-
-        {/* Reminders that fire whether or not this app is ever opened again. */}
-        <button
-          type="button"
-          onClick={() => void exportCalendar()}
-          className="mt-3 w-full rounded-lg py-2 text-xs font-medium"
-          style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
-        >
-          Add the next year of payments to my phone's calendar
-        </button>
-        {exported && (
-          <p className="mt-2 text-[11px]" style={{ color: 'var(--status-good)' }}>
-            ✓ {exported}
-          </p>
-        )}
         <div
-          className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px]"
+          className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]"
           style={{ color: 'var(--text-muted)' }}
         >
           {[
@@ -229,7 +178,73 @@ export function Calendar({
             Today
           </span>
         </div>
+
+        {/* Reminders that fire whether or not this app is ever opened again. */}
+        <button
+          type="button"
+          onClick={() => void exportCalendar()}
+          className="mt-3 w-full rounded-lg py-2 text-xs font-medium"
+          style={{ background: 'var(--surface-page)', color: 'var(--text-primary)' }}
+        >
+          Add the next year of payments to my phone's calendar
+        </button>
+        {exported && (
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--status-good)' }}>
+            ✓ {exported}
+          </p>
+        )}
       </Card>
+
+      {firstMonth && firstMonth < stackStart && (
+        <button
+          type="button"
+          onClick={() => setMonthsBefore((n) => n + 3)}
+          className="w-full rounded-lg py-2 text-xs font-medium"
+          style={{ background: 'var(--surface-card)', color: 'var(--text-secondary)' }}
+        >
+          Show earlier months — history runs back to {formatMonth(firstMonth)}
+        </button>
+      )}
+
+      {stack.map((m) => (
+        <Card key={m}>
+          <MonthGrid
+            month={m}
+            entries={entries}
+            today={now}
+            selected={selected?.month === m ? selected.date : null}
+            onSelect={(date) => setSelected(date ? { month: m, date } : null)}
+            onPay={(e) =>
+              // Routed through applyPayment like any other, so it lands in history
+              // and can be undone from the Debts tab.
+              //
+              // Dated today when the instalment is still ahead: tapping a future
+              // one means paying it early, and stamping it with its own due date
+              // would put a payment in the future — which the progress chart then
+              // plots to the right of today and draws backwards.
+              setState((s) =>
+                applyPayment(s, {
+                  debtId: e.debtId,
+                  amount: e.amount,
+                  date: e.date > now ? now : e.date,
+                  fromBank: true,
+                  advanceDue: true,
+                }),
+              )
+            }
+            onUndo={(paymentId) => setState((s) => undoPayment(s, paymentId))}
+          />
+        </Card>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => setMonthsAfter((n) => n + STACKED_MONTHS)}
+        className="w-full rounded-lg py-2 text-xs font-medium"
+        style={{ background: 'var(--surface-card)', color: 'var(--text-secondary)' }}
+      >
+        Show {STACKED_MONTHS} more months
+      </button>
 
       {months.length === 0 && (
         <Card>

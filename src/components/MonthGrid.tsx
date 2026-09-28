@@ -58,7 +58,8 @@ export function MonthGrid({
   today: string
   selected: string | null
   onSelect: (date: string | null) => void
-  onMonthChange: (month: string) => void
+  /** Arrows to step months. Omitted where months are stacked and scrolled instead. */
+  onMonthChange?: (month: string) => void
   /** Logs one scheduled payment as made. Omitted where the grid is read-only. */
   onPay?: (entry: CalendarEntry) => void
   /** Reverses a logged payment. Omitted where the grid is read-only. */
@@ -80,6 +81,7 @@ export function MonthGrid({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
+        {onMonthChange ? (
         <button
           type="button"
           onClick={() => onMonthChange(previousMonth(month))}
@@ -89,6 +91,9 @@ export function MonthGrid({
         >
           ‹
         </button>
+        ) : (
+          <span className="w-7" />
+        )}
         <div className="text-center">
           <div className="text-sm font-semibold">{formatMonth(month)}</div>
           {/* A past month has nothing due, a future one nothing paid, and the
@@ -103,6 +108,7 @@ export function MonthGrid({
             {totals.paid === 0 && totals.due === 0 && 'Nothing this month'}
           </div>
         </div>
+        {onMonthChange ? (
         <button
           type="button"
           onClick={() => onMonthChange(nextMonth(month))}
@@ -112,6 +118,9 @@ export function MonthGrid({
         >
           ›
         </button>
+        ) : (
+          <span className="w-7" />
+        )}
       </div>
 
       <div className="grid grid-cols-7 gap-1">

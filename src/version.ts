@@ -29,7 +29,7 @@ export const RELEASES: readonly Release[] = [
   {
     version: '6.3',
     date: '2026-09-28',
-    headline: 'The calendar shows the rest of the week into the next month',
+    headline: 'The calendar scrolls through the months, each week shown in full',
   },
   {
     version: '6.2',
