@@ -18,19 +18,29 @@ const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
  * Lays a month out as weeks of ISO dates, padded with nulls so the 1st lands on
  * its real weekday. Weeks start Sunday.
  */
-function buildWeeks(month: string): (string | null)[][] {
+/**
+ * The month as whole Sunday-to-Saturday weeks. The first and last rows are
+ * filled out with the neighbouring months' real dates rather than left blank:
+ * a week that starts in one month and ends in the next is still one week of
+ * bills, and blanking half of it hid what was due days away.
+ */
+function buildWeeks(month: string): string[][] {
   const [y, m] = month.split('-').map(Number)
-  const leading = new Date(Date.UTC(y, m - 1, 1)).getUTCDay()
+  const first = new Date(Date.UTC(y, m - 1, 1))
   const days = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  const leading = first.getUTCDay()
+  const total = Math.ceil((leading + days) / 7) * 7
 
-  const cells: (string | null)[] = Array(leading).fill(null)
-  for (let d = 1; d <= days; d++) cells.push(`${month}-${String(d).padStart(2, '0')}`)
-  while (cells.length % 7 !== 0) cells.push(null)
-
-  const weeks: (string | null)[][] = []
+  const cells: string[] = []
+  for (let i = 0; i < total; i++) {
+    cells.push(new Date(Date.UTC(y, m - 1, 1 + i - leading)).toISOString().slice(0, 10))
+  }
+  const weeks: string[][] = []
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
   return weeks
 }
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function MonthGrid({
   month,
@@ -115,8 +125,12 @@ export function MonthGrid({
           </div>
         ))}
 
-        {weeks.flat().map((date, i) => {
-          if (!date) return <div key={`pad-${i}`} />
+        {weeks.flat().map((date, i, all) => {
+          // A day from the month before or after, filling out a partial week.
+          const outside = !date.startsWith(month)
+          // Named on the first such day of each run — "Oct 1", "Aug 30" — so
+          // the change of month is read, not inferred from a smaller number.
+          const namesMonth = outside && (i === 0 || all[i - 1].slice(0, 7) !== date.slice(0, 7))
 
           const items = byDate.get(date) ?? []
           const total = sumEntries(items)
@@ -136,13 +150,20 @@ export function MonthGrid({
               style={{
                 background: isSelected
                   ? 'var(--cat-installment)'
-                  : has
+                  : has && !outside
                     ? 'var(--surface-page)'
                     : 'transparent',
-                // Today keeps a ring so it stays findable even when another day is open.
-                outline: isToday ? '1.5px solid var(--status-good)' : 'none',
-                outlineOffset: '-1.5px',
-                opacity: isPast && !has ? 0.35 : 1,
+                // Today keeps a ring so it stays findable even when another day
+                // is open. A neighbouring month's day with something on it gets
+                // a dashed one instead of the solid tile, so it reads as "not
+                // this month" while still showing what is due.
+                outline: isToday
+                  ? '1.5px solid var(--status-good)'
+                  : outside && has && !isSelected
+                    ? '1px dashed var(--text-muted)'
+                    : 'none',
+                outlineOffset: isToday ? '-1.5px' : '-1px',
+                opacity: isSelected || isToday ? 1 : outside ? (has ? 0.7 : 0.3) : isPast && !has ? 0.35 : 1,
               }}
             >
               <span
@@ -153,9 +174,11 @@ export function MonthGrid({
                     : isToday
                       ? 'var(--status-good)'
                       : 'var(--text-primary)',
-                  fontWeight: isToday || has ? 600 : 400,
+                  fontWeight: isToday || (has && !outside) ? 600 : 400,
+                  fontStyle: outside ? 'italic' : undefined,
                 }}
               >
+                {namesMonth && `${MONTH_ABBR[Number(date.slice(5, 7)) - 1]} `}
                 {Number(date.slice(8))}
               </span>
 
