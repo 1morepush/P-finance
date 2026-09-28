@@ -7,6 +7,7 @@ import { ShiftForm } from '../components/ShiftForm'
 import { ExpenseForm } from '../components/ExpenseForm'
 import { FuelCard } from '../components/FuelCard'
 import { PaycheckCard } from '../components/PaycheckCard'
+import { PaycheckPlanCard } from '../components/PaycheckPlanCard'
 import { formatCurrency, formatDate } from '../lib/finance'
 import {
   addExpense,
@@ -169,6 +170,7 @@ export function Income({
       </div>
 
       <PaycheckCard state={state} setState={setState} />
+      <PaycheckPlanCard state={state} setState={setState} />
 
       <div className="mt-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>

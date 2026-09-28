@@ -29,7 +29,7 @@ export const RELEASES: readonly Release[] = [
   {
     version: '6.0',
     date: '2026-09-28',
-    headline: 'Estimate a FedEx paycheck after tax, and add it to your income',
+    headline: 'Estimate a FedEx paycheck after tax, see where it goes, and what DoorDash or Depop covers the gap',
   },
   {
     version: '5.0',
