@@ -205,6 +205,33 @@ export interface Shift {
   notes?: string
 }
 
+export type PayFrequency = 'weekly' | 'biweekly' | 'monthly'
+
+/** An hourly job, as entered to estimate what its paycheck comes to after tax. */
+export interface PaycheckInputs {
+  hourlyRate: number
+  /** Hours in a typical week. Over 40 is paid at time and a half. */
+  hoursPerWeek: number
+  frequency: PayFrequency
+  /**
+   * Health, dental and vision premiums, per check. Taken before tax — they
+   * lower income tax and Social Security and Medicare as well.
+   */
+  preTaxPerCheck: number
+  /** Anything taken after tax, per check. Lowers take-home only. */
+  afterTaxPerCheck: number
+}
+
+/** What the paycheck plan remembers between visits. */
+export interface PlanInputs {
+  /** DoorDash take-home per hour after gas, typed in when no shifts are logged. */
+  dashPerHour?: number
+  /** A typical Depop sale price. */
+  depopPrice?: number
+  /** What that item cost you. 0 for your own clothes. */
+  depopCost?: number
+}
+
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly' | 'variable' | 'one-time'
 
 export interface IncomeSource {
@@ -302,6 +329,10 @@ export interface AppState {
   vehicle?: Vehicle
   /** Last pump price entered, so it need not be typed again every time. */
   lastGasPrice?: number
+  /** The hourly job's pay, as last entered in the paycheck estimate. */
+  paycheck?: PaycheckInputs
+  /** DoorDash and Depop figures for covering a paycheck's shortfall. */
+  plan?: PlanInputs
   settings: Settings
   /** ISO date of the last export. Only this device holds the data, so staleness matters. */
   lastBackupAt?: string

@@ -43,17 +43,7 @@ export function calculateWeeklySplit(state: AppState, incomeAmount: number): Wee
   const shortfall = Math.max(weeklyCommitted - available, 0)
   const afterMinimum = Math.max(available - weeklyCommitted, 0)
 
-  // Clamp so the two reserved shares can never exceed the leftover and drive
-  // extra-debt negative, however the sliders are set.
-  const savingsPct = Math.max(state.settings.savingsPercent || 0, 0)
-  const checkingPct = Math.max(state.settings.keepInCheckingPercent || 0, 0)
-  const reservedPct = Math.min(savingsPct + checkingPct, 100)
-  const scale = savingsPct + checkingPct > 100 ? reservedPct / (savingsPct + checkingPct) : 1
-
-  const toSavings = afterMinimum * ((savingsPct * scale) / 100)
-  const toChecking = afterMinimum * ((checkingPct * scale) / 100)
-  const toExtraDebt = Math.max(afterMinimum - toSavings - toChecking, 0)
-  const ordered = orderByStrategy(state.debts, state.settings.strategy)
+  const { toSavings, toChecking, toExtraDebt, priorityDebt } = splitLeftover(state, afterMinimum)
 
   return {
     available,
@@ -65,6 +55,32 @@ export function calculateWeeklySplit(state: AppState, incomeAmount: number): Wee
     toSavings,
     toChecking,
     toExtraDebt,
-    priorityDebt: ordered[0] ?? null,
+    priorityDebt,
   }
+}
+
+/**
+ * Divides money left after the bills by the Settings percentages: savings, a
+ * cushion kept in checking, and the rest as extra toward the top debt.
+ *
+ * Shared by the Dashboard split and the paycheck plan so the two can never
+ * divide the same leftover differently.
+ */
+export function splitLeftover(
+  state: AppState,
+  leftover: number,
+): { toSavings: number; toChecking: number; toExtraDebt: number; priorityDebt: Debt | null } {
+  const amount = Math.max(leftover, 0)
+  // Clamp so the two reserved shares can never exceed the leftover and drive
+  // extra-debt negative, however the sliders are set.
+  const savingsPct = Math.max(state.settings.savingsPercent || 0, 0)
+  const checkingPct = Math.max(state.settings.keepInCheckingPercent || 0, 0)
+  const reservedPct = Math.min(savingsPct + checkingPct, 100)
+  const scale = savingsPct + checkingPct > 100 ? reservedPct / (savingsPct + checkingPct) : 1
+
+  const toSavings = amount * ((savingsPct * scale) / 100)
+  const toChecking = amount * ((checkingPct * scale) / 100)
+  const toExtraDebt = Math.max(amount - toSavings - toChecking, 0)
+  const ordered = orderByStrategy(state.debts, state.settings.strategy)
+  return { toSavings, toChecking, toExtraDebt, priorityDebt: ordered[0] ?? null }
 }
