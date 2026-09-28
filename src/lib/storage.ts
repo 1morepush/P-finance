@@ -164,6 +164,12 @@ export function applySeedUpdate(state: AppState): AppState {
   for (const key of SEEDED_KEYS) {
     Object.assign(next, { [key]: seedState[key] })
   }
+  // An income source added on this device — a new job, a side gig — is not in
+  // the figures and so is not the figures' to replace. Swapping the list in
+  // wholesale deleted it without a word. Sources the figures do carry are
+  // still refreshed from them.
+  const seeded = new Set(seedState.incomeSources.map((s) => s.id))
+  next.incomeSources = [...next.incomeSources, ...state.incomeSources.filter((s) => !seeded.has(s.id))]
   return replayManualPayments(next, SEED_DATE)
 }
 

@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '6.0',
+    date: '2026-09-28',
+    headline: 'Estimate a FedEx paycheck after tax, and add it to your income',
+  },
+  {
     version: '5.0',
     date: '2026-09-28',
     headline: 'Link a bank through Stripe to pull the real balance (test mode first)',
