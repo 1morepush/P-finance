@@ -15,6 +15,7 @@ import { copyText, deliverFile } from '../lib/share'
 import { checkForUpdate } from '../lib/sw'
 import { SEED_VERSION } from '../data/seed'
 import { APP_VERSION, RELEASES } from '../version'
+import { BankLinkCard } from '../components/BankLinkCard'
 
 export function Settings({
   state,
@@ -368,6 +369,8 @@ export function Settings({
           Reset to source-of-truth data
         </button>
       </Card>
+
+      <BankLinkCard state={state} setState={setState} />
 
       {/*
         Without this, "did the update arrive?" can only be answered by looking
