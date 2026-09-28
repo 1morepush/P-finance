@@ -1,5 +1,5 @@
-import type { Debt, DebtProduct } from '../types'
-import { PRODUCT_CADENCE, type Cadence } from '../types'
+import type { Debt, DebtProduct, Expense } from '../types'
+import { PRODUCT_CADENCE, PRODUCT_LABEL, type Cadence } from '../types'
 import { activeDebts, estimatePayoffMonths, potentialDebts } from './finance'
 
 export type { Cadence }
@@ -36,9 +36,13 @@ function step(iso: string, cadence: Cadence, n: number): string {
 }
 
 export interface ScheduledPayment {
+  /** The debt's id — or, for a recurring cost, `bill:` and the cost's id, so the two can never collide. */
   debtId: string
   debtName: string
-  product: DebtProduct
+  /** `bill` marks a subscription or bill: money that leaves on a day, but not a debt. */
+  product: DebtProduct | 'bill'
+  /** Set only on a subscription or bill, naming the living cost it came from. */
+  expenseId?: string
   date: string
   amount: number
   isFinal: boolean
@@ -325,4 +329,48 @@ export function daysUntil(iso: string, todayISO = today()): number {
   return Math.round(
     (new Date(`${iso}T00:00:00Z`).getTime() - new Date(`${todayISO}T00:00:00Z`).getTime()) / 86400000,
   )
+}
+
+/**
+ * Subscriptions and bills, projected onto the days they come out.
+ *
+ * Only costs with a due date are drawn; the rest have no day to put them on.
+ * Each date is counted from the original one, not from the one before it —
+ * stepping month to month would carry a Jan 31 charge to Feb 28 and leave it
+ * on the 28th for good.
+ *
+ * A due date already past rolls forward rather than showing as overdue:
+ * these renew on their own, so a date behind today means it was charged.
+ */
+export function billPayments(expenses: Expense[], from: string, until: string): ScheduledPayment[] {
+  const out: ScheduledPayment[] = []
+  for (const e of expenses) {
+    if (!e.nextDue || !(e.amount > 0)) continue
+    for (let k = 0; k < 1000; k++) {
+      const date =
+        e.cadence === 'weekly'
+          ? addDays(e.nextDue, 7 * k)
+          : e.cadence === 'biweekly'
+            ? addDays(e.nextDue, 14 * k)
+            : addMonths(e.nextDue, e.cadence === 'yearly' ? 12 * k : k)
+      if (date > until) break
+      if (date < from) continue
+      out.push({
+        debtId: `bill:${e.id}`,
+        debtName: e.name,
+        product: 'bill',
+        expenseId: e.id,
+        date,
+        amount: e.amount,
+        isFinal: false,
+        isPotential: false,
+      })
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.debtName.localeCompare(b.debtName))
+}
+
+/** What a payment row is labelled: the lender product, or "Subscription / bill". */
+export function paymentLabel(p: ScheduledPayment): string {
+  return p.product === 'bill' ? 'Subscription / bill' : PRODUCT_LABEL[p.product]
 }

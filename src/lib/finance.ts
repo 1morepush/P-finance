@@ -30,6 +30,7 @@ const EXPENSE_PER_MONTH: Record<ExpenseCadence, number> = {
   weekly: 52 / 12,
   biweekly: 26 / 12,
   monthly: 1,
+  yearly: 1 / 12,
 }
 
 // Defined here rather than imported from ./budget, which already depends on this

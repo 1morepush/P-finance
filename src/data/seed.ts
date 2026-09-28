@@ -53,7 +53,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-28'
+export const SEED_VERSION = '2026-09-28b'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -157,13 +157,17 @@ export const seedState: AppState = {
   // The status also lists the $212 Apple Card minimum as a recurring cost. It
   // is left out here on purpose — it is already a scheduled debt payment, and
   // listing it again would count it twice in every week's total.
-  // Google Photos is billed $29.99 a year; a year is not a cadence the app
-  // has, so it is carried as the $2.50 a month it averages.
+  // Due dates are the status's own, so each one lands on the calendar on its
+  // day. Google Photos is billed yearly and is drawn as $29.99 on Nov 10; the
+  // budget still spreads it as $2.50 a month.
   expenses: [
-    { id: 'exp-claude', name: 'Claude Pro', amount: 20, cadence: 'monthly', essential: false },
-    { id: 'exp-icloud', name: 'iCloud+ 2TB', amount: 9.99, cadence: 'monthly', essential: false },
-    { id: 'exp-google-photos', name: 'Google Photos 200GB (yearly $29.99)', amount: 2.5, cadence: 'monthly', essential: false },
-    { id: 'exp-anytime-fitness', name: 'Anytime Fitness', amount: 25, cadence: 'biweekly', essential: false },
+    { id: 'exp-claude', name: 'Claude Pro', amount: 20, cadence: 'monthly', essential: false, nextDue: '2026-10-02' },
+    { id: 'exp-icloud', name: 'iCloud+ 2TB', amount: 9.99, cadence: 'monthly', essential: false, nextDue: '2026-10-02' },
+    { id: 'exp-google-photos', name: 'Google Photos 200GB', amount: 29.99, cadence: 'yearly', essential: false, nextDue: '2026-11-10' },
+    { id: 'exp-anytime-fitness', name: 'Anytime Fitness', amount: 25, cadence: 'biweekly', essential: false, nextDue: '2026-09-28' },
+    // The status gave Rocket Money's date as "verify": left without one rather
+    // than guessed. It counts in the budget; setting a date puts it on the
+    // calendar.
     { id: 'exp-rocket-money', name: 'Rocket Money Premium', amount: 8, cadence: 'monthly', essential: false },
   ],
 

@@ -24,12 +24,14 @@ const EXPENSE_PER_MONTH: Record<ExpenseCadence, number> = {
   weekly: 52 / 12,
   biweekly: 26 / 12,
   monthly: 1,
+  yearly: 1 / 12,
 }
 
 export const CADENCE_LABEL: Record<ExpenseCadence, string> = {
   weekly: 'per week',
   biweekly: 'every 2 weeks',
   monthly: 'per month',
+  yearly: 'per year',
 }
 
 export function expenseMonthly(expense: Expense): number {

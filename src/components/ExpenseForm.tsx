@@ -13,6 +13,7 @@ const CADENCES: [ExpenseCadence, string][] = [
   ['monthly', 'Monthly'],
   ['biweekly', 'Every 2 weeks'],
   ['weekly', 'Weekly'],
+  ['yearly', 'Yearly'],
 ]
 
 /** Common ones, so the list can be filled in without typing much. */
@@ -31,6 +32,7 @@ export function ExpenseForm({
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
   const [cadence, setCadence] = useState<ExpenseCadence>(initial?.cadence ?? 'monthly')
   const [essential, setEssential] = useState(initial?.essential ?? true)
+  const [nextDue, setNextDue] = useState(initial?.nextDue ?? '')
 
   const value = Number(amount) || 0
   const monthly = expenseMonthly({ id: '', name, amount: value, cadence, essential })
@@ -41,7 +43,7 @@ export function ExpenseForm({
       onSubmit={(e) => {
         e.preventDefault()
         if (!name.trim() || value <= 0) return
-        onSave({ name: name.trim(), amount: value, cadence, essential })
+        onSave({ name: name.trim(), amount: value, cadence, essential, ...(nextDue ? { nextDue } : {}) })
       }}
     >
       <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -102,6 +104,22 @@ export function ExpenseForm({
           </select>
         </label>
       </div>
+
+      {/*
+        Optional because plenty of costs have no day — groceries come out all
+        month. The ones that do, a subscription or a bill, belong on the
+        calendar, and this date is what puts them there.
+      */}
+      <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        Next due (optional — puts it on the calendar)
+        <input
+          type="date"
+          value={nextDue}
+          onChange={(e) => setNextDue(e.target.value)}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={inputStyle}
+        />
+      </label>
 
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={essential} onChange={(e) => setEssential(e.target.checked)} />

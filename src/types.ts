@@ -250,7 +250,7 @@ export interface IncomeSource {
   notes?: string
 }
 
-export type ExpenseCadence = 'weekly' | 'biweekly' | 'monthly'
+export type ExpenseCadence = 'weekly' | 'biweekly' | 'monthly' | 'yearly'
 
 /** A recurring cost. Without these the leftover in the split is fiction. */
 export interface Expense {
@@ -260,6 +260,12 @@ export interface Expense {
   cadence: ExpenseCadence
   /** True for rent, utilities, insurance — the ones that cannot simply be skipped. */
   essential: boolean
+  /**
+   * When it next comes out, if it comes out on a set day — a subscription, a
+   * bill. With a date it is drawn on the calendar on that day and every cycle
+   * after; without one it is only spread across the month in the budget.
+   */
+  nextDue?: string
   notes?: string
 }
 

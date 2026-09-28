@@ -1,6 +1,6 @@
 import type { AppState, ClearedDebt, DebtCategory, DebtProduct } from '../types'
 import { PRODUCT_LABEL, categoryOfProduct } from '../types'
-import { allPayments, type ScheduledPayment } from './schedule'
+import { addMonths, allPayments, billPayments, paymentLabel, today, type ScheduledPayment } from './schedule'
 
 /**
  * One row on the calendar: either money already gone, or money still coming.
@@ -20,7 +20,8 @@ export interface CalendarEntry {
   amount: number
   /** `paid` is recorded history; `due` is still projected. */
   kind: 'paid' | 'due'
-  category: DebtCategory
+  /** `bill` is a subscription or bill from living costs — due, but never a debt to mark paid. */
+  category: DebtCategory | 'bill'
   label: string
   /** From an unconfirmed debt — shown, but kept out of confirmed totals. */
   isPotential: boolean
@@ -127,23 +128,39 @@ export function paidEntries(state: AppState): CalendarEntry[] {
   return [...logged, ...preApp]
 }
 
+/** How far ahead subscriptions are drawn. They never end, so something has to stop them. */
+export const BILL_HORIZON_MONTHS = 12
+
+/**
+ * Everything still to come out: each debt's projected instalments, and the
+ * subscriptions and bills that have a due date.
+ */
+export function dueItems(state: AppState, includePotential = true, now = today()): ScheduledPayment[] {
+  return [
+    ...allPayments(state.debts, includePotential),
+    ...billPayments(state.expenses, now, addMonths(now, BILL_HORIZON_MONTHS)),
+  ].sort((a, b) => a.date.localeCompare(b.date))
+}
+
 /** Everything still scheduled, as projected from each debt's remaining balance. */
 export function dueEntries(state: AppState, includePotential = true): CalendarEntry[] {
-  return allPayments(state.debts, includePotential).map((p) => ({
+  return dueItems(state, includePotential).map((p) => ({
     key: `due:${p.debtId}:${p.date}`,
     date: p.date,
     debtId: p.debtId,
     debtName: p.debtName,
     amount: p.amount,
     kind: 'due',
-    category: categoryOfProduct(p.product),
-    label: PRODUCT_LABEL[p.product],
+    category: p.product === 'bill' ? 'bill' : categoryOfProduct(p.product),
+    label: paymentLabel(p),
     isPotential: p.isPotential,
     isFinal: p.isFinal,
     auto: false,
     fromBank: false,
     reversible: false,
-    scheduled: p,
+    // A subscription carries no projection to mark paid: it is not a debt, and
+    // the Paid button routes through the debt payment log.
+    scheduled: p.product === 'bill' ? undefined : p,
   }))
 }
 

@@ -1,5 +1,5 @@
-import type { Debt } from '../types'
-import { allPayments, addDays, type ScheduledPayment } from './schedule'
+import type { Debt, Expense } from '../types'
+import { allPayments, addDays, billPayments, type ScheduledPayment } from './schedule'
 
 /**
  * Every scheduled payment as a calendar file the phone's own calendar can
@@ -14,9 +14,14 @@ export function paymentsToICS(
   todayISO: string,
   horizonDays = 365,
   stamp = new Date(),
+  /** Subscriptions and bills with a due date, reminded like any payment. */
+  expenses: Expense[] = [],
 ): { text: string; count: number } {
   const until = addDays(todayISO, horizonDays)
-  const payments = allPayments(debts).filter((p) => p.date >= todayISO && p.date <= until)
+  const payments = [
+    ...allPayments(debts).filter((p) => p.date >= todayISO && p.date <= until),
+    ...billPayments(expenses, todayISO, until),
+  ].sort((a, b) => a.date.localeCompare(b.date))
   const dtstamp = stamp.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 
   const lines = [
@@ -44,7 +49,11 @@ function event(p: ScheduledPayment, dtstamp: string): string[] {
     `DTSTART;VALUE=DATE:${day}`,
     `DTEND;VALUE=DATE:${next}`,
     `SUMMARY:${escape(`${p.debtName} — $${amount}${p.isFinal ? ' (final)' : ''}`)}`,
-    `DESCRIPTION:${escape(`$${amount} due to ${p.debtName}.${p.isFinal ? ' This is the last payment.' : ''}`)}`,
+    `DESCRIPTION:${escape(
+      p.product === 'bill'
+        ? `$${amount} ${p.debtName} charge.`
+        : `$${amount} due to ${p.debtName}.${p.isFinal ? ' This is the last payment.' : ''}`,
+    )}`,
     'BEGIN:VALARM',
     'ACTION:DISPLAY',
     `DESCRIPTION:${escape(`${p.debtName} $${amount} due tomorrow`)}`,
