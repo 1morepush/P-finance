@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '6.2',
+    date: '2026-09-28',
+    headline: 'Subscriptions on the calendar, on the day they come out',
+  },
+  {
     version: '6.1',
     date: '2026-09-28',
     headline: 'Figures updated to Sep 28, and your subscriptions counted as living costs',

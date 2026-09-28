@@ -170,12 +170,22 @@ export function applySeedUpdate(state: AppState): AppState {
   // still refreshed from them.
   const seeded = new Set(seedState.incomeSources.map((s) => s.id))
   next.incomeSources = [...next.incomeSources, ...state.incomeSources.filter((s) => !seeded.has(s.id))]
-  // Living costs are the device's own list, so the figures only ever add to
-  // it: a cost they carry that this device lacks is added, and nothing already
-  // here is replaced or removed. Without this, costs supplied with the figures
-  // reached a fresh install and never a phone that had opened the app before.
-  const held = new Set(state.expenses.map((e) => e.id))
-  next.expenses = [...state.expenses, ...seedState.expenses.filter((e) => !held.has(e.id))]
+  // Living costs follow the same rule as income sources. A cost added on this
+  // device is its own and is kept. A cost the figures carry is refreshed from
+  // them — that is how a correction such as a due date reaches a phone that
+  // already has the cost. One exception: a date set on the device survives
+  // when the figures have none, since the figures cannot know it.
+  // Without any of this, costs supplied with the figures reached a fresh
+  // install and never a phone that had opened the app before.
+  const seededCosts = new Set(seedState.expenses.map((e) => e.id))
+  const mine = new Map(state.expenses.map((e) => [e.id, e]))
+  next.expenses = [
+    ...state.expenses.filter((e) => !seededCosts.has(e.id)),
+    ...seedState.expenses.map((e) => {
+      const here = mine.get(e.id)
+      return !e.nextDue && here?.nextDue ? { ...e, nextDue: here.nextDue } : e
+    }),
+  ]
   return replayManualPayments(next, SEED_DATE)
 }
 

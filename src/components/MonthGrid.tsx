@@ -6,6 +6,7 @@ const CATEGORY_COLOR = {
   installment: 'var(--cat-installment)',
   revolving: 'var(--cat-revolving)',
   personal: 'var(--cat-personal)',
+  bill: 'var(--cat-bill)',
 } as const
 
 /** Settled money reads as one colour whatever it was owed on. */
@@ -62,7 +63,9 @@ export function MonthGrid({
 
   const totals = monthTotals(entries, month)
   const selectedItems = selected ? entriesOn(entries, selected) : []
-  const payable = selectedItems.filter((e) => e.kind === 'due' && !e.isPotential)
+  // Subscriptions are shown but never offered as payable: marking one paid
+  // would log a debt payment against something that is not a debt.
+  const payable = selectedItems.filter((e) => e.kind === 'due' && !e.isPotential && e.category !== 'bill')
 
   return (
     <div>
@@ -235,7 +238,7 @@ export function MonthGrid({
                   )}
                 </span>
                 <span className="tabular-nums shrink-0">{formatCurrency(e.amount)}</span>
-                {onPay && e.kind === 'due' && !e.isPotential && (
+                {onPay && e.kind === 'due' && !e.isPotential && e.category !== 'bill' && (
                   <button
                     type="button"
                     onClick={() => onPay(e)}

@@ -1,18 +1,16 @@
 import { useMemo, useState } from 'react'
 import type { AppState } from '../types'
-import { PRODUCT_LABEL } from '../types'
 import { Card } from '../components/Card'
 import { MonthGrid } from '../components/MonthGrid'
 import { applyPayment, undoPayment } from '../lib/payments'
 import { StatTile } from '../components/StatTile'
 import { activeDebts, formatCurrency, formatDate, formatDue } from '../lib/finance'
-import { calendarEntries, earliestMonth, monthTotals } from '../lib/calendar'
+import { calendarEntries, dueItems, earliestMonth, monthTotals } from '../lib/calendar'
 import { paymentsToICS } from '../lib/ics'
 import { deliverFile } from '../lib/share'
 import {
   addDays,
   addMonths,
-  allPayments,
   daysUntil,
   debtFreeDate,
   formatMonth,
@@ -22,6 +20,7 @@ import {
   isDate,
   nextMonth,
   openingOfNextMonth,
+  paymentLabel,
   paymentsBetween,
   projectedPayoffDate,
   scheduleMismatches,
@@ -49,7 +48,9 @@ export function Calendar({
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   // Unconfirmed debts are included so nothing is a surprise, but every total
   // separates them out from the confirmed figure.
-  const payments = useMemo(() => allPayments(state.debts, true), [state.debts])
+  // Subscriptions with a due date come out of the same account on the same
+  // days, so every total and list here counts them alongside the debts.
+  const payments = useMemo(() => dueItems(state, true, now), [state, now])
   // The grid shows both halves: what has been paid as well as what is coming.
   // The lists below it stay forward-looking — they answer "what do I owe".
   const entries = useMemo(() => calendarEntries(state, true), [state])
@@ -66,7 +67,7 @@ export function Calendar({
   const overdueSum = sumConfirmed(overdue)
 
   async function exportCalendar() {
-    const { text, count } = paymentsToICS(state.debts, now)
+    const { text, count } = paymentsToICS(state.debts, now, 365, new Date(), state.expenses)
     const how = await deliverFile(`debt-payments-${now}.ics`, text, 'text/calendar')
     if (how === 'cancelled') return
     setExported(
@@ -209,6 +210,7 @@ export function Calendar({
             ['Instalment', 'var(--cat-installment)'],
             ['Apple Card', 'var(--cat-revolving)'],
             ['Personal', 'var(--cat-personal)'],
+            ['Subscriptions', 'var(--cat-bill)'],
             ['Unconfirmed', 'var(--status-warning)'],
           ].map(([label, color]) => (
             <span key={label} className="flex items-center gap-1">
@@ -277,7 +279,7 @@ export function Calendar({
                       className="mt-0.5 flex flex-wrap gap-2 text-[11px]"
                       style={{ color: 'var(--text-muted)' }}
                     >
-                      <span>{PRODUCT_LABEL[p.product]}</span>
+                      <span>{paymentLabel(p)}</span>
                       {days >= 0 && days <= 14 && <span>· in {days}d</span>}
                       {p.isPotential && (
                         <span style={{ color: 'var(--status-warning)' }}>· unconfirmed</span>
