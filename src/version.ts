@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '5.0',
+    date: '2026-09-28',
+    headline: 'Link a bank through Stripe to pull the real balance (test mode first)',
+  },
+  {
     version: '4.7',
     date: '2026-09-23',
     headline: 'Plainer names for the four range readings on a shift',

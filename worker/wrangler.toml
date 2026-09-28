@@ -1,0 +1,5 @@
+# The bank-link worker. Secrets are NOT set here — they go in with
+# `npx wrangler secret put <NAME>` so they never enter the repository.
+name = "p-finance-bank"
+main = "bank-link.js"
+compatibility_date = "2026-09-01"
