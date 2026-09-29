@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '6.4',
+    date: '2026-09-29',
+    headline: 'Swipe through a year of weeks, with subscriptions counted on their day',
+  },
+  {
     version: '6.3',
     date: '2026-09-28',
     headline: 'The calendar scrolls through the months, each week shown in full',
