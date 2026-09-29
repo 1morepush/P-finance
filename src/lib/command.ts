@@ -343,7 +343,7 @@ function shift(s: Scan, platform: string): ParseResult {
     earnings,
     gasCost: gas,
     ...(s.hours ? { hours: s.hours } : {}),
-    ...(s.miles ? { miles: s.miles } : {}),
+    ...(s.miles ? { miles: s.miles, milesFrom: 'measured' as const } : {}),
     addedToBank: true,
   }
   const lines = [

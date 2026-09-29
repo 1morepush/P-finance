@@ -342,6 +342,17 @@ export function Income({
               {formatCurrency(year.mileageDeduction - year.gas)} — claim miles, not gas.
             </p>
           )}
+          {/* The deduction rests on the log. A range estimate is fine for
+              knowing what a shift made; it is not what to show the IRS. */}
+          {year.milesEstimated > 0 && (
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              {year.milesEstimated === year.miles
+                ? 'All of these miles'
+                : `${year.milesEstimated.toLocaleString('en-US', { maximumFractionDigits: 0 })} of these miles`}{' '}
+              are estimated from the range display. Trip-meter readings are the ones to keep for the
+              deduction — reset Trip B at the start of each dash.
+            </p>
+          )}
           {year.miles === 0 && (
             <p className="mt-1 text-[11px]" style={{ color: 'var(--status-warning)' }}>
               Add miles to each shift — the deduction is usually worth more than the fuel.
@@ -410,7 +421,8 @@ export function Income({
                         stopped at the pump is not the shift that burned it. */}
                     {formatCurrency(shares.get(shift.id)?.share ?? shift.gasCost)} fuel
                     {shift.hours ? ` · ${shift.hours}h` : ''}
-                    {shift.miles ? ` · ${shift.miles}mi` : ''}
+                    {shift.miles ? ` · ${shift.milesFrom === 'range' ? '~' : ''}${shift.miles}mi` : ''}
+                    {shift.miles && shift.milesFrom === 'range' ? ' est.' : ''}
                   </span>
                   {shift.gasCost > 0 && (
                     <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>

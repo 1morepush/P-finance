@@ -33,7 +33,12 @@ export function ShiftForm({
   const [earnings, setEarnings] = useState(initial ? String(initial.earnings) : '')
   const [gasCost, setGasCost] = useState(initial ? String(initial.gasCost) : '')
   const [hours, setHours] = useState(initial?.hours ? String(initial.hours) : '')
-  const [miles, setMiles] = useState(initial?.miles ? String(initial.miles) : '')
+  // An estimate is not put back in the box: it would read as typed, and saving
+  // would promote it to measured. The range readings it came from are kept on
+  // the shift, so the placeholder shows it again.
+  const [miles, setMiles] = useState(
+    initial?.miles && initial.milesFrom !== 'range' ? String(initial.miles) : '',
+  )
   const [rangeStart, setRangeStart] = useState(initial?.rangeStart ? String(initial.rangeStart) : '')
   const [rangeEnd, setRangeEnd] = useState(initial?.rangeEnd ? String(initial.rangeEnd) : '')
   const [atPump, setAtPump] = useState(initial?.rangeAtPump ? String(initial.rangeAtPump) : '')
@@ -70,9 +75,17 @@ export function ShiftForm({
         )
       : null
 
-  // Typed miles win: the odometer is the real figure and the range only ever
+  // Typed miles win: the trip meter is the real figure and the range only ever
   // stood in for it. Left blank, the range fills the gap.
-  const mi = Number(miles) || (used && !used.unexplained ? Math.round(used.miles) : 0)
+  const typed = Number(miles) || 0
+  const fromRange = used && !used.unexplained ? Math.round(used.miles) : 0
+  const mi = typed || fromRange
+  // A shift from before the source was kept comes back with its miles in the
+  // box, typed or not. Saved untouched and matching the range exactly, it was
+  // the range's figure — call it that rather than promote it to measured.
+  const legacyEstimate =
+    !!initial && !initial.milesFrom && miles === String(initial.miles ?? '') && typed === fromRange
+  const milesFrom = typed > 0 && !legacyEstimate ? 'measured' : mi > 0 ? 'range' : undefined
   const net = gross - gas
   const perHour = hrs > 0 ? net / hrs : null
 
@@ -89,6 +102,7 @@ export function ShiftForm({
           gasCost: gas,
           hours: hrs > 0 ? hrs : undefined,
           miles: mi > 0 ? mi : undefined,
+          ...(milesFrom ? { milesFrom } : {}),
           ...(before > 0 ? { rangeStart: before } : {}),
           ...(rangeEnd !== '' ? { rangeEnd: after } : {}),
           ...(stop ? { rangeAtPump: stop.atPump, rangeAfterPump: stop.afterPump } : {}),
@@ -180,12 +194,12 @@ export function ShiftForm({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          Miles {used && !used.unexplained && miles === '' ? '(from range)' : '(optional)'}
+          Miles {fromRange > 0 && miles === '' ? '(estimated)' : '(trip meter)'}
           <input
             type="number"
             inputMode="decimal"
             step="0.1"
-            placeholder={used && !used.unexplained ? String(Math.round(used.miles)) : '0'}
+            placeholder={fromRange > 0 ? String(fromRange) : '0'}
             value={miles}
             onChange={(e) => setMiles(e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm"
@@ -193,6 +207,18 @@ export function ShiftForm({
           />
         </label>
       </div>
+
+      {/*
+        GPS was the other way to get this, and a web app cannot do it: the
+        phone stops giving it location the moment the Dasher app is in front,
+        which is the whole dash. The car's own trip meter has no such gap.
+      */}
+      <p className="-mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        {typed > 0 && !legacyEstimate
+          ? 'Measured — this is the figure the mileage deduction uses.'
+          : 'Reset Trip B on the dash when the dash starts, and type what it reads at the end. That is the exact distance, drives between orders included.'}
+        {milesFrom === 'range' && ' Until then, the range readings below estimate it.'}
+      </p>
 
       {/*
         Two numbers off the dash, which is far less to capture than an odometer
