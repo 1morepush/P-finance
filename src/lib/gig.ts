@@ -19,6 +19,8 @@ export interface GigSummary {
   net: number
   hours: number
   miles: number
+  /** The part of `miles` worked out from the range display rather than read off a meter. */
+  milesEstimated: number
   /** Null when no shift in the period recorded hours. */
   netPerHour: number | null
   netPerMile: number | null
@@ -42,6 +44,7 @@ export function summarize(shifts: Shift[]): GigSummary {
   const gas = shifts.reduce((s, x) => s + x.gasCost, 0)
   const hours = shifts.reduce((s, x) => s + (x.hours ?? 0), 0)
   const miles = shifts.reduce((s, x) => s + (x.miles ?? 0), 0)
+  const milesEstimated = shifts.reduce((s, x) => s + (x.milesFrom === 'range' ? (x.miles ?? 0) : 0), 0)
   const net = gross - gas
   return {
     count: shifts.length,
@@ -50,6 +53,7 @@ export function summarize(shifts: Shift[]): GigSummary {
     net,
     hours,
     miles,
+    milesEstimated,
     netPerHour: hours > 0 ? net / hours : null,
     netPerMile: miles > 0 ? net / miles : null,
     gasShare: gross > 0 ? gas / gross : 0,

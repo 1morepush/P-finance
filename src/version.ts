@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '6.5',
+    date: '2026-09-29',
+    headline: 'Miles from the trip meter, with estimated miles marked as estimates',
+  },
+  {
     version: '6.4',
     date: '2026-09-29',
     headline: 'Swipe through a year of weeks, with subscriptions counted on their day',

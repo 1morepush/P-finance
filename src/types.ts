@@ -183,6 +183,13 @@ export interface Shift {
   /** Miles driven, if tracked — needed for the mileage deduction at tax time. */
   miles?: number
   /**
+   * Where `miles` came from. `measured` is a number typed in — the trip meter,
+   * the odometer, a tracking app. `range` is the figure worked out from the
+   * range display, which is an estimate. Absent on shifts logged before this
+   * was kept, where it cannot be told after the fact.
+   */
+  milesFrom?: 'measured' | 'range'
+  /**
    * The range display before and after the shift. Kept rather than discarded
    * once `miles` is derived from them, so reopening the shift shows what was
    * actually read off the dash instead of only the figure it produced.
