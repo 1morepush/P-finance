@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AppState } from '../types'
 import { Card } from './Card'
 import { formatCurrency } from '../lib/finance'
@@ -10,11 +10,23 @@ import { averageNetPerShift, shiftNet, shiftsBetween } from '../lib/gig'
  * What this week actually costs, from real due dates. The monthly average
  * flattens the lumps; the lumps are the thing that catches you out.
  */
+/** How far ahead the strip runs: a year of weeks, swiped through sideways. */
+const WEEKS_SHOWN = 52
+
 export function WeekTargetCard({ state }: { state: AppState }) {
-  const weeks = upcomingWeeks(state, 4)
+  const weeks = upcomingWeeks(state, WEEKS_SHOWN)
   const [picked, setPicked] = useState(0)
   const w = weeks[picked]
   const heaviest = Math.max(...weeks.map((x) => x.total), 1)
+
+  // Keep the picked week's bar on screen when ‹ › steps past the edge of the
+  // strip, so the bar and the figures above it never disagree about which
+  // week is showing.
+  const strip = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const bar = strip.current?.children[picked] as HTMLElement | undefined
+    bar?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+  }, [picked])
 
   // Everything else on this screen looks forward from today, so a missed
   // instalment would otherwise appear nowhere at all.
@@ -67,12 +79,40 @@ export function WeekTargetCard({ state }: { state: AppState }) {
         </div>
       )}
 
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          {picked === 0 ? (w.partial ? 'Left to cover this week' : 'Need to make this week') : 'That week'}
+          {picked === 0
+            ? w.partial
+              ? 'Left to cover this week'
+              : 'Need to make this week'
+            : picked === 1
+              ? 'Next week'
+              : `Week of ${formatShortDate(w.from).replace(/^\w+, /, '')}`}
         </h2>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {formatShortDate(w.from)} – {formatShortDate(w.to)}
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs" style={{ color: 'var(--text-muted)' }}>
+          <button
+            type="button"
+            aria-label="Previous week"
+            disabled={picked === 0}
+            onClick={() => setPicked((i) => Math.max(i - 1, 0))}
+            className="rounded px-1.5 disabled:opacity-30"
+            style={{ background: 'var(--surface-page)' }}
+          >
+            ‹
+          </button>
+          {/* Weekday names dropped here: weeks always run Sunday to Saturday,
+              and with them the range wrapped onto a second line on a phone. */}
+          {formatShortDate(w.from).replace(/^\w+, /, '')} – {formatShortDate(w.to).replace(/^\w+, /, '')}
+          <button
+            type="button"
+            aria-label="Next week"
+            disabled={picked === weeks.length - 1}
+            onClick={() => setPicked((i) => Math.min(i + 1, weeks.length - 1))}
+            className="rounded px-1.5 disabled:opacity-30"
+            style={{ background: 'var(--surface-page)' }}
+          >
+            ›
+          </button>
         </span>
       </div>
 
@@ -89,7 +129,12 @@ export function WeekTargetCard({ state }: { state: AppState }) {
 
       <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
         {formatCurrency(w.debtRemaining)} of debt
-        {w.livingCosts > 0 ? <> + {formatCurrency(w.livingCosts)} living costs</> : ' · no living costs entered'}
+        {w.billsRemaining > 0 && <> + {formatCurrency(w.billsRemaining)} subscriptions</>}
+        {w.livingCosts > 0 ? (
+          <> + {formatCurrency(w.livingCosts)} everyday costs</>
+        ) : state.expenses.length === 0 ? (
+          ' · no living costs entered'
+        ) : null}
         {w.potentialDue > 0 && (
           <span style={{ color: 'var(--status-warning)' }}>
             {' '}
@@ -161,37 +206,59 @@ export function WeekTargetCard({ state }: { state: AppState }) {
         )}
       </p>
 
-      {/* Four weeks at a glance, so a heavy one is visible before it lands. */}
-      <div className="mt-3 flex gap-1">
-        {weeks.map((x, i) => (
-          <button
-            key={x.from}
-            type="button"
-            onClick={() => setPicked(i)}
-            className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5"
-            style={{ background: i === picked ? 'var(--surface-page)' : 'transparent' }}
-          >
-            <span className="tabular-nums text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-              {Math.round(x.total)}
-            </span>
-            <span
-              className="w-full rounded-sm"
+      {/* A year of weeks, swiped sideways, so a heavy one is visible long
+          before it lands. The bars share one scale across the whole year. */}
+      <div
+        ref={strip}
+        className="-mx-1 mt-3 flex gap-1 overflow-x-auto px-1 pb-1"
+        style={{ scrollSnapType: 'x proximity' }}
+      >
+        {weeks.map((x, i) => {
+          const monthTurns = i > 0 && x.from.slice(5, 7) !== weeks[i - 1].from.slice(5, 7)
+          return (
+            <button
+              key={x.from}
+              type="button"
+              onClick={() => setPicked(i)}
+              className="flex w-12 shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1.5"
               style={{
-                height: `${Math.max((x.total / heaviest) * 28, 3)}px`,
-                background:
-                  x.vsAverage > 1
-                    ? 'var(--status-warning)'
-                    : i === picked
-                      ? 'var(--cat-installment)'
-                      : 'var(--border)',
+                background: i === picked ? 'var(--surface-page)' : 'transparent',
+                scrollSnapAlign: 'center',
               }}
-            />
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {i === 0 ? 'this wk' : formatShortDate(x.from).replace(/^\w+, /, '')}
-            </span>
-          </button>
-        ))}
+            >
+              <span className="tabular-nums text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                {Math.round(x.total)}
+              </span>
+              <span className="flex h-7 w-full items-end">
+                <span
+                  className="w-full rounded-sm"
+                  style={{
+                    height: `${Math.max((x.total / heaviest) * 28, 3)}px`,
+                    background:
+                      x.vsAverage > 1
+                        ? 'var(--status-warning)'
+                        : i === picked
+                          ? 'var(--cat-installment)'
+                          : 'var(--border)',
+                  }}
+                />
+              </span>
+              <span
+                className="whitespace-nowrap text-[10px]"
+                style={{
+                  color: monthTurns ? 'var(--text-secondary)' : 'var(--text-muted)',
+                  fontWeight: monthTurns ? 600 : 400,
+                }}
+              >
+                {i === 0 ? 'this wk' : formatShortDate(x.from).replace(/^\w+, /, '')}
+              </span>
+            </button>
+          )
+        })}
       </div>
+      <p className="mt-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        Swipe for the weeks ahead — a year of them. Tap one to see what it holds.
+      </p>
 
       {w.itemsRemaining.length > 0 && (
         <div className="mt-3 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -200,7 +267,16 @@ export function WeekTargetCard({ state }: { state: AppState }) {
               key={`${p.debtId}-${p.date}`}
               className="flex items-center justify-between gap-2 py-1.5 text-xs first:pt-0 last:pb-0"
             >
-              <span className="min-w-0 truncate">{p.debtName}</span>
+              <span className="flex min-w-0 items-center gap-1.5 truncate">
+                {p.product === 'bill' && (
+                  <span
+                    className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: 'var(--cat-bill)' }}
+                    title="Subscription"
+                  />
+                )}
+                <span className="truncate">{p.debtName}</span>
+              </span>
               <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>
                 {formatShortDate(p.date)}
               </span>

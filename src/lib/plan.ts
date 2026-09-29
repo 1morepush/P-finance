@@ -129,7 +129,8 @@ export function buildPlan(state: AppState, window: PlanWindow, now = today()): P
   const to = weeks[weeks.length - 1].to
 
   const bills = weeks.flatMap((w) => w.items).sort((a, b) => a.date.localeCompare(b.date))
-  const billsTotal = weeks.reduce((n, w) => n + w.debtDue, 0)
+  // Debt payments and dated subscriptions both land on a day in the window.
+  const billsTotal = weeks.reduce((n, w) => n + w.debtDue + w.billsDue, 0)
   const livingCosts = weeks.reduce((n, w) => n + w.livingCosts, 0)
   const need = billsTotal + livingCosts
 
