@@ -13,35 +13,37 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
   }))
 }
 
-// Source of truth: the status supplied 2026-09-28.
+// Source of truth: the status supplied 2026-09-30, read off the lender apps.
 // Totals this data produces (verified against the source before seeding):
-//   active             $12,263.00   the source's $11,955.14, plus $307.86 below
-//   of which estimated  $1,181.45   Atlanta, Columbia, Airbnb, Delta
-//   cleared to date     $1,734.79   the source's $1,864.79, less $130 below
+//   active             $12,210.85   the source's $11,902.99, plus $307.86 below
+//   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
+//   cleared to date     $1,787.64   Delta added
 //
-// Two of the source's figures are not used, both deliberately:
+// What changed from Sep 28:
 //
-//   Himeth $548.68 and Liv $378.08. These are exactly the running totals from
-//   before the Sep 17 correction — $866.54 − $317.86 and $368.08 + $10 — which
-//   was confirmed at the time as $866.54 and $368.08. The status repeated the
-//   old figures; it did not report a payment. Kept at the confirmed amounts,
-//   which is where the $307.86 difference comes from.
+//   Airbnb (cousin) carries about 36% APR, not 0%. $722.00 financed is
+//   repaid as $799.17, and $133.28 is exactly the payment on $722 over six
+//   months at 36%. It moves from tier 2 to tier 1.
 //
-//   New Friend's $130 as a cleared debt. It is a part-payment, recorded as a
-//   line on that tab ($296 → $166); the cleared log is for debts paid off,
-//   and listing it in both would count it twice.
+//   Tokyo is $267.25 with Oct 3 next — five payments, not four. The Sep 28
+//   figure had the Sep 3 payment taken off twice. Affirm's Oct 3 reminder and
+//   its AutoPay schedule both confirm it.
 //
-// Every instalment balance ties to its payment × payments left within Affirm's
-// usual rounding (61¢ at most), and the tier subtotals tie to the total.
+//   Omio's Sep 29 payment posted: $526.87, Oct 29 next.
 //
-// "Estimated" in the source means the September autopay has not been seen to
-// post, not that the debt is uncertain. Those four stay active and counted;
-// email was checked and holds reminders for them, not receipts.
+//   Atlanta $253.56 and Columbia $209.10, rounding corrected.
 //
-// Tokyo's next payment moved from Oct 3 to Nov 3 with no change in balance,
-// and nothing in email explains it. Taken as supplied, since the source marks
-// it confirmed, and flagged on the debt: if Affirm still shows Oct 3, $53.45
-// is due then.
+//   Delta cleared — paid early on Sep 29, confirmed paid in full.
+//
+// Affirm AutoPay was switched on for Tokyo, Atlanta, Columbia and Airbnb on
+// Sep 30, from the Visa ending 0153. Each schedule it emailed sums to the
+// balance here to the cent, so none of the four is an estimate any more.
+//
+// Himeth $548.68 and Liv $378.08 are, again, not used. They are the running
+// totals from before the Sep 17 correction — $866.54 − $317.86 and
+// $368.08 + $10 — confirmed at the time as $866.54 and $368.08. The status
+// repeats the old figures; it does not report a payment. Kept at the
+// confirmed amounts, which is where the $307.86 difference comes from.
 //
 // Klarna extended two due dates on Sep 21, each the one extension its order
 // allows: Frontier (Sep 30 → Oct 7) and ACE small (Sep 25 → Oct 2). Recorded
@@ -53,7 +55,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-28b'
+export const SEED_VERSION = '2026-09-30'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -62,7 +64,7 @@ export const SEED_VERSION = '2026-09-28b'
  * Payments logged by hand on or after this date are not in the table and are
  * re-applied when it is loaded.
  */
-export const SEED_DATE = '2026-09-28'
+export const SEED_DATE = '2026-09-30'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
@@ -192,13 +194,13 @@ export const seedState: AppState = {
       product: 'paypal_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 579.57,
+      balance: 526.87,
       apr: 35.99,
       monthlyPayment: 52.7,
-      nextDue: '2026-09-29',
+      nextDue: '2026-10-29',
       finalPaymentDate: '2027-07-29',
       notes:
-        '$579.57 at $52.70 is 11 payments, Sep 29, 2026 to Jul 29, 2027. The Sep 28 status uses that date, settling the month-short question.',
+        'The Sep 29 payment posted. $526.87 at $52.70 is 10 payments, Oct 29, 2026 to Jul 29, 2027.',
     },
     {
       id: 'affirm_atlanta',
@@ -206,13 +208,13 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 253.63,
+      balance: 253.56,
       apr: 36.0,
       monthlyPayment: 36.28,
       nextDue: '2026-10-20',
       finalPaymentDate: '2027-04-20',
       notes:
-        'Shown in Affirm as the Hotels.com plan: $36.28 due on the 20th. $253.63 is 7 payments ending Apr 20, 2027, the date the Sep 28 status now carries. Estimated: the September autopay has not been seen to post — Affirm and PayPal emailed reminders, not receipts. Confirm from the lender app or a bank statement.',
+        'Shown in Affirm as a Hotels.com plan. AutoPay on since Sep 30 from the Visa ending 0153: six of $36.28 from Oct 20, then $35.88 on Apr 20, 2027 — $253.56.',
     },
     {
       id: 'affirm_columbia',
@@ -220,13 +222,13 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 209.18,
+      balance: 209.1,
       apr: 36.0,
       monthlyPayment: 26.17,
       nextDue: '2026-10-21',
       finalPaymentDate: '2027-05-21',
       notes:
-        '$209.18 at $26.17 is 8 payments ending May 21, 2027. Estimated: the September autopay has not been seen to post — Affirm and PayPal emailed reminders, not receipts. Confirm from the lender app or a bank statement.',
+        'AutoPay on since Sep 30 from the Visa ending 0153: seven of $26.17 from Oct 21, then $25.91 on May 21, 2027 — $209.10.',
     },
     {
       id: 'affirm_tokyo',
@@ -234,27 +236,27 @@ export const seedState: AppState = {
       product: 'affirm_pay_monthly',
       status: 'active',
       priorityTier: 1,
-      balance: 213.8,
+      balance: 267.25,
       apr: 36.0,
       monthlyPayment: 53.45,
-      nextDue: '2026-11-03',
+      nextDue: '2026-10-03',
       finalPaymentDate: '2027-02-03',
       notes:
-        'The Sep 28 status moves the next payment from Oct 3 to Nov 3 with the balance unchanged at $213.80 (4 × $53.45, ending Feb 3, 2027). Nothing in email explains the move. If Affirm still shows Oct 3, $53.45 is due then and this date is wrong — check the Affirm app.',
+        'Five payments of $53.45, Oct 3, 2026 to Feb 3, 2027. The Sep 28 figure of $213.80 had the Sep 3 payment taken off twice. Affirm emailed an Oct 3 reminder, and AutoPay is on since Sep 30 from the Visa ending 0153.',
     },
     {
       id: 'affirm_airbnb_cousin',
-      name: 'Affirm New Airbnb (cousin)',
+      name: 'Affirm Airbnb (cousin)',
       product: 'affirm_pay_monthly',
       status: 'active',
-      priorityTier: 2,
-      balance: 665.79,
-      apr: 0,
+      priorityTier: 1,
+      balance: 665.89,
+      apr: 36.0,
       monthlyPayment: 133.28,
       nextDue: '2026-10-17',
       finalPaymentDate: '2027-02-17',
       notes:
-        '$665.79 is 5 payments of $133.28 ending Feb 17, 2027. Estimated: the September autopay has not been seen to post — Affirm and PayPal emailed reminders, not receipts. Confirm from the lender app or a bank statement.',
+        'Not 0%: $722.00 financed is repaid as $799.17, about 36% APR, and $133.28 is exactly the six-month payment on $722 at 36%. About $55 of the interest is still to come. AutoPay on since Sep 30 from the Visa ending 0153: four of $133.28 from Oct 17, then $132.77 on Feb 17, 2027 — $665.89.',
     },
     {
       id: 'klarna_ace_large',
@@ -299,20 +301,6 @@ export const seedState: AppState = {
       deferrals: [{ date: '2026-09-21', from: '2026-09-30', to: '2026-10-07', note: 'Klarna due-date extension — one per order, now used' }],
       notes:
         'Frontier flight: $302.95 in four ($297.96 + $4.99 fee), the first $79.48 paid Sep 12. Due date extended in Klarna on Sep 21: the remaining three of $74.49 now run Oct 7, Oct 21 and Nov 4. Klarna allows one extension per order, so this plan has used its one. The $79.48 is not in payment history — a debt here carries one payment amount.',
-    },
-    {
-      id: 'delta_airlines',
-      name: 'PayPal Delta Airlines',
-      product: 'paypal_pay_in_4',
-      status: 'active',
-      priorityTier: 2,
-      balance: 52.85,
-      apr: 0,
-      monthlyPayment: 52.85,
-      nextDue: '2026-10-08',
-      finalPaymentDate: '2026-10-08',
-      notes:
-        'One payment left: $52.85 on Oct 8. Estimated: the September autopay has not been seen to post — Affirm and PayPal emailed reminders, not receipts. Confirm from the lender app or a bank statement.',
     },
     {
       id: 'amazon_pay_in_4',
@@ -424,6 +412,14 @@ export const seedState: AppState = {
   ],
 
   clearedDebts: [
+    {
+      id: 'delta_airlines',
+      name: 'PayPal Delta Airlines',
+      product: 'paypal_pay_in_4',
+      amountCleared: 52.85,
+      dateCleared: '2026-09-29',
+      notes: 'Paid in full on Sep 29, early — the last $52.85 was due Oct 8.',
+    },
     {
       id: 'edco_tix_2',
       name: 'EDC Orlando Tickets #2',

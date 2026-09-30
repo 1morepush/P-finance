@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '6.6',
+    date: '2026-09-30',
+    headline: 'Figures updated to Sep 30: Airbnb is 36% APR, Tokyo is due Oct 3, Delta is paid off',
+  },
+  {
     version: '6.5',
     date: '2026-09-29',
     headline: 'Miles from the trip meter, with estimated miles marked as estimates',
