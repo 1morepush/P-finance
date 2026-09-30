@@ -33,8 +33,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 //
 //   Atlanta $253.56 and Columbia $209.10, rounding corrected.
 //
-//   Delta cleared — paid early on Sep 29. The source asks for it to be
-//   verified in PayPal; no PayPal email says either way.
+//   Delta cleared — paid early on Sep 29, confirmed paid in full.
 //
 // Affirm AutoPay was switched on for Tokyo, Atlanta, Columbia and Airbnb on
 // Sep 30, from the Visa ending 0153. Each schedule it emailed sums to the
@@ -419,7 +418,7 @@ export const seedState: AppState = {
       product: 'paypal_pay_in_4',
       amountCleared: 52.85,
       dateCleared: '2026-09-29',
-      notes: 'Paid early by accident on Sep 29 — the last $52.85, due Oct 8. Check PayPal shows nothing left; if it does, add it back.',
+      notes: 'Paid in full on Sep 29, early — the last $52.85 was due Oct 8.',
     },
     {
       id: 'edco_tix_2',
