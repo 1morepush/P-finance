@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '7.2',
+    date: '2026-10-01',
+    headline: 'Each calendar week shows what it owes, beside its Sunday',
+  },
+  {
     version: '7.1',
     date: '2026-10-01',
     headline: 'Home is just today; the totals, fixes and payoff plan moved to Debts',

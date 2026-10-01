@@ -88,6 +88,9 @@ What you owe, and the plan to clear it.
 
 - Month grids stack as you scroll. Each week row is shown in full, so days
   from the next or previous month appear faded, labelled with their month.
+- Beside each Sunday is what that week still owes, Sunday to Saturday,
+  counting the neighbouring month's days in the row. A week already paid
+  shows a tick and what went out.
 - Every due date is shown: installments, the card minimum, and subscriptions
   on their billing day.
 - Tap a day to see what is due and log a payment.
