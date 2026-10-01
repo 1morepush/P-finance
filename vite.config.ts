@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readFileSync } from 'node:fs'
 
 /**
  * Stamped into the bundle so the running build can be identified from inside
@@ -11,6 +12,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 const buildStamp = `${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC${
   process.env.GITHUB_SHA ? ` · ${process.env.GITHUB_SHA.slice(0, 7)}` : ''
 }`
+
+/**
+ * The OCR engine's version names its cache, so an upgrade fetches the new
+ * files rather than pairing a new worker with an old core.
+ */
+const ocrVersion: string = JSON.parse(
+  readFileSync(new URL('./node_modules/tesseract.js/package.json', import.meta.url), 'utf8'),
+).version
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -22,6 +31,20 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      workbox: {
+        // The OCR engine is several megabytes and only needed when a
+        // screenshot is read. Kept out of the install, so updating the app
+        // stays quick, and cached the first time it is used, so reading works
+        // offline after that.
+        globIgnores: ['**/ocr/**'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/ocr\/[^/]+$/,
+            handler: 'CacheFirst',
+            options: { cacheName: `ocr-${ocrVersion}` },
+          },
+        ],
+      },
       manifest: {
         name: 'P-Finance',
         short_name: 'P-Finance',

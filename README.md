@@ -12,6 +12,10 @@ Everything lives in the browser's `localStorage` on the device, under the key
 `p-finance/state/v2`. Nothing is uploaded. Settings has a JSON backup to
 export and import, and the app says how long ago the last one was taken.
 
+Screenshots read by **Update from screenshots** stay on the phone too. The
+text-reading engine (tesseract.js) runs in the browser, and the app serves its
+files itself, so reading a picture contacts no one. The picture is not kept.
+
 The one exception is optional. **Bank balance from Stripe** reads a bank
 balance through a small Cloudflare Worker that you deploy yourself. The worker
 holds the Stripe secret key, so the key is never in the app. The app's access
@@ -22,6 +26,16 @@ See [`worker/README.md`](worker/README.md).
 
 ### Home
 
+- **Update from screenshots.** Pick screenshots of the bank app or of a plan
+  in Affirm, Klarna or PayPal:
+  - The app reads the available balance, or what is left to pay and the next
+    due date.
+  - It works out which plan each one is, by name and then by amount.
+  - It shows each figure next to what the app has. Every figure can be
+    edited, and nothing changes until you confirm.
+  - Two screenshots of the same plan are combined.
+  - The reader downloads about 7 MB the first time it is used, then works
+    offline.
 - **Tell it what you did.** Type a plain sentence and the app records it.
   Examples: "paid 50 toward Omio", "doordash 120, 25 gas, 4 hours",
   "I owe Sam 150", "bank balance is 812". It can log a payment, income, a
@@ -124,6 +138,7 @@ npm run dev
 | Command | What it does |
 |---|---|
 | `npm run build` | Type-checks the app (`tsc -b`) and builds to `dist/` |
+| `node scripts/copy-ocr.mjs` | Copies the OCR engine from `node_modules` to `public/ocr` (not committed). Runs automatically before `dev` and `build`. |
 | `npm run lint` | oxlint |
 | `npm run preview` | Serves the built `dist/` locally |
 | `npx tsc -p tsconfig.app.json --noEmit` | Type-checks the app on its own. A bare `npx tsc --noEmit` checks nothing, because the root `tsconfig.json` has `"files": []`. |
@@ -137,11 +152,13 @@ updates the phone automatically when a new build is deployed.
 src/
   pages/        one file per tab: Dashboard, Debts, Calendar, Income, Settings
   components/   cards and forms
-  lib/          the logic: schedules, weeks, payoff strategies, tax, fuel, storage
+  lib/          the logic: schedules, weeks, payoff strategies, tax, fuel, storage,
+                and screenshot reading (ocr.ts runs the engine; screenshot.ts turns
+                the words into figures and matches them to your plans)
   data/seed.ts  the reconciled figures
   version.ts    release history
 worker/         the optional Stripe bank-balance worker (Cloudflare)
-scripts/        icon generation
+scripts/        icon generation, and copying the OCR engine into public/ocr
 ```
 
 ## Deploying

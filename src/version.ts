@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '7.0',
+    date: '2026-10-01',
+    headline: 'Update balances and due dates from screenshots of your bank and loan apps, read on the phone',
+  },
+  {
     version: '6.6',
     date: '2026-09-30',
     headline: 'Figures updated to Sep 30: Airbnb is 36% APR, Tokyo is due Oct 3, Delta is paid off',

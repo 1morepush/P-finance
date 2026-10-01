@@ -3,6 +3,7 @@ import type { AppState } from '../types'
 import { categoryOf } from '../types'
 import { Card } from '../components/Card'
 import { CommandBar } from '../components/CommandBar'
+import { ScreenshotImport } from '../components/ScreenshotImport'
 import { RunwayCard } from '../components/RunwayCard'
 import { WeekTargetCard } from '../components/WeekTargetCard'
 import { ProgressChart } from '../components/ProgressChart'
@@ -163,6 +164,8 @@ export function Dashboard({
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
       <CommandBar state={state} setState={setState} />
+
+      <ScreenshotImport state={state} setState={setState} />
 
       <RunwayCard state={state} onAddExpenses={onGoToIncome} />
 
