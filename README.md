@@ -42,10 +42,11 @@ needs doing now, and the places to tell the app what happened.
   Examples: "paid 50 toward Omio", "doordash 120, 25 gas, 4 hours",
   "I owe Sam 150", "bank balance is 812". It can log a payment, income, a
   shift or a new debt. The 📷 beside it reads screenshots.
-- **Reading screenshots.** Pick screenshots of the bank app or of a plan in
-  Affirm, Klarna or PayPal:
-  - The app reads the available balance, or what is left to pay and the next
-    due date.
+- **Reading screenshots.** Pick screenshots of the bank app, the Apple Card,
+  or a plan in Affirm, Klarna or PayPal:
+  - The app reads the available balance, the card's balance and minimum
+    payment (and whether Apple says it is past due), or a plan's amount left
+    to pay and next due date.
   - It works out which plan each one is, by name and then by amount.
   - It shows each figure next to what the app has. Every figure can be
     edited, and nothing changes until you confirm.

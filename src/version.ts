@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '7.3',
+    date: '2026-10-01',
+    headline: 'The screenshot reader knows the Apple Card: balance, minimum and an overdue payment',
+  },
+  {
     version: '7.2',
     date: '2026-10-01',
     headline: 'Each calendar week shows what it owes, beside its Sunday',

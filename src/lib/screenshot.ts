@@ -31,7 +31,7 @@ export interface OcrPage {
   words: OcrWord[]
 }
 
-export type ScreenKind = 'bank' | 'affirm' | 'klarna' | 'paypal' | 'unknown'
+export type ScreenKind = 'bank' | 'card' | 'affirm' | 'klarna' | 'paypal' | 'unknown'
 
 /** What one screenshot says, before it is matched to anything. */
 export interface Reading {
@@ -44,6 +44,10 @@ export interface Reading {
   nextDue?: string
   nextAmount?: number
   paymentsLeft?: number
+  /** A card's minimum payment — on a card it changes with every statement. */
+  minimum?: number
+  /** The lender says a payment is past due. */
+  overdue?: boolean
   /** The whole page, lower-cased, for matching names against. */
   text: string
 }
@@ -209,6 +213,9 @@ export function parseDate(text: string, now = today()): string | null {
 
 export function detectKind(text: string): ScreenKind {
   const t = text.toLowerCase()
+  // Before the bank: the Apple Card screen also shows the Apple savings
+  // account's "Current Balance", which on its own reads as a bank.
+  if (/card balance/.test(t)) return 'card'
   if (/available balance|ledger balance|current balance/.test(t)) return 'bank'
   if (/left to pay|choose how to pay|klarna/.test(t)) return 'klarna'
   if (/plan timeline|autopay:|payments? left|paid to date/.test(t)) return 'affirm'
@@ -260,6 +267,21 @@ export function readPage(page: OcrPage, now = today()): Reading {
       valueNear(rows, /current\s+balance/i, 'right')
     const account = rows.find((r) => /checking|savings/i.test(r.text))
     if (account) reading.title = account.text.trim()
+  }
+
+  if (kind === 'card') {
+    reading.title = /apple|daily cash/i.test(text) ? 'Apple Card' : reading.title || 'Credit card'
+    reading.balance = valueNear(rows, /card\s+balance/i, 'below') ?? valueNear(rows, /card\s+balance/i, 'right')
+    // "Make a payment of $214 to get your account back on track", or a
+    // minimum printed with its label. Whole dollars are accepted here, and only
+    // here: the phrase names the figure, so a missing decimal is not a misread.
+    const asked = /payment of \$?(\d{1,3}(?:,\d{3})*|\d+)(\.\d{2})?\b/i.exec(text)
+    const labelled = /minimum(?:\s+payment)?\D{0,12}\$?(\d{1,3}(?:,\d{3})*|\d+)(\.\d{2})?\b/i.exec(text)
+    const m = asked ?? labelled
+    if (m) reading.minimum = Number(`${m[1].replace(/,/g, '')}${m[2] ?? ''}`)
+    reading.overdue = /payment overdue|past due/i.test(text)
+    const due = rows.find((r) => /\bdue\b/i.test(r.text) && !/past due|overdue/i.test(r.text) && parseDate(r.text, now))
+    if (due) reading.nextDue = parseDate(due.text, now) ?? undefined
   }
 
   if (kind === 'paypal') {
@@ -337,6 +359,7 @@ export function readPage(page: OcrPage, now = today()): Reading {
 // ── matching a reading to a debt ─────────────────────────────────────────
 
 const LENDER_OF: Record<Exclude<ScreenKind, 'bank' | 'unknown'>, (d: Debt) => boolean> = {
+  card: (d) => d.product === 'credit_card',
   affirm: (d) => d.product.startsWith('affirm'),
   // The Amazon plan was first recorded under its own product; it is Klarna's.
   klarna: (d) => d.product.startsWith('klarna') || d.product === 'amazon_pay_in_4',
@@ -388,6 +411,8 @@ export interface Proposal {
   balance?: number
   nextDue?: string
   nextAmount?: number
+  minimum?: number
+  overdue?: boolean
 }
 
 /**
@@ -400,7 +425,7 @@ export function propose(readings: Reading[], state: AppState): { proposals: Prop
   const debts = activeDebts(state.debts)
 
   readings.forEach((r, i) => {
-    if (r.kind === 'unknown' || (r.balance === undefined && !r.nextDue)) {
+    if (r.kind === 'unknown' || (r.balance === undefined && !r.nextDue && r.minimum === undefined)) {
       unread.push(i)
       return
     }
@@ -423,8 +448,13 @@ export function propose(readings: Reading[], state: AppState): { proposals: Prop
     const top = scored[0]
     const runnerUp = scored[1]
     const matched = top && top.s > 0 ? top.d : undefined
+    // A card screen rarely prints the card's name — Apple's is a logo — so
+    // with one card on record, the screen is that card.
+    const onlyCard = r.kind === 'card' && pool.length === 1
     const confident =
-      !!matched && nameTokens(matched.name).some((t) => r.text.split(/[^a-z0-9]+/).includes(t)) && (!runnerUp || runnerUp.s < top.s)
+      !!matched &&
+      (onlyCard || nameTokens(matched.name).some((t) => r.text.split(/[^a-z0-9]+/).includes(t))) &&
+      (!runnerUp || runnerUp.s < top.s)
 
     const existing = matched && proposals.find((p) => p.kind === 'debt' && p.debtId === matched.id)
     if (existing) {
@@ -432,6 +462,8 @@ export function propose(readings: Reading[], state: AppState): { proposals: Prop
       existing.balance ??= r.balance
       existing.nextDue ??= r.nextDue
       existing.nextAmount ??= r.nextAmount
+      existing.minimum ??= r.minimum
+      existing.overdue ||= r.overdue
       existing.confident ||= confident
       return
     }
@@ -446,14 +478,16 @@ export function propose(readings: Reading[], state: AppState): { proposals: Prop
       balance: r.balance,
       nextDue: r.nextDue,
       nextAmount: r.nextAmount,
+      minimum: r.minimum,
+      overdue: r.overdue,
     })
   })
   return { proposals, unread }
 }
 
 /** What applying a proposal would change, for the review screen. */
-export function changesFor(p: Proposal, state: AppState): { field: 'balance' | 'nextDue'; from?: number | string; to: number | string }[] {
-  const out: { field: 'balance' | 'nextDue'; from?: number | string; to: number | string }[] = []
+export function changesFor(p: Proposal, state: AppState): { field: 'balance' | 'nextDue' | 'minimum'; from?: number | string; to: number | string }[] {
+  const out: { field: 'balance' | 'nextDue' | 'minimum'; from?: number | string; to: number | string }[] = []
   if (p.kind === 'bank') {
     if (p.balance !== undefined && Math.abs(p.balance - state.bankBalance.amount) > 0.004) {
       out.push({ field: 'balance', from: state.bankBalance.amount, to: p.balance })
@@ -468,14 +502,17 @@ export function changesFor(p: Proposal, state: AppState): { field: 'balance' | '
   if (p.nextDue && isDate(p.nextDue) && p.nextDue !== debt.nextDue) {
     out.push({ field: 'nextDue', from: debt.nextDue, to: p.nextDue })
   }
+  if (p.minimum !== undefined && debt.product === 'credit_card' && Math.abs(p.minimum - (debt.monthlyPayment ?? 0)) > 0.004) {
+    out.push({ field: 'minimum', from: debt.monthlyPayment, to: p.minimum })
+  }
   return out
 }
 
 /**
  * Applies the accepted proposals. A bank figure replaces the balance and is
- * dated today; a loan's figures replace its balance and next due date. Nothing
- * else on the debt is touched — the payment amount, the final date and the
- * notes stay as they were.
+ * dated today; a loan's figures replace its balance and next due date, and a
+ * card's its minimum payment too. Nothing else on the debt is touched — a
+ * plan's payment amount, the final date and the notes stay as they were.
  */
 export function applyProposals(state: AppState, accepted: Proposal[], now = today()): AppState {
   let next = state
@@ -494,6 +531,11 @@ export function applyProposals(state: AppState, accepted: Proposal[], now = toda
               ...d,
               ...(p.balance !== undefined ? { balance: Math.round(p.balance * 100) / 100 } : {}),
               ...(p.nextDue && isDate(p.nextDue) ? { nextDue: p.nextDue } : {}),
+              // A card's minimum moves with each statement; a plan's instalment
+              // is fixed and is not taken from a screenshot.
+              ...(p.minimum !== undefined && d.product === 'credit_card'
+                ? { monthlyPayment: Math.round(p.minimum * 100) / 100 }
+                : {}),
             },
       ),
     }
