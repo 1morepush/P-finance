@@ -4,14 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-ocr.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-ocr.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
