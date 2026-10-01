@@ -6,9 +6,12 @@ import { applyAction, parseCommand, EXAMPLES, type Understanding } from '../lib/
 export function CommandBar({
   state,
   setState,
+  action,
 }: {
   state: AppState
   setState: React.Dispatch<React.SetStateAction<AppState>>
+  /** A second way to tell it, shown beside Examples — the screenshot reader. */
+  action?: React.ReactNode
 }) {
   const [text, setText] = useState('')
   const [picked, setPicked] = useState(0)
@@ -39,14 +42,17 @@ export function CommandBar({
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           Tell it what you did
         </h2>
-        <button
-          type="button"
-          onClick={() => setShowHelp((v) => !v)}
-          className="rounded-lg px-2 py-1 text-xs"
-          style={{ background: 'var(--surface-page)', color: 'var(--text-muted)' }}
-        >
-          {showHelp ? 'Hide' : 'Examples'}
-        </button>
+        <div className="flex gap-2">
+          {action}
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            className="rounded-lg px-2 py-1 text-xs"
+            style={{ background: 'var(--surface-page)', color: 'var(--text-muted)' }}
+          >
+            {showHelp ? 'Hide' : 'Examples'}
+          </button>
+        </div>
       </div>
 
       <textarea

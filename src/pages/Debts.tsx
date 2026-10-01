@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { AppState, Debt, PriorityTier } from '../types'
-import { categoryOf, PRODUCT_CADENCE, PRODUCT_LABEL, TIER_LABEL } from '../types'
+import { categoryOf, PRODUCT_LABEL, TIER_LABEL } from '../types'
 import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
 import { DebtForm } from '../components/DebtForm'
@@ -8,10 +8,19 @@ import { PaymentForm } from '../components/PaymentForm'
 import { applyPayment, isOrphaned, undoPayment, type PaymentInput } from '../lib/payments'
 import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import { WhatIfCard } from '../components/WhatIfCard'
+import { DebtSummaryCard } from '../components/DebtSummaryCard'
+import { ProgressChart } from '../components/ProgressChart'
+import { NeedsFixingCard } from '../components/NeedsFixingCard'
+import { StrategyCard } from '../components/StrategyCard'
+import { InsightsCard } from '../components/InsightsCard'
+import { AppleCardCostCard } from '../components/AppleCardCostCard'
+import { PayoffDatesCard } from '../components/PayoffDatesCard'
+import { Section } from '../components/Section'
+import { STRATEGY_LABEL } from '../lib/strategy'
 import { byLender } from '../lib/lender'
 import { LedgerModal } from '../components/LedgerModal'
-import { ensureLedger, ledgerMismatches, ledgerTotals, tabs } from '../lib/ledger'
-import { formatShortDate, isDate, today } from '../lib/schedule'
+import { ensureLedger, ledgerTotals, tabs } from '../lib/ledger'
+import { formatShortDate, installmentFreeDate, isDate, today } from '../lib/schedule'
 import { uid } from '../lib/id'
 import {
   activeDebts,
@@ -22,6 +31,13 @@ import {
   potentialDebts,
   totalCleared,
 } from '../lib/finance'
+
+type View = 'list' | 'lender' | 'people'
+const VIEWS: [View, string][] = [
+  ['list', 'By priority'],
+  ['lender', 'By lender'],
+  ['people', 'People'],
+]
 
 /** How many logged payments the list shows before it has to be expanded. */
 const PAYMENTS_PREVIEW = 15
@@ -175,6 +191,7 @@ export function Debts({
   const [deferring, setDeferring] = useState(false)
   const [deferTo, setDeferTo] = useState('')
   const [deferNote, setDeferNote] = useState('')
+  const [view, setView] = useState<View>('list')
 
   function logPayment(input: PaymentInput) {
     setState((s) => applyPayment(s, input))
@@ -212,18 +229,10 @@ export function Debts({
     edit(null)
   }
 
-  // A scheduled payment with no date to fall on is in the total and nowhere
-  // else — not on the calendar, not in any window, never settled.
-  const undated = activeDebts(state.debts).filter(
-    (d) => PRODUCT_CADENCE[d.product] && d.monthlyPayment && !isDate(d.nextDue),
-  )
   const lenders = byLender(state.debts, today())
   const paymentsOwedBy = (id: string) => state.payments.filter((p) => p.debtId === id).length
   const people = tabs(state.debts)
   const peopleTotal = people.reduce((s, d) => s + d.balance, 0)
-  // Nothing in the app should be able to put a tab out of step with its own
-  // lines; this is here so that if something ever does, it is visible.
-  const drifted = ledgerMismatches(state.debts)
   const tabDebt = openTab ? state.debts.find((d) => d.id === openTab) : null
 
   const payoff = payoffSummary(state.debts)
@@ -234,6 +243,7 @@ export function Debts({
   )
   const ordered = orderByStrategy(state.debts, state.settings.strategy)
   const potential = potentialDebts(state.debts)
+  const freeDate = installmentFreeDate(state.debts)
   const byTier = state.settings.strategy === 'tier'
 
   const tiers = ([0, 1, 2, 3, 4] as PriorityTier[])
@@ -282,238 +292,197 @@ export function Debts({
         </div>
       </div>
 
-      {undated.length > 0 && (
-        <Card>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--status-warning)' }}>
-            Needs a due date
-          </h2>
-          <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            {undated.length === 1 ? 'This plan has' : 'These plans have'} a monthly payment but no
-            date for it to fall on, so {undated.length === 1 ? 'it is' : 'they are'} in the total and
-            nowhere else — not on the calendar, not in any window, never settled. Tap to set one.
-          </p>
-          <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-            {undated.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => edit(d)}
-                className="flex items-center justify-between gap-2 py-1.5 text-left text-sm first:pt-0 last:pb-0"
-              >
-                <span className="min-w-0 truncate">{d.name}</span>
-                <span className="tabular-nums shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {formatCurrency(d.monthlyPayment!)}/mo · {formatCurrency(d.balance)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </Card>
-      )}
+      <DebtSummaryCard state={state} />
 
-      {drifted.length > 0 && (
-        <Card>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--status-critical)' }}>
-            A tab disagrees with its own lines
-          </h2>
-          {drifted.map(({ debt, balance, fromLedger }) => (
-            <p key={debt.id} className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {debt.name} shows {formatCurrency(balance)} but its lines sum to{' '}
-              {formatCurrency(fromLedger)}. Open the tab and add or correct a line — the lines are
-              what the balance means.
-            </p>
-          ))}
-        </Card>
-      )}
+      <ProgressChart state={state} />
 
-      {/* What is owed to people, which is the part with names attached. */}
-      {people.length > 0 && (
-        <Card>
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Owed to people
-            </h2>
-            <span className="tabular-nums text-sm font-semibold" style={{ color: 'var(--cat-personal)' }}>
-              {formatCurrency(peopleTotal)}
-            </span>
-          </div>
-          <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-            {people.map((d) => {
-              const t = ledgerTotals(d.ledger ?? [])
-              return (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => {
-                    // A tab with no lines yet gets one for the balance it
-                    // already carries, before the sheet can add to it.
-                    setState((s) => ensureLedger(s, d.id))
-                    setOpenTab(d.id)
-                  }}
-                  className="flex items-center justify-between gap-2 py-2 text-left text-sm first:pt-0 last:pb-0"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{d.name}</span>
-                    <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      {t.count === 0 ? (
-                        'No lines yet — tap to itemise it'
-                      ) : (
-                        <>
-                          {t.count} line{t.count === 1 ? '' : 's'}
-                          {t.payments > 0 && ` · ${formatCurrency(t.payments)} paid back`}
-                        </>
-                      )}
-                    </span>
-                  </span>
-                  <span className="tabular-nums shrink-0 font-semibold">
-                    {formatCurrency(d.balance)}
-                  </span>
-                  <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    ›
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </Card>
-      )}
+      <NeedsFixingCard
+        state={state}
+        onEdit={(d) => edit(d)}
+        onOpenTab={(id) => {
+          setState((s) => ensureLedger(s, id))
+          setOpenTab(id)
+        }}
+      />
 
-      {/* Who the money is owed to, for the call that asks for time. Five
-          Affirm plans are one account and one phone number. */}
-      {lenders.length > 1 && (
-        <Card>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            By lender
-          </h2>
-          <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-            {lenders.map((l) => (
-              <div key={l.lender} className="py-2 first:pt-0 last:pb-0">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm font-medium">
-                    {l.lender}
-                    <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      · {l.debts.length} {l.debts.length === 1 ? 'plan' : 'plans'}
-                      {l.apr > 0 && ` · up to ${l.apr}%`}
-                    </span>
-                  </span>
-                  <span className="tabular-nums shrink-0 text-sm font-semibold">
-                    {formatCurrency(l.total)}
-                  </span>
-                </div>
-                <div
-                  className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px]"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  <span>
-                    {l.next
-                      ? `next ${formatCurrency(l.next.amount)} on ${formatShortDate(l.next.date)}`
-                      : 'nothing scheduled'}
-                  </span>
-                  <span className="tabular-nums">{formatCurrency(l.next30)} in 30 days</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        {byTier
-          ? 'Grouped by priority tier. Change the strategy in Settings.'
-          : state.settings.strategy === 'avalanche'
-            ? 'Ordered by highest APR first (avalanche). Change this in Settings.'
-            : 'Ordered by smallest balance first (snowball). Change this in Settings.'}
-      </p>
-
-      <Card>
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          Clear everything today
-        </h2>
-        <div className="mt-2 flex flex-col gap-1 text-sm">
-          <div className="flex items-baseline justify-between gap-3">
-            <span style={{ color: 'var(--text-secondary)' }}>If the schedules run their course</span>
-            <span className="tabular-nums">{formatCurrency(payoff.scheduled)}</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <span style={{ color: 'var(--text-secondary)' }}>Settled in full today</span>
-            <span className="tabular-nums">{formatCurrency(payoff.today)}</span>
-          </div>
-          <div
-            className="mt-1 flex items-baseline justify-between gap-3 border-t pt-2"
-            style={{ borderColor: 'var(--border)' }}
+      {/* One list, three ways to look at it. These were three separate cards
+          stacked above the list, which pushed the debts themselves a screen
+          down. */}
+      <div
+        className="flex rounded-lg p-0.5 text-xs font-medium"
+        style={{ background: 'var(--surface-card)' }}
+        role="tablist"
+        aria-label="How to list the debts"
+      >
+        {VIEWS.map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => setView(v)}
+            className="flex-1 rounded-md py-1.5"
+            style={{
+              background: view === v ? 'var(--surface-page)' : 'transparent',
+              color: view === v ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}
           >
-            <span className="font-semibold">You would save</span>
-            <span className="tabular-nums font-semibold" style={{ color: 'var(--status-good)' }}>
-              {formatCurrency(payoff.saved)}
-            </span>
-          </div>
-        </div>
-        {payoff.worthwhile.length > 0 && (
-          <div className="mt-3 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
-            <p className="mb-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Where the saving actually is — everything else is 0% and saves nothing:
-            </p>
-            {payoff.worthwhile.map(({ debt, payoff: pay }) => (
-              <div key={debt.id} className="flex items-baseline justify-between gap-3 text-xs">
-                <span className="min-w-0 truncate">{debt.name}</span>
-                <span className="tabular-nums shrink-0" style={{ color: 'var(--status-good)' }}>
-                  {formatCurrency(pay.saved)}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'list' && (
+        <>
+          <p className="-mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {byTier
+              ? 'Grouped by priority tier.'
+              : state.settings.strategy === 'avalanche'
+                ? 'Highest APR first (avalanche).'
+                : 'Smallest balance first (snowball).'}{' '}
+            Change the order in the payoff plan below.
+          </p>
+        {byTier ? (
+          tiers.map(({ tier, debts }) => (
+            <section key={tier} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ background: TIER_COLOR[tier], color: '#0d0d0d' }}
+                >
+                  TIER {tier}
+                </span>
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                  {TIER_LABEL[tier]}
+                </h2>
+                <span className="tabular-nums ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {formatCurrency(debts.reduce((s, d) => s + d.balance, 0))}
                 </span>
               </div>
-            ))}
-          </div>
-        )}
-        <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Instalment plans assume the lender waives interest you have not yet been charged, which is
-          the usual arrangement — confirm a payoff quote before settling. The Apple Card figure is
-          simply the interest never accrued.
-        </p>
-      </Card>
-
-      {revolving && <WhatIfCard debt={revolving} />}
-
-      {byTier ? (
-        tiers.map(({ tier, debts }) => (
-          <section key={tier} className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span
-                className="rounded px-1.5 py-0.5 text-[10px] font-bold"
-                style={{ background: TIER_COLOR[tier], color: '#0d0d0d' }}
-              >
-                TIER {tier}
-              </span>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                {TIER_LABEL[tier]}
-              </h2>
-              <span className="tabular-nums ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
-                {formatCurrency(debts.reduce((s, d) => s + d.balance, 0))}
-              </span>
-            </div>
-            {debts.map((d, i) => (
+              {debts.map((d, i) => (
+                <DebtCard
+                  key={d.id}
+                  debt={d}
+                  badge={tier === tiers[0].tier && i === 0 ? 'NEXT TARGET' : undefined}
+                  onClick={() => edit(d)}
+                  onPay={() => setPaying(d.id)}
+                  onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
+                />
+              ))}
+            </section>
+          ))
+        ) : (
+          <div className="flex flex-col gap-3">
+            {ordered.map((d, i) => (
               <DebtCard
                 key={d.id}
                 debt={d}
-                badge={tier === tiers[0].tier && i === 0 ? 'NEXT TARGET' : undefined}
+                badge={i === 0 ? 'NEXT TARGET' : undefined}
                 onClick={() => edit(d)}
                 onPay={() => setPaying(d.id)}
                 onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
               />
             ))}
-          </section>
-        ))
-      ) : (
-        <div className="flex flex-col gap-3">
-          {ordered.map((d, i) => (
-            <DebtCard
-              key={d.id}
-              debt={d}
-              badge={i === 0 ? 'NEXT TARGET' : undefined}
-              onClick={() => edit(d)}
-              onPay={() => setPaying(d.id)}
-              onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
-            />
-          ))}
-        </div>
+          </div>
+        )}
+        </>
       )}
+
+      {view === 'lender' &&
+        (lenders.length > 0 ? (
+          <Card>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              By lender
+            </h2>
+            <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+              {lenders.map((l) => (
+                <div key={l.lender} className="py-2 first:pt-0 last:pb-0">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-medium">
+                      {l.lender}
+                      <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        · {l.debts.length} {l.debts.length === 1 ? 'plan' : 'plans'}
+                        {l.apr > 0 && ` · up to ${l.apr}%`}
+                      </span>
+                    </span>
+                    <span className="tabular-nums shrink-0 text-sm font-semibold">
+                      {formatCurrency(l.total)}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px]"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <span>
+                      {l.next
+                        ? `next ${formatCurrency(l.next.amount)} on ${formatShortDate(l.next.date)}`
+                        : 'nothing scheduled'}
+                    </span>
+                    <span className="tabular-nums">{formatCurrency(l.next30)} in 30 days</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No lenders to group.</p>
+        ))}
+
+      {view === 'people' &&
+        (people.length > 0 ? (
+          <Card>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Owed to people
+              </h2>
+              <span className="tabular-nums text-sm font-semibold" style={{ color: 'var(--cat-personal)' }}>
+                {formatCurrency(peopleTotal)}
+              </span>
+            </div>
+            <div className="mt-2 flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+              {people.map((d) => {
+                const t = ledgerTotals(d.ledger ?? [])
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => {
+                      // A tab with no lines yet gets one for the balance it
+                      // already carries, before the sheet can add to it.
+                      setState((s) => ensureLedger(s, d.id))
+                      setOpenTab(d.id)
+                    }}
+                    className="flex items-center justify-between gap-2 py-2 text-left text-sm first:pt-0 last:pb-0"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{d.name}</span>
+                      <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                        {t.count === 0 ? (
+                          'No lines yet — tap to itemise it'
+                        ) : (
+                          <>
+                            {t.count} line{t.count === 1 ? '' : 's'}
+                            {t.payments > 0 && ` · ${formatCurrency(t.payments)} paid back`}
+                          </>
+                        )}
+                      </span>
+                    </span>
+                    <span className="tabular-nums shrink-0 font-semibold">
+                      {formatCurrency(d.balance)}
+                    </span>
+                    <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      ›
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
+        ) : (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Nothing owed to people.
+          </p>
+        ))}
 
       {potential.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -526,110 +495,180 @@ export function Debts({
         </section>
       )}
 
-      {state.clearedDebts.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <div className="mt-2 flex items-center gap-2">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Cleared 🎉
-            </h2>
-            <span
-              className="tabular-nums ml-auto text-xs font-semibold"
-              style={{ color: 'var(--status-good)' }}
-            >
-              {formatCurrency(totalCleared(state.clearedDebts))} paid off
-            </span>
-          </div>
-          <Card>
-            <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-              {[...state.clearedDebts]
-                .sort((a, b) => b.dateCleared.localeCompare(a.dateCleared))
-                .map((c) => (
-                  <div key={c.id} className="py-2 text-sm first:pt-0 last:pb-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="min-w-0 truncate">{c.name}</span>
-                      <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatDate(c.dateCleared)}
-                      </span>
-                      <span
-                        className="tabular-nums shrink-0 font-medium"
-                        style={{ color: 'var(--status-good)' }}
-                      >
-                        {formatCurrency(c.amountCleared)}
-                      </span>
-                    </div>
-                    {c.notes && (
-                      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {c.notes}
-                      </p>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </Card>
-        </section>
-      )}
+      {/* How to get out, and what each way costs. Gathered from Home, Settings
+          and the Calendar, which each held one piece of it — folded away
+          because it is read now and then, not every visit. */}
+      <Section
+        id="debts-plan"
+        title="Payoff plan"
+        summary={`${STRATEGY_LABEL[state.settings.strategy]} order${ordered[0] ? ` · next target ${ordered[0].name}` : ''}${freeDate ? ` · plans clear ${formatDate(freeDate)}` : ''}`}
+      >
+        <StrategyCard state={state} setState={setState} />
 
-      {state.payments.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            Logged payments
+        <InsightsCard state={state} />
+
+        <Card>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            Clear everything today
           </h2>
-          <Card>
-            <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-              {[...state.payments]
-                .reverse()
-                .slice(0, allPayments ? undefined : PAYMENTS_PREVIEW)
-                .map((pay) => {
-                  const orphaned = isOrphaned(state, pay)
-                  return (
-                    <div
-                      key={pay.id}
-                      className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate">{pay.debtName}</div>
-                        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                          {formatDate(pay.date)}
-                          {pay.auto && ' · auto (due date passed)'}
-                          {pay.clearedDebt && ' · cleared it 🎉'}
-                          {!pay.fromBank && !pay.auto && ' · not from bank'}
-                          {orphaned && ' · debt since removed'}
-                        </div>
-                      </div>
-                      <span
-                        className="tabular-nums shrink-0 font-medium"
-                        style={{ color: 'var(--status-good)' }}
-                      >
-                        −{formatCurrency(pay.amount)}
-                      </span>
-                      {/* No debt to put the money back onto: history, not reversible. */}
-                      {!orphaned && (
-                        <button
-                          type="button"
-                          onClick={() => setState((s) => undoPayment(s, pay.id))}
-                          className="shrink-0 rounded-md px-2 py-0.5 text-[11px]"
-                          style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+          <div className="mt-2 flex flex-col gap-1 text-sm">
+            <div className="flex items-baseline justify-between gap-3">
+              <span style={{ color: 'var(--text-secondary)' }}>If the schedules run their course</span>
+              <span className="tabular-nums">{formatCurrency(payoff.scheduled)}</span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span style={{ color: 'var(--text-secondary)' }}>Settled in full today</span>
+              <span className="tabular-nums">{formatCurrency(payoff.today)}</span>
+            </div>
+            <div
+              className="mt-1 flex items-baseline justify-between gap-3 border-t pt-2"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <span className="font-semibold">You would save</span>
+              <span className="tabular-nums font-semibold" style={{ color: 'var(--status-good)' }}>
+                {formatCurrency(payoff.saved)}
+              </span>
+            </div>
+          </div>
+          {payoff.worthwhile.length > 0 && (
+            <div className="mt-3 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+              <p className="mb-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Where the saving actually is — everything else is 0% and saves nothing:
+              </p>
+              {payoff.worthwhile.map(({ debt, payoff: pay }) => (
+                <div key={debt.id} className="flex items-baseline justify-between gap-3 text-xs">
+                  <span className="min-w-0 truncate">{debt.name}</span>
+                  <span className="tabular-nums shrink-0" style={{ color: 'var(--status-good)' }}>
+                    {formatCurrency(pay.saved)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Instalment plans assume the lender waives interest you have not yet been charged, which is
+            the usual arrangement — confirm a payoff quote before settling. The Apple Card figure is
+            simply the interest never accrued.
+          </p>
+        </Card>
+
+        {revolving && <WhatIfCard debt={revolving} />}
+
+        <AppleCardCostCard state={state} />
+
+        <PayoffDatesCard state={state} />
+      </Section>
+
+      <Section
+        id="debts-history"
+        title="History"
+        summary={`${formatCurrency(totalCleared(state.clearedDebts))} paid off · ${state.payments.length} payment${state.payments.length === 1 ? '' : 's'} logged`}
+      >
+        {state.clearedDebts.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <div className="mt-2 flex items-center gap-2">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Cleared 🎉
+              </h2>
+              <span
+                className="tabular-nums ml-auto text-xs font-semibold"
+                style={{ color: 'var(--status-good)' }}
+              >
+                {formatCurrency(totalCleared(state.clearedDebts))} paid off
+              </span>
+            </div>
+            <Card>
+              <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+                {[...state.clearedDebts]
+                  .sort((a, b) => b.dateCleared.localeCompare(a.dateCleared))
+                  .map((c) => (
+                    <div key={c.id} className="py-2 text-sm first:pt-0 last:pb-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="min-w-0 truncate">{c.name}</span>
+                        <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {formatDate(c.dateCleared)}
+                        </span>
+                        <span
+                          className="tabular-nums shrink-0 font-medium"
+                          style={{ color: 'var(--status-good)' }}
                         >
-                          Undo
-                        </button>
+                          {formatCurrency(c.amountCleared)}
+                        </span>
+                      </div>
+                      {c.notes && (
+                        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {c.notes}
+                        </p>
                       )}
                     </div>
-                  )
-                })}
-            </div>
-            {(state.payments.length > PAYMENTS_PREVIEW || allPayments) && (
-              <button
-                type="button"
-                onClick={() => setAllPayments((v) => !v)}
-                className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
-                style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
-              >
-                {allPayments ? `Show the last ${PAYMENTS_PREVIEW}` : `Show all ${state.payments.length} payments`}
-              </button>
-            )}
-          </Card>
-        </section>
-      )}
+                  ))}
+              </div>
+            </Card>
+          </section>
+        )}
+
+        {state.payments.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+              Logged payments
+            </h2>
+            <Card>
+              <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
+                {[...state.payments]
+                  .reverse()
+                  .slice(0, allPayments ? undefined : PAYMENTS_PREVIEW)
+                  .map((pay) => {
+                    const orphaned = isOrphaned(state, pay)
+                    return (
+                      <div
+                        key={pay.id}
+                        className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate">{pay.debtName}</div>
+                          <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                            {formatDate(pay.date)}
+                            {pay.auto && ' · auto (due date passed)'}
+                            {pay.clearedDebt && ' · cleared it 🎉'}
+                            {!pay.fromBank && !pay.auto && ' · not from bank'}
+                            {orphaned && ' · debt since removed'}
+                          </div>
+                        </div>
+                        <span
+                          className="tabular-nums shrink-0 font-medium"
+                          style={{ color: 'var(--status-good)' }}
+                        >
+                          −{formatCurrency(pay.amount)}
+                        </span>
+                        {/* No debt to put the money back onto: history, not reversible. */}
+                        {!orphaned && (
+                          <button
+                            type="button"
+                            onClick={() => setState((s) => undoPayment(s, pay.id))}
+                            className="shrink-0 rounded-md px-2 py-0.5 text-[11px]"
+                            style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+                          >
+                            Undo
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+              {(state.payments.length > PAYMENTS_PREVIEW || allPayments) && (
+                <button
+                  type="button"
+                  onClick={() => setAllPayments((v) => !v)}
+                  className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
+                  style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+                >
+                  {allPayments ? `Show the last ${PAYMENTS_PREVIEW}` : `Show all ${state.payments.length} payments`}
+                </button>
+              )}
+            </Card>
+          </section>
+        )}
+      </Section>
 
       {tabDebt && (
         <LedgerModal debt={tabDebt} setState={setState} onClose={() => setOpenTab(null)} />

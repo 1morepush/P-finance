@@ -272,7 +272,12 @@ function App() {
       )}
 
       {tab === 'dashboard' && (
-        <Dashboard state={state} setState={setState} onGoToIncome={() => setTab('income')} />
+        <Dashboard
+          state={state}
+          setState={setState}
+          onGoToIncome={() => setTab('income')}
+          onGoToSettings={() => setTab('settings')}
+        />
       )}
       {tab === 'debts' && <Debts state={state} setState={setState} />}
       {tab === 'calendar' && <Calendar state={state} setState={setState} />}
