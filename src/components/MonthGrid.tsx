@@ -40,6 +40,54 @@ function buildWeeks(month: string): string[][] {
   return weeks
 }
 
+/**
+ * What one week still owes: everything due Sunday to Saturday that has not
+ * been paid, unconfirmed debts left out as they are from every total. A week
+ * already settled shows what went out, ticked, so it reads as done rather
+ * than as empty.
+ */
+function WeekTotal({
+  week,
+  byDate,
+  today,
+}: {
+  week: string[]
+  byDate: Map<string, CalendarEntry[]>
+  today: string
+}) {
+  const items = week.flatMap((d) => byDate.get(d) ?? [])
+  const due = items.filter((e) => e.kind === 'due' && !e.isPotential).reduce((n, e) => n + e.amount, 0)
+  const paid = items.filter((e) => e.kind === 'paid').reduce((n, e) => n + e.amount, 0)
+  const current = week[0] <= today && today <= week[6]
+  const dollars = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
+  const label =
+    due > 0
+      ? `Week of ${week[0]}: ${formatCurrency(due)} owed`
+      : paid > 0
+        ? `Week of ${week[0]}: all paid, ${formatCurrency(paid)}`
+        : `Week of ${week[0]}: nothing due`
+  return (
+    <div
+      className="flex min-h-[46px] items-center justify-center rounded-lg px-0.5"
+      style={{ background: current ? 'var(--surface-page)' : 'transparent' }}
+      aria-label={label}
+      title={label}
+      data-week={week[0]}
+    >
+      <span
+        className="tabular-nums text-center text-[10px] leading-tight"
+        style={{
+          color: due > 0 ? 'var(--text-primary)' : paid > 0 ? PAID_COLOR : 'var(--text-muted)',
+          fontWeight: due > 0 ? 600 : 400,
+          opacity: due > 0 || paid > 0 ? 1 : 0.4,
+        }}
+      >
+        {due > 0 ? dollars(due) : paid > 0 ? `✓${dollars(paid)}` : '—'}
+      </span>
+    </div>
+  )
+}
+
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function MonthGrid({
@@ -66,6 +114,7 @@ export function MonthGrid({
   onUndo?: (paymentId: string) => void
 }) {
   const weeks = buildWeeks(month)
+  const all = weeks.flat()
   const byDate = new Map<string, CalendarEntry[]>()
   for (const e of entries) {
     if (!byDate.has(e.date)) byDate.set(e.date, [])
@@ -123,7 +172,13 @@ export function MonthGrid({
         )}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* A narrow first column carries each week's total, Sunday to Saturday —
+          the neighbouring month's days included, since they are drawn in the
+          row — so a week can be read at a glance rather than added up. */}
+      <div className="grid grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] gap-1">
+        <div className="pb-1 text-center text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
+          Week
+        </div>
         {WEEKDAYS.map((d, i) => (
           <div
             key={i}
@@ -134,98 +189,108 @@ export function MonthGrid({
           </div>
         ))}
 
-        {weeks.flat().map((date, i, all) => {
-          // A day from the month before or after, filling out a partial week.
-          const outside = !date.startsWith(month)
-          // Named on the first such day of each run — "Oct 1", "Aug 30" — so
-          // the change of month is read, not inferred from a smaller number.
-          const namesMonth = outside && (i === 0 || all[i - 1].slice(0, 7) !== date.slice(0, 7))
+        {weeks.flatMap((week, w) => [
+          <WeekTotal key={`week-${week[0]}`} week={week} byDate={byDate} today={today} />,
+          ...week.map((date, d) => {
+            const i = w * 7 + d
+            // A day from the month before or after, filling out a partial week.
+            const outside = !date.startsWith(month)
+            // Named on the first such day of each run — "Oct 1", "Aug 30" — so
+            // the change of month is read, not inferred from a smaller number.
+            const namesMonth = outside && (i === 0 || all[i - 1].slice(0, 7) !== date.slice(0, 7))
 
-          const items = byDate.get(date) ?? []
-          const total = sumEntries(items)
-          const isToday = date === today
-          const isSelected = date === selected
-          const isPast = date < today
-          const has = items.length > 0
-          // A past day carrying only settled payments is history, not a bill.
-          const settled = has && items.every((e) => e.kind === 'paid')
+            const items = byDate.get(date) ?? []
+            const total = sumEntries(items)
+            const isToday = date === today
+            const isSelected = date === selected
+            const isPast = date < today
+            const has = items.length > 0
+            // A past day carrying only settled payments is history, not a bill.
+            const settled = has && items.every((e) => e.kind === 'paid')
 
-          return (
-            <button
-              key={date}
-              type="button"
-              onClick={() => onSelect(isSelected ? null : date)}
-              className="flex min-h-[46px] flex-col items-center rounded-lg px-0.5 pt-1 pb-0.5"
-              style={{
-                background: isSelected
-                  ? 'var(--cat-installment)'
-                  : has && !outside
-                    ? 'var(--surface-page)'
-                    : 'transparent',
-                // Today keeps a ring so it stays findable even when another day
-                // is open. A neighbouring month's day with something on it gets
-                // a dashed one instead of the solid tile, so it reads as "not
-                // this month" while still showing what is due.
-                outline: isToday
-                  ? '1.5px solid var(--status-good)'
-                  : outside && has && !isSelected
-                    ? '1px dashed var(--text-muted)'
-                    : 'none',
-                outlineOffset: isToday ? '-1.5px' : '-1px',
-                opacity: isSelected || isToday ? 1 : outside ? (has ? 0.7 : 0.3) : isPast && !has ? 0.35 : 1,
-              }}
-            >
-              <span
-                className="tabular-nums text-[11px] leading-none"
+            return (
+              <button
+                key={date}
+                type="button"
+                onClick={() => onSelect(isSelected ? null : date)}
+                className="flex min-h-[46px] flex-col items-center rounded-lg px-0.5 pt-1 pb-0.5"
                 style={{
-                  color: isSelected
-                    ? 'white'
-                    : isToday
-                      ? 'var(--status-good)'
-                      : 'var(--text-primary)',
-                  fontWeight: isToday || (has && !outside) ? 600 : 400,
-                  fontStyle: outside ? 'italic' : undefined,
+                  background: isSelected
+                    ? 'var(--cat-installment)'
+                    : has && !outside
+                      ? 'var(--surface-page)'
+                      : 'transparent',
+                  // Today keeps a ring so it stays findable even when another day
+                  // is open. A neighbouring month's day with something on it gets
+                  // a dashed one instead of the solid tile, so it reads as "not
+                  // this month" while still showing what is due.
+                  outline: isToday
+                    ? '1.5px solid var(--status-good)'
+                    : outside && has && !isSelected
+                      ? '1px dashed var(--text-muted)'
+                      : 'none',
+                  outlineOffset: isToday ? '-1.5px' : '-1px',
+                  opacity: isSelected || isToday ? 1 : outside ? (has ? 0.7 : 0.3) : isPast && !has ? 0.35 : 1,
                 }}
               >
-                {namesMonth && `${MONTH_ABBR[Number(date.slice(5, 7)) - 1]} `}
-                {Number(date.slice(8))}
-              </span>
+                <span
+                  className="tabular-nums text-[11px] leading-none"
+                  style={{
+                    color: isSelected
+                      ? 'white'
+                      : isToday
+                        ? 'var(--status-good)'
+                        : 'var(--text-primary)',
+                    fontWeight: isToday || (has && !outside) ? 600 : 400,
+                    fontStyle: outside ? 'italic' : undefined,
+                  }}
+                >
+                  {/* The month above the day: beside it, "Sep 27" no longer fits
+                      a day's width once the week totals take a column. */}
+                  {namesMonth && (
+                    <span className="block text-[8px] uppercase not-italic leading-none tracking-wide">
+                      {MONTH_ABBR[Number(date.slice(5, 7)) - 1]}
+                    </span>
+                  )}
+                  {Number(date.slice(8))}
+                </span>
 
-              {has && (
-                <>
-                  <span
-                    className="tabular-nums mt-0.5 text-[9px] leading-none"
-                    style={{
-                      color: isSelected
-                        ? 'white'
-                        : settled
-                          ? 'var(--text-muted)'
-                          : 'var(--text-secondary)',
-                    }}
-                  >
-                    {settled && '✓'}${Math.round(total)}
-                  </span>
-                  <span className="mt-1 flex gap-[2px]">
-                    {items.slice(0, 4).map((e) => (
-                      <span
-                        key={e.key}
-                        className="inline-block h-[3px] w-[3px] rounded-full"
-                        style={{
-                          background:
-                            e.kind === 'paid'
-                              ? PAID_COLOR
-                              : e.isPotential
-                                ? 'var(--status-warning)'
-                                : CATEGORY_COLOR[e.category],
-                        }}
-                      />
-                    ))}
-                  </span>
-                </>
-              )}
-            </button>
-          )
-        })}
+                {has && (
+                  <>
+                    <span
+                      className="tabular-nums mt-0.5 text-[9px] leading-none"
+                      style={{
+                        color: isSelected
+                          ? 'white'
+                          : settled
+                            ? 'var(--text-muted)'
+                            : 'var(--text-secondary)',
+                      }}
+                    >
+                      {settled && '✓'}${Math.round(total)}
+                    </span>
+                    <span className="mt-1 flex gap-[2px]">
+                      {items.slice(0, 4).map((e) => (
+                        <span
+                          key={e.key}
+                          className="inline-block h-[3px] w-[3px] rounded-full"
+                          style={{
+                            background:
+                              e.kind === 'paid'
+                                ? PAID_COLOR
+                                : e.isPotential
+                                  ? 'var(--status-warning)'
+                                  : CATEGORY_COLOR[e.category],
+                          }}
+                        />
+                      ))}
+                    </span>
+                  </>
+                )}
+              </button>
+            )
+          }),
+        ])}
       </div>
 
       {selected && (
