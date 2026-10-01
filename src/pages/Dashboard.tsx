@@ -1,48 +1,35 @@
 import { useMemo, useState } from 'react'
 import type { AppState } from '../types'
-import { categoryOf } from '../types'
 import { Card } from '../components/Card'
 import { CommandBar } from '../components/CommandBar'
 import { ScreenshotImport } from '../components/ScreenshotImport'
 import { RunwayCard } from '../components/RunwayCard'
 import { WeekTargetCard } from '../components/WeekTargetCard'
-import { ProgressChart } from '../components/ProgressChart'
+import { DueAlertCard } from '../components/DueAlertCard'
 import { StatTile } from '../components/StatTile'
-import { CategoryBar } from '../components/CategoryBar'
-import {
-  activeDebts,
-  estimatePayoffMonths,
-  formatCurrency,
-  formatDate,
-  totalCleared,
-  totalDebt,
-  totalPotentialDebt,
-} from '../lib/finance'
-import { installmentFreeDate, owedWithin, today } from '../lib/schedule'
+import { formatCurrency, formatDate } from '../lib/finance'
+import { owedWithin, today } from '../lib/schedule'
 import { calculateWeeklySplit } from '../lib/split'
 import { applyPayment } from '../lib/payments'
-import { generateInsights, type InsightKind } from '../lib/insights'
-import { progress } from '../lib/history'
+import { loadBankLink } from '../lib/bankLink'
 import { uid } from '../lib/id'
 
-/** A weekly figure kept up every week, as the monthly amount an amortisation wants. */
-const WEEKS_PER_MONTH = 52 / 12
-
-const INSIGHT_COLOR: Record<InsightKind, string> = {
-  warning: 'var(--status-critical)',
-  opportunity: 'var(--status-good)',
-  milestone: 'var(--cat-installment)',
-  context: 'var(--text-muted)',
-}
+/**
+ * Home is for today: what is in the bank, what this week takes, anything that
+ * needs doing now, and the places to tell the app what happened. The totals,
+ * the plan and the analysis live with the debts.
+ */
 
 export function Dashboard({
   state,
   setState,
   onGoToIncome,
+  onGoToSettings,
 }: {
   state: AppState
   setState: React.Dispatch<React.SetStateAction<AppState>>
   onGoToIncome: () => void
+  onGoToSettings: () => void
 }) {
   const [incomeInput, setIncomeInput] = useState('')
   const [balanceEdit, setBalanceEdit] = useState(false)
@@ -50,12 +37,6 @@ export function Dashboard({
 
   const incomeAmount = Number(incomeInput) || 0
   const split = useMemo(() => calculateWeeklySplit(state, incomeAmount), [state, incomeAmount])
-  const debts = activeDebts(state.debts)
-  const debtTotal = totalDebt(state.debts)
-  const potentialTotal = totalPotentialDebt(state.debts)
-  const clearedTotal = totalCleared(state.clearedDebts)
-  const lastPayoff = installmentFreeDate(state.debts)
-
   // Guard against emptying the account into one debt when other payments are
   // imminent. Past-due money counts: it is owed now, not never.
   const owed14 = useMemo(() => owedWithin(state.debts, 14), [state.debts])
@@ -64,46 +45,8 @@ export function Dashboard({
     state.bankBalance.amount + incomeAmount - split.toExtraDebt - split.toSavings
   const leavesShort = balanceAfterApplying < due14
 
-  const insights = useMemo(() => generateInsights(state), [state])
-  const tracked = useMemo(() => progress(state), [state])
-
-  const appleCard = state.debts.find((d) => d.id === 'apple_card')
-  const appleMonths =
-    appleCard && appleCard.apr && appleCard.monthlyPayment
-      ? estimatePayoffMonths(appleCard.balance, appleCard.apr, appleCard.monthlyPayment)
-      : null
-  // The split is one week's check; the amortisation runs by the month. The
-  // weekly extra is scaled up as if it were kept up every week — feeding it in
-  // unscaled put a $50/week habit at 41 months when it is 21.
-  const extraPerMonth = split.toExtraDebt * WEEKS_PER_MONTH
-  const appleMonthsBoosted =
-    appleCard && appleCard.apr && appleCard.monthlyPayment
-      ? estimatePayoffMonths(appleCard.balance, appleCard.apr, appleCard.monthlyPayment + extraPerMonth)
-      : null
-
-  // What the card costs to carry at today's balance — exact per month and per
-  // day, and a rough running total since the app started watching.
-  const cardMonthlyInterest = appleCard ? (appleCard.balance * appleCard.apr) / 100 / 12 : 0
-  const cardDailyInterest = (cardMonthlyInterest * 12) / 365
-  const cardInterestSoFar = cardDailyInterest * tracked.days
-
-  const categorySegments = [
-    {
-      label: 'Installment',
-      value: debts.filter((d) => categoryOf(d) === 'installment').reduce((s, d) => s + d.balance, 0),
-      color: 'var(--cat-installment)',
-    },
-    {
-      label: 'Revolving',
-      value: debts.filter((d) => categoryOf(d) === 'revolving').reduce((s, d) => s + d.balance, 0),
-      color: 'var(--cat-revolving)',
-    },
-    {
-      label: 'Personal',
-      value: debts.filter((d) => categoryOf(d) === 'personal').reduce((s, d) => s + d.balance, 0),
-      color: 'var(--cat-personal)',
-    },
-  ]
+  // Linked once in Settings; from then on the balance can be pulled from here.
+  const stripeLinked = loadBankLink() !== null
 
   /** Folds any not-yet-logged income in the input box into the bank balance + entry log. */
   function commitPendingIncome(s: AppState): AppState {
@@ -163,21 +106,22 @@ export function Dashboard({
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
-      <CommandBar state={state} setState={setState} />
-
-      <ScreenshotImport state={state} setState={setState} />
-
-      <RunwayCard state={state} onAddExpenses={onGoToIncome} />
-
-      <WeekTargetCard state={state} />
-
       <Card>
-        <div className="flex items-center justify-between">
+        <div className="grid grid-cols-2 gap-4">
           <StatTile
             label="Bank balance"
             value={formatCurrency(state.bankBalance.amount)}
             sub={`updated ${formatDate(state.bankBalance.updatedAt)}`}
+            accent={state.bankBalance.amount < 0 ? 'var(--status-critical)' : undefined}
           />
+          <StatTile
+            label="Savings set aside"
+            value={formatCurrency(state.savingsBalance)}
+            accent="var(--status-good)"
+          />
+        </div>
+        {/* Every way to bring the balance up to date, in one place. */}
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             className="rounded-lg px-3 py-1.5 text-xs font-medium"
@@ -189,6 +133,17 @@ export function Dashboard({
           >
             {balanceEdit ? 'Cancel' : 'Edit'}
           </button>
+          <ScreenshotImport state={state} setState={setState} />
+          {stripeLinked && (
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium"
+              style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+              onClick={onGoToSettings}
+            >
+              Stripe ›
+            </button>
+          )}
         </div>
         {balanceEdit && (
           <div className="mt-3 flex gap-2">
@@ -215,6 +170,24 @@ export function Dashboard({
           </div>
         )}
       </Card>
+
+      <DueAlertCard state={state} />
+
+      <WeekTargetCard state={state} />
+
+      <CommandBar
+        state={state}
+        setState={setState}
+        action={
+          <ScreenshotImport
+            state={state}
+            setState={setState}
+            label="📷"
+            className="rounded-lg px-2 py-1 text-xs"
+            style={{ background: 'var(--surface-page)', color: 'var(--text-muted)' }}
+          />
+        }
+      />
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
@@ -365,142 +338,7 @@ export function Dashboard({
         </div>
       </Card>
 
-      <Card>
-        <div className="grid grid-cols-2 gap-4">
-          <StatTile
-            label="Total active debt"
-            value={formatCurrency(debtTotal)}
-            sub={potentialTotal > 0 ? `+ ${formatCurrency(potentialTotal)} unconfirmed` : undefined}
-          />
-          <StatTile
-            label="Savings set aside"
-            value={formatCurrency(state.savingsBalance)}
-            accent="var(--status-good)"
-          />
-        </div>
-        <div className="mt-4">
-          <CategoryBar segments={categorySegments} />
-        </div>
-        {lastPayoff && (
-          <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-            All fixed-schedule installment debt clears by {formatDate(lastPayoff)} at minimum
-            payments.
-          </p>
-        )}
-        {clearedTotal > 0 && (
-          <p className="mt-1 text-xs" style={{ color: 'var(--status-good)' }}>
-            {formatCurrency(clearedTotal)} already paid off.
-          </p>
-        )}
-      </Card>
-
-      <ProgressChart state={state} />
-
-      {insights.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            What the numbers say
-          </h2>
-          {insights.map((insight) => (
-            <Card key={insight.id}>
-              <div className="flex items-start gap-2">
-                <span
-                  className="mt-[3px] inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: INSIGHT_COLOR[insight.kind] }}
-                />
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold">{insight.title}</h3>
-                  <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {insight.detail}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          ))}
-          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Worked out from your own figures — nothing is sent anywhere.
-          </p>
-        </section>
-      )}
-
-      {appleCard && appleCard.balance > 0 && (
-        <Card>
-          <h2 className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            Apple Card payoff projection
-          </h2>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {formatCurrency(appleCard.balance)} at {appleCard.apr}% APR
-          </p>
-
-          {/* The cost of standing still. The balance and the rate were both on
-              screen; the number they multiply to never was. */}
-          {cardMonthlyInterest > 0 && (
-            <div className="mt-2 rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
-              <div className="flex items-baseline justify-between gap-3 text-xs">
-                <span style={{ color: 'var(--text-secondary)' }}>Interest at this balance</span>
-                <span className="tabular-nums font-semibold" style={{ color: 'var(--status-critical)' }}>
-                  {formatCurrency(cardMonthlyInterest)}/mo
-                </span>
-              </div>
-              <div className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                <span>{formatCurrency(cardDailyInterest)} a day, whatever else happens</span>
-                {tracked.days > 0 && (
-                  <span className="tabular-nums">
-                    ≈ {formatCurrency(cardInterestSoFar)} over the {tracked.days} days tracked
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-2 flex flex-wrap gap-4 text-sm">
-            <div>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                At minimum ({formatCurrency(appleCard.monthlyPayment ?? 0)}/mo):{' '}
-              </span>
-              <span className="tabular-nums font-medium">
-                {appleMonths ? `${appleMonths} mo` : 'never clears interest'}
-              </span>
-            </div>
-            {split.toExtraDebt > 0 && split.priorityDebt?.id === appleCard.id && (
-              <div>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  Adding {formatCurrency(split.toExtraDebt)} every week ({formatCurrency(extraPerMonth)}/mo):{' '}
-                </span>
-                <span
-                  className="tabular-nums font-medium"
-                  style={{ color: 'var(--status-good)' }}
-                >
-                  {appleMonthsBoosted ? `${appleMonthsBoosted} mo` : '—'}
-                </span>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {state.pendingClaims.length > 0 && (
-        <Card>
-          <h2 className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            Potential upside (not counted in your plan)
-          </h2>
-          {state.pendingClaims.map((c) => (
-            <div key={c.id} className="text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span>{c.name}</span>
-                <span className="tabular-nums" style={{ color: 'var(--status-warning)' }}>
-                  {formatCurrency(c.low)}–{formatCurrency(c.high)}
-                </span>
-              </div>
-              {c.notes && (
-                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {c.notes}
-                </p>
-              )}
-            </div>
-          ))}
-        </Card>
-      )}
+      <RunwayCard state={state} onAddExpenses={onGoToIncome} />
     </div>
   )
 }

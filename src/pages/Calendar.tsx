@@ -4,7 +4,7 @@ import { Card } from '../components/Card'
 import { MonthGrid } from '../components/MonthGrid'
 import { applyPayment, undoPayment } from '../lib/payments'
 import { StatTile } from '../components/StatTile'
-import { activeDebts, formatCurrency, formatDate, formatDue } from '../lib/finance'
+import { formatCurrency } from '../lib/finance'
 import { calendarEntries, dueItems, earliestMonth, monthTotals } from '../lib/calendar'
 import { paymentsToICS } from '../lib/ics'
 import { deliverFile } from '../lib/share'
@@ -12,18 +12,13 @@ import {
   addDays,
   addMonths,
   daysUntil,
-  debtFreeDate,
   formatMonth,
   formatShortDate,
   groupByMonth,
-  installmentFreeDate,
-  isDate,
   nextMonth,
   openingOfNextMonth,
   paymentLabel,
   paymentsBetween,
-  projectedPayoffDate,
-  scheduleMismatches,
   sumConfirmed,
   sumPayments,
   sumPotential,
@@ -94,16 +89,6 @@ export function Calendar({
   const beyond = payments.filter((p) => p.date > detailEnd)
   const months = groupByMonth(detail)
 
-  const freeDate = installmentFreeDate(state.debts)
-  const allFree = debtFreeDate(state.debts)
-  const mismatches = scheduleMismatches(state.debts)
-
-  const scheduled = activeDebts(state.debts)
-    .map((d) => ({ debt: d, payoff: projectedPayoffDate(d) }))
-    .filter((x) => x.payoff)
-    .sort((a, b) => a.payoff!.localeCompare(b.payoff!))
-
-  const unscheduled = activeDebts(state.debts).filter((d) => !projectedPayoffDate(d))
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
@@ -378,99 +363,6 @@ export function Calendar({
           + {beyond.length} further payment{beyond.length === 1 ? '' : 's'} totalling{' '}
           {formatCurrency(sumPayments(beyond))} after {formatMonth(detailEnd.slice(0, 7))}.
         </p>
-      )}
-
-      {/* Projected end dates */}
-      <section className="flex flex-col gap-2">
-        <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          Projected payoff
-        </h2>
-        <Card>
-          <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-            {scheduled.map(({ debt, payoff }) => (
-              <div
-                key={debt.id}
-                className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-              >
-                <span className="min-w-0 truncate">{debt.name}</span>
-                <span className="tabular-nums shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {formatDate(payoff!)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {freeDate && (
-          <Card>
-            <StatTile
-              label="Installment plans all clear"
-              value={formatDate(freeDate)}
-              sub="Affirm, Klarna and PayPal plans at their current payments"
-              accent="var(--status-good)"
-            />
-            {allFree && allFree !== freeDate && (
-              <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Including the Apple Card at a fixed {formatCurrency(212)}/mo, everything scheduled
-                clears by <strong>{formatDate(allFree)}</strong>. Card minimums usually shrink as
-                the balance falls, which would push that out — holding the payment flat is what
-                keeps it on this date.
-              </p>
-            )}
-          </Card>
-        )}
-      </section>
-
-      {unscheduled.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-            No fixed schedule
-          </h2>
-          <Card>
-            <div className="flex flex-col divide-y" style={{ borderColor: 'var(--border)' }}>
-              {unscheduled.map((d) => (
-                <div
-                  key={d.id}
-                  className="flex items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-                >
-                  <span className="min-w-0 truncate">{d.name}</span>
-                  {d.nextDue && (
-                    <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {formatDue(d.nextDue)}
-                    </span>
-                  )}
-                  <span className="tabular-nums shrink-0 font-medium">
-                    {formatCurrency(d.balance)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </section>
-      )}
-
-      {mismatches.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="mt-2 text-sm font-semibold" style={{ color: 'var(--status-warning)' }}>
-            Schedule check
-          </h2>
-          <Card>
-            <p className="mb-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              The recorded final payment date disagrees with the schedule implied by the balance,
-              payment amount and billing cadence. The calendar uses the computed date.
-            </p>
-            {mismatches.map(({ debt, stated, computed }) => (
-              <div key={debt.id} className="py-1 text-xs">
-                <span className="font-medium">{debt.name}</span>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {' '}
-                  — recorded {isDate(stated) ? formatDate(stated) : stated}, computed{' '}
-                  {formatDate(computed)}
-                </span>
-              </div>
-            ))}
-          </Card>
-        </section>
       )}
     </div>
   )

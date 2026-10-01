@@ -6,6 +6,7 @@ import { IncomeForm } from '../components/IncomeForm'
 import { ShiftForm } from '../components/ShiftForm'
 import { ExpenseForm } from '../components/ExpenseForm'
 import { FuelCard } from '../components/FuelCard'
+import { PendingClaimsCard } from '../components/PendingClaimsCard'
 import { PaycheckCard } from '../components/PaycheckCard'
 import { PaycheckPlanCard } from '../components/PaycheckPlanCard'
 import { formatCurrency, formatDate } from '../lib/finance'
@@ -168,6 +169,8 @@ export function Income({
           </Card>
         ))}
       </div>
+
+      <PendingClaimsCard state={state} />
 
       <PaycheckCard state={state} setState={setState} />
       <PaycheckPlanCard state={state} setState={setState} />

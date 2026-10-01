@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import type { AppState } from '../types'
-import { Card } from './Card'
 import { Modal } from './Modal'
 import { formatCurrency } from '../lib/finance'
 import { formatShortDate, isDate } from '../lib/schedule'
@@ -37,12 +36,23 @@ function effective(d: Draft): Proposal {
 const show = (v: number | string | undefined) =>
   v === undefined ? '—' : typeof v === 'number' ? formatCurrency(v) : isDate(v) ? formatShortDate(v) : v
 
+/**
+ * A button that reads screenshots of the bank or a lender's app and offers
+ * the figures it finds. Placed wherever a figure might be stale — beside the
+ * bank balance, and beside the box for telling the app what happened.
+ */
 export function ScreenshotImport({
   state,
   setState,
+  label = '📷 Screenshot',
+  className = 'rounded-lg px-3 py-1.5 text-xs font-medium',
+  style = { background: 'var(--surface-page)', color: 'var(--text-secondary)' },
 }: {
   state: AppState
   setState: React.Dispatch<React.SetStateAction<AppState>>
+  label?: string
+  className?: string
+  style?: React.CSSProperties
 }) {
   const picker = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
@@ -124,22 +134,15 @@ export function ScreenshotImport({
   }
 
   return (
-    <Card>
-      <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-        Update from screenshots
-      </h2>
-      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-        Screenshot your bank or a plan in Affirm, Klarna or PayPal, then pick the pictures here.
-        They are read on this phone — nothing is uploaded or kept — and nothing changes until you
-        say so.
-      </p>
+    <>
       <button
         type="button"
         onClick={() => picker.current?.click()}
-        className="mt-3 w-full rounded-lg py-2 text-sm font-medium"
-        style={{ background: 'var(--cat-installment)', color: 'white' }}
+        className={className}
+        style={style}
+        aria-label="Update from screenshots"
       >
-        Choose screenshots
+        {label}
       </button>
       <input
         ref={picker}
@@ -158,6 +161,9 @@ export function ScreenshotImport({
 
       {open && (
         <Modal title="Read screenshots" onClose={close}>
+          <p className="mb-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Read on this phone — nothing is uploaded or kept, and nothing changes until you say so.
+          </p>
           {status && (
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }} role="status">
               {status}
@@ -325,6 +331,6 @@ export function ScreenshotImport({
           )}
         </Modal>
       )}
-    </Card>
+    </>
   )
 }

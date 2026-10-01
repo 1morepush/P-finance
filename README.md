@@ -26,8 +26,24 @@ See [`worker/README.md`](worker/README.md).
 
 ### Home
 
-- **Update from screenshots.** Pick screenshots of the bank app or of a plan
-  in Affirm, Klarna or PayPal:
+Home is for today: what is in the bank, what this week takes, anything that
+needs doing now, and the places to tell the app what happened.
+
+- **Bank balance and savings.** Bring the balance up to date by typing it
+  (**Edit**), from a screenshot (**📷 Screenshot**), or from Stripe once a bank
+  is linked.
+- **A warning card**, shown only when something needs doing: a payment past
+  due, or less in the bank than the next 14 days will take.
+- **Week cost card.** Swipe through the next 52 weeks, Sunday to Saturday.
+  Each week shows debt payments and subscriptions on the days they come out,
+  plus a weekly share of costs that have no date. It also shows what is still
+  left to cover this week.
+- **Tell it what you did.** Type a plain sentence and the app records it.
+  Examples: "paid 50 toward Omio", "doordash 120, 25 gas, 4 hours",
+  "I owe Sam 150", "bank balance is 812". It can log a payment, income, a
+  shift or a new debt. The 📷 beside it reads screenshots.
+- **Reading screenshots.** Pick screenshots of the bank app or of a plan in
+  Affirm, Klarna or PayPal:
   - The app reads the available balance, or what is left to pay and the next
     due date.
   - It works out which plan each one is, by name and then by amount.
@@ -36,37 +52,37 @@ See [`worker/README.md`](worker/README.md).
   - Two screenshots of the same plan are combined.
   - The reader downloads about 7 MB the first time it is used, then works
     offline.
-- **Tell it what you did.** Type a plain sentence and the app records it.
-  Examples: "paid 50 toward Omio", "doordash 120, 25 gas, 4 hours",
-  "I owe Sam 150", "bank balance is 812". It can log a payment, income, a
-  shift or a new debt.
-- **Week cost card.** Swipe through the next 52 weeks, Sunday to Saturday.
-  Each week shows debt payments and subscriptions on the days they come out,
-  plus a weekly share of costs that have no date. It also shows what is still
-  left to cover this week.
-- **Runway**, a **Progress** chart, and **What the numbers say**: notes on
-  overdue payments, debts with no due date, and what is coming up.
 - **Log this week's income**, with a suggested split between debt, extra
   payoff, savings and money kept in checking.
-- **Apple Card payoff projection** estimates the interest at the current
-  payment.
-- **Potential upside** lists money that may come in, such as the wage claim
-  and tuition reimbursement. It is not counted in the plan.
+- **Runway**: how long the money lasts at the rate the bills fall.
 
 ### Debts
 
-- Debts are grouped into priority tiers: urgent, ~36% installment loans, 0%
-  pay-later plans, the Apple Card, and money owed to people. Debts with no
-  due date are listed under **Needs a due date**.
-- A **By lender** roll-up totals each lender.
-- **Logged payments** can be undone. A missed installment can be marked as
-  pushed to a later date.
-- **Owed to people** keeps a line-by-line tab per person, and flags any tab
-  whose lines don't add up to its balance.
-- **What if I paid more** shows how much sooner a debt clears with extra
-  payments.
-- The **Cleared** list keeps everything already paid off, including any debt
-  that was forgiven.
+What you owe, and the plan to clear it.
+
+- **Summary:** the total, the split by kind, what is paid off so far, and the
+  **Progress** chart.
+- **Needs fixing**, shown only when something is wrong: a plan with no due
+  date, a tab whose lines don't add up to its balance, or a final date that
+  doesn't fit the schedule. Tap one to fix it.
+- **The list**, three ways:
+  - **By priority:** tiers for urgent, ~36% installment loans, 0% pay-later
+    plans, the Apple Card, and money owed to people. The first debt is
+    marked as the next target.
+  - **By lender:** each lender's total and next payment.
+  - **People:** a line-by-line tab per person.
+- **Payoff plan** (folded until opened):
+  - The order extra money goes in (Tier, Avalanche or Snowball), and **what
+    each one costs**.
+  - **What the numbers say**: notes on what is coming up and where extra money
+    helps most.
+  - **Clear everything today**: what settling now would save.
+  - **What if I paid more**: how much sooner the card clears with extra.
+  - **Apple Card payoff projection**: the interest it costs to carry.
+  - **When each debt finishes**, at current payments.
+- **History** (folded until opened): the **Cleared** list, including any debt
+  that was forgiven, and **logged payments**, which can be undone.
+- A missed installment can be marked as pushed to a later date.
 
 ### Calendar
 
@@ -81,6 +97,8 @@ See [`worker/README.md`](worker/README.md).
 ### Income
 
 - **Income sources** and a log of income entered.
+- **Potential upside** lists money that may come in, such as the wage claim
+  and tuition reimbursement. It is not counted in the plan.
 - **FedEx paycheck estimate** takes the hourly rate and hours, including
   overtime. It works out federal, Social Security, Medicare and NC tax on
   2026 rates, and the take-home per check.
@@ -100,9 +118,7 @@ See [`worker/README.md`](worker/README.md).
 
 ### Settings
 
-- The payoff strategy, savings rate and share kept in checking.
-- **What each one costs** compares the Tier, Avalanche and Snowball payoff
-  orders.
+- The savings rate and the share kept in checking.
 - **Backup & restore.**
 - **Bank balance from Stripe** (optional, described above).
 - **App version**, with the release history.
