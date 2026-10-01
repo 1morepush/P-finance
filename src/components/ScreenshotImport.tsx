@@ -6,7 +6,7 @@ import { formatShortDate, isDate } from '../lib/schedule'
 import { closeReader, readImage } from '../lib/ocr'
 import { applyProposals, changesFor, propose, readPage, type Proposal, type Reading } from '../lib/screenshot'
 
-const LENDER: Record<string, string> = { affirm: 'Affirm', klarna: 'Klarna', paypal: 'PayPal', bank: 'Bank' }
+const LENDER: Record<string, string> = { affirm: 'Affirm', klarna: 'Klarna', paypal: 'PayPal', bank: 'Bank', card: 'Credit card' }
 
 const inputStyle = {
   background: 'var(--surface-page)',
@@ -21,15 +21,21 @@ interface Draft {
   debtId: string
   balance: string
   nextDue: string
+  minimum: string
+}
+
+const num = (v: string) => {
+  const n = v.trim() === '' ? NaN : Number(v)
+  return Number.isFinite(n) ? n : undefined
 }
 
 function effective(d: Draft): Proposal {
-  const balance = d.balance.trim() === '' ? undefined : Number(d.balance)
   return {
     ...d.proposal,
     debtId: d.proposal.kind === 'debt' ? d.debtId || undefined : undefined,
-    balance: balance !== undefined && Number.isFinite(balance) ? balance : undefined,
+    balance: num(d.balance),
     nextDue: isDate(d.nextDue) ? d.nextDue : undefined,
+    minimum: num(d.minimum),
   }
 }
 
@@ -111,6 +117,7 @@ export function ScreenshotImport({
         debtId: p.debtId ?? '',
         balance: p.balance !== undefined ? String(p.balance) : '',
         nextDue: p.nextDue ?? '',
+        minimum: p.minimum !== undefined ? String(p.minimum) : '',
       })),
     )
     setStatus(null)
@@ -217,6 +224,12 @@ export function ScreenshotImport({
                       {d.proposal.sources.length > 1 && ` · ${d.proposal.sources.length} screenshots`}
                     </div>
                     <div className="text-sm font-semibold">{d.proposal.title || 'Untitled screen'}</div>
+                    {d.proposal.overdue && (
+                      <p className="mt-1 text-xs font-medium" style={{ color: 'var(--status-critical)' }}>
+                        ⚠ The lender says a payment is past due
+                        {p.minimum !== undefined ? ` — ${formatCurrency(p.minimum)} brings it back on track` : ''}.
+                      </p>
+                    )}
 
                     {p.kind === 'debt' && (
                       <label className="mt-2 flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -244,7 +257,7 @@ export function ScreenshotImport({
 
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        {p.kind === 'bank' ? 'Available ($)' : 'Left to pay ($)'}
+                        {p.kind === 'bank' ? 'Available ($)' : d.proposal.lender === 'card' ? 'Balance ($)' : 'Left to pay ($)'}
                         <input
                           type="number"
                           inputMode="decimal"
@@ -274,6 +287,24 @@ export function ScreenshotImport({
                           </span>
                         </label>
                       )}
+                      {d.proposal.lender === 'card' && (
+                        <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          Minimum ($)
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            value={d.minimum}
+                            placeholder="not shown"
+                            onChange={(e) => update(i, { minimum: e.target.value })}
+                            className="rounded-lg border px-2 py-1.5 text-sm"
+                            style={inputStyle}
+                          />
+                          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                            App has {show(debt?.monthlyPayment)}
+                          </span>
+                        </label>
+                      )}
                     </div>
 
                     {p.kind === 'debt' && !d.debtId ? (
@@ -297,8 +328,10 @@ export function ScreenshotImport({
                           {changes
                             .map((c) =>
                               c.field === 'balance'
-                                ? `${p.kind === 'bank' ? 'balance' : 'left to pay'} ${show(c.from)} → ${show(c.to)}`
-                                : `next due ${show(c.from)} → ${show(c.to)}`,
+                                ? `${p.kind === 'bank' ? 'balance' : d.proposal.lender === 'card' ? 'balance' : 'left to pay'} ${show(c.from)} → ${show(c.to)}`
+                                : c.field === 'minimum'
+                                  ? `minimum ${show(c.from)} → ${show(c.to)}`
+                                  : `next due ${show(c.from)} → ${show(c.to)}`,
                             )
                             .join(', ')}
                         </span>
@@ -311,8 +344,8 @@ export function ScreenshotImport({
               {unread.length > 0 && (
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   Could not tell what {unread.length === 1 ? 'this one shows' : 'these show'}:{' '}
-                  {unread.join(', ')}. Screens that work: a bank account's balance, or one plan in
-                  Affirm, Klarna or PayPal.
+                  {unread.join(', ')}. Screens that work: a bank account's balance, the Apple Card, or
+                  one plan in Affirm, Klarna or PayPal.
                 </p>
               )}
 
