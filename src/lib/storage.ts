@@ -74,6 +74,8 @@ const COLLECTIONS = [
   'shifts',
   'pendingClaims',
   'snapshots',
+  'depopItems',
+  'funds',
 ] as const
 
 /**
@@ -88,6 +90,8 @@ function sound(parsed: Partial<AppState>): Partial<AppState> {
   }
   if (!out.bankBalance || typeof out.bankBalance.amount !== 'number') delete out.bankBalance
   if (typeof out.savingsBalance !== 'number') delete out.savingsBalance
+  if (!out.planDone || typeof out.planDone !== 'object' || Array.isArray(out.planDone)) delete out.planDone
+  if (out.checkIn && (typeof out.checkIn.week !== 'string' || !Array.isArray(out.checkIn.done))) delete out.checkIn
   // A vehicle missing its figures would divide by undefined and print NaN
   // across the fuel card; the seed's own is better than that.
   const v = out.vehicle

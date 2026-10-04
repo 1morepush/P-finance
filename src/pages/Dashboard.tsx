@@ -6,6 +6,9 @@ import { ScreenshotImport } from '../components/ScreenshotImport'
 import { RunwayCard } from '../components/RunwayCard'
 import { WeekTargetCard } from '../components/WeekTargetCard'
 import { DueAlertCard } from '../components/DueAlertCard'
+import { ThisWeekCard } from '../components/ThisWeekCard'
+import { CheckInCard } from '../components/CheckInCard'
+import { floorStatus } from '../lib/recovery'
 import { StatTile } from '../components/StatTile'
 import { formatCurrency, formatDate } from '../lib/finance'
 import { owedWithin, today } from '../lib/schedule'
@@ -25,11 +28,13 @@ export function Dashboard({
   setState,
   onGoToIncome,
   onGoToSettings,
+  onGoToPlan,
 }: {
   state: AppState
   setState: React.Dispatch<React.SetStateAction<AppState>>
   onGoToIncome: () => void
   onGoToSettings: () => void
+  onGoToPlan: () => void
 }) {
   const [incomeInput, setIncomeInput] = useState('')
   const [balanceEdit, setBalanceEdit] = useState(false)
@@ -47,6 +52,9 @@ export function Dashboard({
 
   // Linked once in Settings; from then on the balance can be pulled from here.
   const stripeLinked = loadBankLink() !== null
+  const floor = floorStatus(state)
+  // The check-in is a Sunday job; on other days it lives on the Plan tab.
+  const isSunday = new Date(`${today()}T00:00:00Z`).getUTCDay() === 0
 
   /** Folds any not-yet-logged income in the input box into the bank balance + entry log. */
   function commitPendingIncome(s: AppState): AppState {
@@ -120,6 +128,12 @@ export function Dashboard({
             accent="var(--status-good)"
           />
         </div>
+        {/* The plan's floor, built in steps — the next one is the target. */}
+        <p className="mt-2 text-xs" style={{ color: floor.reached ? 'var(--status-good)' : 'var(--text-muted)' }}>
+          {floor.reached
+            ? `✓ At or above your ${formatCurrency(floor.target).replace('.00', '')} floor`
+            : `${formatCurrency(floor.toGo)} to the ${formatCurrency(floor.step!).replace('.00', '')} step of your ${formatCurrency(floor.target).replace('.00', '')} floor`}
+        </p>
         {/* Every way to bring the balance up to date, in one place. */}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -174,6 +188,10 @@ export function Dashboard({
       <DueAlertCard state={state} />
 
       <WeekTargetCard state={state} />
+
+      {isSunday && <CheckInCard state={state} setState={setState} />}
+
+      <ThisWeekCard state={state} setState={setState} onOpenPlan={onGoToPlan} />
 
       <CommandBar
         state={state}

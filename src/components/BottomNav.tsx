@@ -1,11 +1,13 @@
-export type Tab = 'dashboard' | 'debts' | 'calendar' | 'income' | 'settings'
+export type Tab = 'dashboard' | 'debts' | 'calendar' | 'income' | 'plan' | 'settings'
 
+// Settings is reached from the ⚙ in the header: it is visited rarely, and the
+// plan is worked through every week.
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '⌂' },
   { id: 'debts', label: 'Debts', icon: '≣' },
   { id: 'calendar', label: 'Calendar', icon: '🗓' },
   { id: 'income', label: 'Income', icon: '↻' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
+  { id: 'plan', label: 'Plan', icon: '☑' },
 ]
 
 export function BottomNav({

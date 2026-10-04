@@ -157,6 +157,34 @@ export function Settings({
       </Card>
 
       <Card>
+        <h2 className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          Checking floor
+        </h2>
+        <p className="mb-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          What PNC should never drop below. The plan builds it to $300 in steps of $100.
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          $
+          <input
+            type="number"
+            inputMode="decimal"
+            step="50"
+            min="0"
+            value={state.settings.checkingFloor ?? 300}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              if (Number.isFinite(v) && v >= 0) {
+                setState((s) => ({ ...s, settings: { ...s.settings, checkingFloor: v } }))
+              }
+            }}
+            className="w-28 rounded-lg border px-2 py-1 text-sm"
+            style={{ background: 'var(--surface-page)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+            aria-label="Checking floor"
+          />
+        </label>
+      </Card>
+
+      <Card>
         <h2 className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           Backup &amp; restore
         </h2>

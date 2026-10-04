@@ -8,6 +8,7 @@ import { Debts } from './pages/Debts'
 import { Calendar } from './pages/Calendar'
 import { Income } from './pages/Income'
 import { Settings } from './pages/Settings'
+import { Plan } from './pages/Plan'
 import {
   dedupeSettlements,
   recordSnapshot,
@@ -73,12 +74,24 @@ function App() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-md" style={{ background: 'var(--surface-page)' }}>
-      <header className="sticky top-0 z-10 flex items-baseline justify-between border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
         <h1 className="text-base font-semibold">P-Finance</h1>
         {/* Which build is on this phone, answerable without opening Settings —
             the question comes up every time something is deployed. */}
-        <span className="tabular-nums text-xs" style={{ color: 'var(--text-muted)' }}>
-          v{APP_VERSION}
+        <span className="flex items-center gap-3">
+          <span className="tabular-nums text-xs" style={{ color: 'var(--text-muted)' }}>
+            v{APP_VERSION}
+          </span>
+          <button
+            type="button"
+            onClick={() => setTab('settings')}
+            aria-label="Settings"
+            aria-pressed={tab === 'settings'}
+            className="rounded-lg px-1.5 text-lg leading-none"
+            style={{ color: tab === 'settings' ? 'var(--cat-installment)' : 'var(--text-muted)' }}
+          >
+            ⚙
+          </button>
         </span>
       </header>
 
@@ -277,11 +290,13 @@ function App() {
           setState={setState}
           onGoToIncome={() => setTab('income')}
           onGoToSettings={() => setTab('settings')}
+          onGoToPlan={() => setTab('plan')}
         />
       )}
       {tab === 'debts' && <Debts state={state} setState={setState} />}
       {tab === 'calendar' && <Calendar state={state} setState={setState} />}
       {tab === 'income' && <Income state={state} setState={setState} />}
+      {tab === 'plan' && <Plan state={state} setState={setState} />}
       {tab === 'settings' && <Settings state={state} setState={setState} />}
 
       <BottomNav active={tab} onChange={setTab} />

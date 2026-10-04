@@ -1,4 +1,5 @@
 import type { AppState, LedgerEntry } from '../types'
+import { DEFAULT_FUNDS, FLOOR_TARGET } from './recoveryPlan'
 
 /**
  * Turns a list of signed amounts into ledger lines with stable ids, so the
@@ -77,7 +78,13 @@ export const seedState: AppState = {
     strategy: 'tier',
     savingsPercent: 10,
     keepInCheckingPercent: 10,
+    checkingFloor: FLOOR_TARGET,
   },
+  // From the recovery plan, not the lender figures: none of these are touched
+  // by a figures update, and a device that predates them picks them up here.
+  depopItems: [],
+  planDone: {},
+  funds: DEFAULT_FUNDS,
   pendingClaims: [
     {
       id: 'claim-gridpal',
