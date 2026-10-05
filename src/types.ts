@@ -188,7 +188,22 @@ export interface Shift {
    * range display, which is an estimate. Absent on shifts logged before this
    * was kept, where it cannot be told after the fact.
    */
-  milesFrom?: 'measured' | 'range'
+  milesFrom?: 'measured' | 'range' | 'odometer'
+  /**
+   * The odometer at the start and end of the dash. The strongest record the
+   * IRS can be shown: two readings anyone can check against the car. When
+   * both are in, the miles are their difference.
+   */
+  odometerStart?: number
+  odometerEnd?: number
+  /**
+   * How the work was paid. Only 1099 (contractor) driving is deductible;
+   * a W-2 employee cannot deduct miles for their job. Absent means 1099,
+   * which every gig platform in the list is.
+   */
+  paidAs?: '1099' | 'W-2'
+  /** Where the driving was, for the mileage log — "Raleigh area". */
+  area?: string
   /**
    * The range display before and after the shift. Kept rather than discarded
    * once `miles` is derived from them, so reopening the shift shows what was

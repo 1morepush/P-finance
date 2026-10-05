@@ -8,6 +8,7 @@ import { ExpenseForm } from '../components/ExpenseForm'
 import { FuelCard } from '../components/FuelCard'
 import { PendingClaimsCard } from '../components/PendingClaimsCard'
 import { DepopCard } from '../components/DepopCard'
+import { MileageLogCard } from '../components/MileageLogCard'
 import { PaycheckCard } from '../components/PaycheckCard'
 import { PaycheckPlanCard } from '../components/PaycheckPlanCard'
 import { formatCurrency, formatDate } from '../lib/finance'
@@ -23,7 +24,8 @@ import {
 import {
   addShift,
   last7Days,
-  MILEAGE_RATE,
+  currentRate,
+  formatRate,
   recentShifts,
   removeShift,
   shiftNet,
@@ -332,31 +334,23 @@ export function Income({
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-3 text-xs">
             <span style={{ color: 'var(--text-secondary)' }}>
-              {year.miles > 0
-                ? `${year.miles.toLocaleString('en-US', { maximumFractionDigits: 0 })} miles × $${MILEAGE_RATE.toFixed(2)}`
-                : 'No miles logged'}
+              {year.businessMiles > 0
+                ? `${year.businessMiles.toLocaleString('en-US', { maximumFractionDigits: 0 })} business miles at the IRS rate`
+                : year.miles > 0
+                  ? 'Only W-2 miles, which are not deductible'
+                  : 'No miles logged'}
             </span>
             <span className="tabular-nums font-medium">
-              {year.miles > 0 ? `${formatCurrency(year.mileageDeduction)} deduction` : '—'}
+              {year.businessMiles > 0 ? `${formatCurrency(year.mileageDeduction)} deduction` : '—'}
             </span>
           </div>
-          {year.miles > 0 && year.mileageDeduction > year.gas && (
+          {year.businessMiles > 0 && year.mileageDeduction > year.gas && (
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
               Mileage beats the {formatCurrency(year.gas)} of fuel by{' '}
               {formatCurrency(year.mileageDeduction - year.gas)} — claim miles, not gas.
             </p>
           )}
-          {/* The deduction rests on the log. A range estimate is fine for
-              knowing what a shift made; it is not what to show the IRS. */}
-          {year.milesEstimated > 0 && (
-            <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              {year.milesEstimated === year.miles
-                ? 'All of these miles'
-                : `${year.milesEstimated.toLocaleString('en-US', { maximumFractionDigits: 0 })} of these miles`}{' '}
-              are estimated from the range display. Trip-meter readings are the ones to keep for the
-              deduction — reset Trip B at the start of each dash.
-            </p>
-          )}
+          {/* How well those miles would stand up lives on the mileage log card below. */}
           {year.miles === 0 && (
             <p className="mt-1 text-[11px]" style={{ color: 'var(--status-warning)' }}>
               Add miles to each shift — the deduction is usually worth more than the fuel.
@@ -364,6 +358,8 @@ export function Income({
           )}
         </Card>
       )}
+
+      <MileageLogCard shifts={state.shifts} vehicle={state.vehicle?.name} />
 
       {shiftLog.length > 0 && (
         <Card>
@@ -401,7 +397,7 @@ export function Income({
           {shareSummary.basis !== 'miles' && state.shifts.length > 0 && (
             <p className="mb-2 text-[11px]" style={{ color: 'var(--status-warning)' }}>
               Add miles to every shift and the split follows the driving instead of the clock —
-              and the mileage deduction at {formatCurrency(MILEAGE_RATE)} a mile is usually worth
+              and the mileage deduction at {formatRate(currentRate())} a mile is usually worth
               more than the fuel itself.
             </p>
           )}
@@ -522,6 +518,7 @@ export function Income({
             initial={shiftModal === 'new' ? undefined : shiftModal}
             vehicle={state.vehicle}
             gasPrice={state.lastGasPrice}
+            lastArea={recentShifts(state.shifts, state.shifts.length).find((x) => x.area)?.area}
             onSave={saveShift}
             onCancel={() => showShift(null)}
           />
