@@ -31,8 +31,28 @@ export function addMonths(iso: string, n: number): string {
   return t.toISOString().slice(0, 10)
 }
 
-function step(iso: string, cadence: Cadence, n: number): string {
-  return cadence === 'biweekly' ? addDays(iso, 14 * n) : addMonths(iso, n)
+function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
+}
+
+/**
+ * Days between instalments of a two-weekly plan. Usually 14, but not always:
+ * PayPal spaced the oil-change plan 16 days apart (Oct 19, Nov 4, Nov 20). When
+ * the recorded final date splits the remaining payments into equal whole-day
+ * gaps, those gaps are the schedule; otherwise it is the usual fortnight.
+ */
+export function cycleDays(debt: Debt): number {
+  const payment = debt.monthlyPayment ?? 0
+  if (payment <= 0 || !isDate(debt.nextDue) || !isDate(debt.finalPaymentDate)) return 14
+  const gaps = Math.ceil(debt.balance / payment) - 1
+  if (gaps < 1) return 14
+  const span = daysBetween(debt.nextDue, debt.finalPaymentDate)
+  const gap = span / gaps
+  return Number.isInteger(gap) && gap >= 7 && gap <= 21 ? gap : 14
+}
+
+function step(debt: Debt & { nextDue: string }, cadence: Cadence, n: number): string {
+  return cadence === 'biweekly' ? addDays(debt.nextDue, cycleDays(debt) * n) : addMonths(debt.nextDue, n)
 }
 
 export interface ScheduledPayment {
@@ -91,7 +111,7 @@ export function projectPayments(debt: Debt): ScheduledPayment[] {
       isFinal && debt.product !== 'credit_card' && remainder > 0 && remainder < payment
         ? remainder
         : payment
-    out.push({ ...base, date: step(debt.nextDue, cadence, i), amount, isFinal })
+    out.push({ ...base, date: step({ ...debt, nextDue: debt.nextDue }, cadence, i), amount, isFinal })
   }
   return out
 }

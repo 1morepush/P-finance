@@ -1,6 +1,6 @@
 import type { AppState, Debt, LedgerEntry, Payment } from '../types'
 import { activeDebts } from './finance'
-import { PAYMENT_CADENCE, addDays, addMonths, isDate, today } from './schedule'
+import { PAYMENT_CADENCE, addDays, cycleDays, addMonths, isDate, today } from './schedule'
 import { uid } from './id'
 
 export interface PaymentInput {
@@ -25,7 +25,7 @@ export interface PaymentInput {
 export function nextDueAfter(debt: Debt): string | null {
   const cadence = PAYMENT_CADENCE[debt.product]
   if (!cadence || !isDate(debt.nextDue)) return null
-  return cadence === 'biweekly' ? addDays(debt.nextDue, 14) : addMonths(debt.nextDue, 1)
+  return cadence === 'biweekly' ? addDays(debt.nextDue, cycleDays(debt)) : addMonths(debt.nextDue, 1)
 }
 
 /**
