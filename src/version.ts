@@ -29,7 +29,7 @@ export const RELEASES: readonly Release[] = [
   {
     version: '8.2',
     date: '2026-10-05',
-    headline: 'People tabs updated: Himeth $794.68, Yuuko $336, and New Friend is Ben at $130.88',
+    headline: 'People tabs updated (Himeth $794.68, Yuuko $336, Ben $130.88), and the plan\'s figures brought up to date',
   },
   {
     version: '8.1',
