@@ -1,6 +1,6 @@
 import type { AppState, Debt, PaycheckInputs, Shift } from '../types'
 export type { PlanInputs } from '../types'
-import { MILEAGE_RATE } from './gig'
+import { shiftDeduction } from './gig'
 import { CHECKS_PER_YEAR, estimatePaycheck, FEDERAL_STANDARD_DEDUCTION, marginalRate, NC_RATE } from './paycheck'
 import { splitLeftover } from './split'
 import { upcomingWeeks } from './week'
@@ -93,7 +93,7 @@ export function dashRate(shifts: Shift[], wages: PaycheckInputs | undefined, ent
   if (hoursLogged > 0) {
     perHour = timed.reduce((n, s) => n + s.earnings - s.gasCost, 0) / hoursLogged
     taxablePerHour =
-      timed.reduce((n, s) => n + s.earnings - (s.miles ? s.miles * MILEAGE_RATE : s.gasCost), 0) / hoursLogged
+      timed.reduce((n, s) => n + s.earnings - (s.miles ? shiftDeduction(s) : s.gasCost), 0) / hoursLogged
     source = 'logged'
   } else if (entered && entered > 0) {
     perHour = entered

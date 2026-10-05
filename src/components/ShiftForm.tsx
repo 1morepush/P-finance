@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Shift, Vehicle } from '../types'
 import { formatCurrency } from '../lib/finance'
-import { MILEAGE_RATE, type ShiftInput } from '../lib/gig'
+import { formatRate, mileageRate, type ShiftInput } from '../lib/gig'
 import { mpgFor, fuelFromRange } from '../lib/fuel'
 import { today } from '../lib/schedule'
 
@@ -11,16 +11,19 @@ const inputStyle = {
   color: 'var(--text-primary)',
 }
 
-const PLATFORMS = ['DoorDash', 'Uber Eats', 'Instacart', 'Grubhub', 'Amazon Flex', 'Other']
+const PLATFORMS = ['DoorDash', 'Uber Eats', 'Instacart', 'Grubhub', 'Amazon Flex', 'Instawork', 'Other']
 
 export function ShiftForm({
   initial,
   vehicle,
   gasPrice,
+  lastArea,
   onSave,
   onCancel,
 }: {
   initial?: Shift
+  /** Where the last shift was, so the log's "where" is one tap rather than typed each time. */
+  lastArea?: string
   /** Needed to turn a range drop into gallons. Absent if no car is set up. */
   vehicle?: Vehicle
   /** Last price paid at the pump, for costing those gallons. */
@@ -37,13 +40,17 @@ export function ShiftForm({
   // would promote it to measured. The range readings it came from are kept on
   // the shift, so the placeholder shows it again.
   const [miles, setMiles] = useState(
-    initial?.miles && initial.milesFrom !== 'range' ? String(initial.miles) : '',
+    initial?.miles && initial.milesFrom !== 'range' && initial.milesFrom !== 'odometer' ? String(initial.miles) : '',
   )
   const [rangeStart, setRangeStart] = useState(initial?.rangeStart ? String(initial.rangeStart) : '')
   const [rangeEnd, setRangeEnd] = useState(initial?.rangeEnd ? String(initial.rangeEnd) : '')
   const [atPump, setAtPump] = useState(initial?.rangeAtPump ? String(initial.rangeAtPump) : '')
   const [afterPump, setAfterPump] = useState(initial?.rangeAfterPump ? String(initial.rangeAfterPump) : '')
   const [addedToBank, setAddedToBank] = useState(initial?.addedToBank ?? true)
+  const [odoStart, setOdoStart] = useState(initial?.odometerStart ? String(initial.odometerStart) : '')
+  const [odoEnd, setOdoEnd] = useState(initial?.odometerEnd ? String(initial.odometerEnd) : '')
+  const [paidAs, setPaidAs] = useState<'1099' | 'W-2'>(initial?.paidAs ?? '1099')
+  const [area, setArea] = useState(initial?.area ?? lastArea ?? '')
 
   const gross = Number(earnings) || 0
   const gas = Number(gasCost) || 0
@@ -75,17 +82,24 @@ export function ShiftForm({
         )
       : null
 
-  // Typed miles win: the trip meter is the real figure and the range only ever
-  // stood in for it. Left blank, the range fills the gap.
+  // The odometer pair wins outright: two readings anyone can check against the
+  // car. Then typed miles, the trip meter. The range only ever stood in for
+  // either, and fills the gap when both are blank.
+  const odoA = Number(odoStart) || 0
+  const odoB = Number(odoEnd) || 0
+  const odoMiles = odoA > 0 && odoB > odoA ? Math.round((odoB - odoA) * 10) / 10 : 0
+  const odoBackwards = odoA > 0 && odoB > 0 && odoB <= odoA
   const typed = Number(miles) || 0
   const fromRange = used && !used.unexplained ? Math.round(used.miles) : 0
-  const mi = typed || fromRange
+  const mi = odoMiles || typed || fromRange
   // A shift from before the source was kept comes back with its miles in the
   // box, typed or not. Saved untouched and matching the range exactly, it was
   // the range's figure — call it that rather than promote it to measured.
   const legacyEstimate =
     !!initial && !initial.milesFrom && miles === String(initial.miles ?? '') && typed === fromRange
-  const milesFrom = typed > 0 && !legacyEstimate ? 'measured' : mi > 0 ? 'range' : undefined
+  const milesFrom =
+    odoMiles > 0 ? 'odometer' : typed > 0 && !legacyEstimate ? 'measured' : mi > 0 ? 'range' : undefined
+  const rate = mileageRate(date)
   const net = gross - gas
   const perHour = hrs > 0 ? net / hrs : null
 
@@ -106,6 +120,11 @@ export function ShiftForm({
           ...(before > 0 ? { rangeStart: before } : {}),
           ...(rangeEnd !== '' ? { rangeEnd: after } : {}),
           ...(stop ? { rangeAtPump: stop.atPump, rangeAfterPump: stop.afterPump } : {}),
+          ...(odoA > 0 ? { odometerStart: odoA } : {}),
+          ...(odoB > 0 ? { odometerEnd: odoB } : {}),
+          ...(paidAs === 'W-2' ? { paidAs } : {}),
+          ...(area.trim() ? { area: area.trim() } : {}),
+          ...(initial?.notes ? { notes: initial.notes } : {}),
           addedToBank,
         })
       }}
@@ -219,6 +238,100 @@ export function ShiftForm({
           : 'Reset Trip B on the dash when the dash starts, and type what it reads at the end. That is the exact distance, drives between orders included.'}
         {milesFrom === 'range' && ' Until then, the range readings below estimate it.'}
       </p>
+
+      {/*
+        The record the IRS trusts most, and the cheapest to take: two numbers
+        off the dash, at the start and end. Optional, because the trip meter is
+        already a good figure — but these are what settle a question about it.
+      */}
+      <div className="rounded-lg p-2" style={{ background: 'var(--surface-page)' }}>
+        <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          For the mileage log (optional)
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Odometer at start
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              placeholder="e.g. 184210"
+              value={odoStart}
+              onChange={(e) => setOdoStart(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={inputStyle}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Odometer at end
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              placeholder="e.g. 184262"
+              value={odoEnd}
+              onChange={(e) => setOdoEnd(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={inputStyle}
+            />
+          </label>
+        </div>
+        {odoMiles > 0 && (
+          <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            {odoMiles} miles by the odometer
+            {typed > 0 && Math.abs(typed - odoMiles) >= 1 ? ` — used instead of the ${typed} typed above` : ''}.
+          </p>
+        )}
+        {odoBackwards && (
+          <p className="mt-1 text-[11px]" style={{ color: 'var(--status-warning)' }}>
+            The end reading has to be higher than the start.
+          </p>
+        )}
+        <label className="mt-2 flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          Where
+          <input
+            type="text"
+            placeholder="e.g. Raleigh area"
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            className="rounded-lg border px-3 py-2 text-sm"
+            style={inputStyle}
+          />
+        </label>
+        <div className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          Paid as
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            {(
+              [
+                ['1099', '1099 contractor'],
+                ['W-2', 'W-2 employee'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={paidAs === value}
+                onClick={() => setPaidAs(value)}
+                className="rounded-lg border px-3 py-2 text-sm"
+                style={
+                  paidAs === value
+                    ? { background: 'var(--cat-installment)', borderColor: 'var(--cat-installment)', color: 'white' }
+                    : inputStyle
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            {paidAs === 'W-2'
+              ? "Employees can't deduct driving for their job, so these miles stay out of the deduction."
+              : platform === 'Instawork'
+                ? 'Instawork says on each listing whether it pays W-2 or 1099 — check before you pick.'
+                : 'DoorDash and the other delivery apps pay as 1099, so these miles are deductible.'}
+          </p>
+        </div>
+      </div>
 
       {/*
         Two numbers off the dash, which is far less to capture than an odometer
@@ -387,8 +500,12 @@ export function ShiftForm({
           )}
           {mi > 0 && (
             <div className="flex items-center justify-between" style={{ color: 'var(--text-muted)' }}>
-              <span>Mileage deduction at tax time</span>
-              <span className="tabular-nums">{formatCurrency(mi * MILEAGE_RATE)}</span>
+              <span>
+                {paidAs === 'W-2'
+                  ? 'Mileage deduction — W-2, not deductible'
+                  : `Mileage deduction at tax time · ${mi} mi × ${formatRate(rate)}`}
+              </span>
+              <span className="tabular-nums">{formatCurrency(paidAs === 'W-2' ? 0 : mi * rate)}</span>
             </div>
           )}
         </div>

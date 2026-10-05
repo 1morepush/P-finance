@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '9.0',
+    date: '2026-10-05',
+    headline: 'A mileage log for taxes: odometer readings, 1099 or W-2, the 2026 IRS rates, and a CSV or PDF to hand over',
+  },
+  {
     version: '8.2',
     date: '2026-10-05',
     headline: 'People tabs updated (Himeth $794.68, Yuuko $336, Ben $130.88), and the plan\'s figures brought up to date',

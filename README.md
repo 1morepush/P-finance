@@ -126,6 +126,17 @@ What you owe, and the plan to clear it.
 - **Gas:** a fill-up calculator for the 2010 Acura TL, and each shift's share
   of the tank.
 - **Tax time** totals the year's gross, gas, net and mileage deduction.
+- **Mileage log:**
+  - Each shift can carry odometer readings at the start and end, where the
+    driving was, and whether the work was paid as 1099 or W-2.
+  - Only 1099 miles count toward the deduction. W-2 miles are logged but not
+    counted, and commuting is not logged.
+  - Miles are priced at the IRS rate on the day they were driven. For 2026
+    that is 72.5¢ through June 30 and 76¢ from July 1.
+  - The card shows how much of the log rests on odometer readings, the trip
+    meter or range estimates.
+  - **Save CSV** exports the log with the year's total. **View / print log**
+    shows a plain page to print or save as a PDF.
 - **Living costs** accept a next-due date, which puts them on the calendar.
 - **Depop shop:**
   - Each item gets an id in the plan's sheet style (D001, D002, …), with

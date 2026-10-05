@@ -31,3 +31,24 @@ body {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* The mileage log prints on its own: the app behind it, and the buttons on
+   it, stay off the page. */
+@media print {
+  html,
+  body {
+    background: white !important;
+  }
+  #root,
+  .no-print {
+    display: none !important;
+  }
+  .mileage-table {
+    overflow: visible !important;
+  }
+  .mileage-print {
+    position: static !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+}

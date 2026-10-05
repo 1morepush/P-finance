@@ -21,23 +21,62 @@ export interface GigSummary {
   miles: number
   /** The part of `miles` worked out from the range display rather than read off a meter. */
   milesEstimated: number
+  /** Miles from 1099 work — the only miles the deduction counts. */
+  businessMiles: number
+  /** Miles driven for W-2 work, which an employee cannot deduct. */
+  w2Miles: number
   /** Null when no shift in the period recorded hours. */
   netPerHour: number | null
   netPerMile: number | null
   /** Share of gross swallowed by fuel. */
   gasShare: number
   /**
-   * Miles × the IRS standard rate. Usually larger than fuel alone, since it also
-   * covers wear, so it — not gas — is what reduces the tax bill.
+   * Business miles × the IRS standard rate in force on each shift's date.
+   * Usually larger than fuel alone, since it also covers wear, so it — not
+   * gas — is what reduces the tax bill.
    */
   mileageDeduction: number
 }
 
 /**
- * IRS standard mileage rate for business use, 2026. Used only to show the
- * deduction a logged mileage figure is worth; it does not affect net profit.
+ * IRS standard mileage rates for business use, each from the day it took
+ * effect. 2026 has two: 72.5¢ (IR-2025-128) and, from July 1, 76¢
+ * (IR-2026-29), raised mid-year for fuel prices. Used only to show what the
+ * logged miles are worth at tax time; they do not affect net profit.
  */
-export const MILEAGE_RATE = 0.7
+export const MILEAGE_RATES: readonly { from: string; rate: number }[] = [
+  { from: '2024-01-01', rate: 0.67 },
+  { from: '2025-01-01', rate: 0.7 },
+  { from: '2026-01-01', rate: 0.725 },
+  { from: '2026-07-01', rate: 0.76 },
+]
+
+/** The rate for driving done on a given day. Before the table, its first; after it, the latest. */
+export function mileageRate(date: string): number {
+  let rate = MILEAGE_RATES[0].rate
+  for (const r of MILEAGE_RATES) if (date >= r.from) rate = r.rate
+  return rate
+}
+
+/** Today's rate, for "a mile is worth…" lines that are not about any one shift. */
+export function currentRate(): number {
+  return mileageRate(today())
+}
+
+/** As a reader would say it: 72.5¢, 76¢. */
+export function formatRate(rate: number): string {
+  return `${Number((rate * 100).toFixed(1))}¢`
+}
+
+/** Whether a shift's miles count toward the deduction: 1099 work only. */
+export function isDeductible(shift: Pick<Shift, 'paidAs'>): boolean {
+  return shift.paidAs !== 'W-2'
+}
+
+/** What one shift's miles take off taxable profit. */
+export function shiftDeduction(shift: Shift): number {
+  return isDeductible(shift) ? (shift.miles ?? 0) * mileageRate(shift.date) : 0
+}
 
 export function summarize(shifts: Shift[]): GigSummary {
   const gross = shifts.reduce((s, x) => s + x.earnings, 0)
@@ -46,6 +85,7 @@ export function summarize(shifts: Shift[]): GigSummary {
   const miles = shifts.reduce((s, x) => s + (x.miles ?? 0), 0)
   const milesEstimated = shifts.reduce((s, x) => s + (x.milesFrom === 'range' ? (x.miles ?? 0) : 0), 0)
   const net = gross - gas
+  const w2Miles = shifts.reduce((s, x) => s + (isDeductible(x) ? 0 : (x.miles ?? 0)), 0)
   return {
     count: shifts.length,
     gross,
@@ -54,10 +94,12 @@ export function summarize(shifts: Shift[]): GigSummary {
     hours,
     miles,
     milesEstimated,
+    businessMiles: miles - w2Miles,
+    w2Miles,
     netPerHour: hours > 0 ? net / hours : null,
     netPerMile: miles > 0 ? net / miles : null,
     gasShare: gross > 0 ? gas / gross : 0,
-    mileageDeduction: miles * MILEAGE_RATE,
+    mileageDeduction: shifts.reduce((s, x) => s + shiftDeduction(x), 0),
   }
 }
 
