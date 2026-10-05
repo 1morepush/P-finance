@@ -13,6 +13,7 @@ import {
   PAYCHECK_ORDER,
   PHASES,
   PLAN_DATE,
+  PLAN_UPDATED,
   RULES,
 } from '../data/recoveryPlan'
 import { currentPhase, isDone, LUMP_SUM_PHASE, phaseProgress, toggleTask } from '../lib/recovery'
@@ -42,8 +43,8 @@ export function Plan({
       <div>
         <h1 className="text-lg font-semibold">Money recovery plan</h1>
         <p className="text-xs" style={muted}>
-          From {formatDate(PLAN_DATE)}. Its figures are as written; your live balances are on the Debts
-          tab.
+          From {formatDate(PLAN_DATE)}, figures updated {formatDate(PLAN_UPDATED)} for the oil-change
+          plan and the people tabs. Your live balances are on the Debts tab.
         </p>
       </div>
 
@@ -64,12 +65,13 @@ export function Plan({
           </div>
           <p className="mt-2 text-xs" style={secondary}>
             Depending on your hours and whether September's Apple Card minimum is still owed, October nets
-            between about -$360 and +$445 before food and gas. DoorDash, Depop and the cuts below have to
+            between about -$370 and +$435 before food and gas. DoorDash, Depop and the cuts below have to
             close that gap.
           </p>
           <p className="mt-1 text-xs" style={muted}>
-            Klarna's last payments in early November free up $358 a month by December, and the Tokyo and
-            Airbnb loans ending in February free $186 more.
+            November's loan installments come to $463.08. Klarna's and the oil plan's last payments in
+            November free up $368 a month by December, and the Tokyo and Airbnb loans ending in February
+            free $186 more.
           </p>
         </Card>
       </Section>

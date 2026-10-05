@@ -144,8 +144,10 @@ What you owe, and the plan to clear it.
 
 ### Plan
 
-The Money Recovery Plan of Oct 4, 2026. Its figures are shown exactly as
-written; live balances stay on the Debts tab.
+The Money Recovery Plan of Oct 4, 2026. Its figures are shown as written,
+except where they were updated on Oct 5 for the oil-change plan and the
+people tabs (October instalments, November's, and the lump-sum amounts).
+Live balances stay on the Debts tab.
 
 - **The to-dos by phase:** This week (Oct 4-10), Rest of October, and
   November to mid-December. The current phase is open, ticks are dated, and
@@ -220,7 +222,7 @@ src/
                 and screenshot reading (ocr.ts runs the engine; screenshot.ts turns
                 the words into figures and matches them to your plans)
   data/seed.ts  the reconciled figures
-  data/recoveryPlan.ts  the recovery plan's to-dos, tables and rules, as written
+  data/recoveryPlan.ts  the recovery plan's to-dos, tables and rules
   version.ts    release history
 worker/         the optional Stripe bank-balance worker (Cloudflare)
 scripts/        icon generation, and copying the OCR engine into public/ocr

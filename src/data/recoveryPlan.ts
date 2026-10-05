@@ -4,7 +4,13 @@ import type { SinkingFund } from '../types'
  * The Money Recovery Plan of Oct 4, 2026, as written. Every figure here is
  * the plan's own and is shown as it stands — estimates, ranges and all. The
  * live balances are the app's; this is the plan for what to do with them.
+ *
+ * Updated Oct 5, at the user's request, for the oil-change Pay in 4 and the
+ * people tabs from the Oct 5 note: October instalments $695.33 → $704.98,
+ * personal debts after December ~$1,520 → ~$1,780, so the Apple Card's share
+ * of the $5,250 ~$1,970 → ~$1,710. The ~36% loans are unchanged at ~$1,260.
  */
+export const PLAN_UPDATED = '2026-10-05'
 export const PLAN_DATE = '2026-10-04'
 
 export interface PlanTask {
@@ -103,8 +109,8 @@ export const LUMP_SUM: PlanTask[] = [
   { id: 'lump-apple-past-due', text: 'Anything past due on the Apple Card.' },
   { id: 'lump-36', text: 'The six ~36% loans: about $1,260 left by January.' },
   { id: 'lump-emergency', text: "A $500 starter emergency fund, so the next car repair doesn't become new debt." },
-  { id: 'lump-personal', text: 'Your personal debts: about $1,520 after $50 a month through December.' },
-  { id: 'lump-apple', text: 'The Apple Card: the remaining ~$1,970.' },
+  { id: 'lump-personal', text: 'Your personal debts: about $1,780 after $50 a month through December.' },
+  { id: 'lump-apple', text: 'The Apple Card: the remaining ~$1,710.' },
 ]
 
 export const SUNDAY_CHECK_IN: PlanTask[] = [
@@ -202,7 +208,7 @@ export const PAYCHECK_ORDER = [
 export const OCTOBER: [string, string][] = [
   ['In: FedEx, 15-18.5 hrs a week', '$880-1,090'],
   ['In: Instawork, after tax and gas', '$260-515'],
-  ['Out: loan installments', '$695.33'],
+  ['Out: loan installments', '$704.98'],
   ['Out: Apple Card minimum', "$212, or about $424 if September's is still unpaid"],
   ['Out: inspection, oil, registration', '$165-290 (approx.)'],
   ['Out: subscriptions and gym', 'about $88'],
