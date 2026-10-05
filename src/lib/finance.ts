@@ -41,9 +41,26 @@ export function weeklyExpenseObligation(state: AppState): number {
 }
 
 /**
+ * A rate to the whole percent: 35.99% and 36% cost the same, and splitting
+ * them by the hundredth put every Affirm plan ahead of both PayPal ones.
+ */
+const rateBand = (d: Debt) => Math.round(d.apr)
+
+/**
+ * Monthly payment freed per dollar it takes to finish the debt, to the cent.
+ * Among debts at the same rate, paying off the one that frees the most cash
+ * soonest is what eases the month — Tokyo frees $53.45 for $267, where
+ * Columbia frees $26.17 for $209. Extra on an instalment plan only shortens
+ * it; nothing is freed until it is gone.
+ */
+const cashFreed = (d: Debt) =>
+  d.monthlyPayment && d.balance > 0 ? Math.round((d.monthlyPayment / d.balance) * 100) / 100 : 0
+
+/**
  * Orders active debts by payoff strategy.
  * - `tier`: the priority tiers from the source data (urgent → high interest → 0% BNPL → Apple Card → personal),
- *   breaking ties by APR then balance.
+ *   then by rate to the whole percent, then by monthly cash freed per dollar of balance,
+ *   then smallest balance first.
  * - `avalanche`: highest APR first.
  * - `snowball`: smallest balance first.
  */
@@ -51,7 +68,11 @@ export function orderByStrategy(debts: Debt[], strategy: DebtStrategy): Debt[] {
   const list = activeDebts(debts)
   if (strategy === 'tier') {
     return [...list].sort(
-      (a, b) => a.priorityTier - b.priorityTier || b.apr - a.apr || a.balance - b.balance,
+      (a, b) =>
+        a.priorityTier - b.priorityTier ||
+        rateBand(b) - rateBand(a) ||
+        cashFreed(b) - cashFreed(a) ||
+        a.balance - b.balance,
     )
   }
   if (strategy === 'avalanche') {

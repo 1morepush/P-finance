@@ -7,6 +7,7 @@ import { ShiftForm } from '../components/ShiftForm'
 import { ExpenseForm } from '../components/ExpenseForm'
 import { FuelCard } from '../components/FuelCard'
 import { PendingClaimsCard } from '../components/PendingClaimsCard'
+import { DepopCard } from '../components/DepopCard'
 import { PaycheckCard } from '../components/PaycheckCard'
 import { PaycheckPlanCard } from '../components/PaycheckPlanCard'
 import { formatCurrency, formatDate } from '../lib/finance'
@@ -471,6 +472,8 @@ export function Income({
           )}
         </Card>
       )}
+
+      <DepopCard state={state} setState={setState} />
 
       {recentEntries.length > 0 && (
         <>

@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '8.0',
+    date: '2026-10-04',
+    headline: 'Your money recovery plan as a Plan tab, and a Depop shop tracker',
+  },
+  {
     version: '7.3',
     date: '2026-10-01',
     headline: 'The screenshot reader knows the Apple Card: balance, minimum and an overdue payment',

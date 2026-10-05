@@ -31,13 +31,18 @@ needs doing now, and the places to tell the app what happened.
 
 - **Bank balance and savings.** Bring the balance up to date by typing it
   (**Edit**), from a screenshot (**📷 Screenshot**), or from Stripe once a bank
-  is linked.
+  is linked. A line under it shows how far the balance is from the next step
+  of the checking floor.
 - **A warning card**, shown only when something needs doing: a payment past
   due, or less in the bank than the next 14 days will take.
 - **Week cost card.** Swipe through the next 52 weeks, Sunday to Saturday.
   Each week shows debt payments and subscriptions on the days they come out,
   plus a weekly share of costs that have no date. It also shows what is still
   left to cover this week.
+- **To do:** the recovery plan's next few to-dos, soonest due first, with
+  anything left from an earlier week carried along. Tick them here or on the
+  Plan tab.
+- **Sunday check-in**, on Sundays.
 - **Tell it what you did.** Type a plain sentence and the app records it.
   Examples: "paid 50 toward Omio", "doordash 120, 25 gas, 4 hours",
   "I owe Sam 150", "bank balance is 812". It can log a payment, income, a
@@ -68,8 +73,11 @@ What you owe, and the plan to clear it.
   doesn't fit the schedule. Tap one to fix it.
 - **The list**, three ways:
   - **By priority:** tiers for urgent, ~36% installment loans, 0% pay-later
-    plans, the Apple Card, and money owed to people. The first debt is
-    marked as the next target.
+    plans, the Apple Card, and money owed to people. Within a tier, debts at
+    the same rate (to the whole percent) are ordered by how much monthly cash
+    paying one off frees for each dollar it takes, so Affirm Tokyo and the
+    Airbnb loan come first among the ~36% loans, as the recovery plan says.
+    The first debt is marked as the next target.
   - **By lender:** each lender's total and next payment.
   - **People:** a line-by-line tab per person.
 - **Payoff plan** (folded until opened):
@@ -119,8 +127,44 @@ What you owe, and the plan to clear it.
   of the tank.
 - **Tax time** totals the year's gross, gas, net and mileage deduction.
 - **Living costs** accept a next-due date, which puts them on the calendar.
+- **Depop shop:**
+  - Each item gets an id in the plan's sheet style (D001, D002, …), with
+    brand, item, size, tag, list and floor prices, and the date listed.
+  - Pricing help from the plan's tag-price table, and a suggested floor of
+    about 15% below the list price.
+  - **Copy title and description** fills in the plan's listing template.
+  - Marking an item sold works out Depop's fees (3.3% of the buyer's total,
+    shipping included, plus $0.45) and the net. The net can go into the bank
+    balance and income log, and comes back out if the sale is undone.
+  - Nudges at 14 days listed (new cover photo, then 10% off) and 30 days
+    (bundle it, or move it to Facebook Marketplace).
+  - **Export the tracking sheet** writes a CSV in the plan's columns.
+  - The plan's Depop guide (setup, pricing, fees, shipping, shot list,
+    listing and weekly routine) sits folded underneath.
+
+### Plan
+
+The Money Recovery Plan of Oct 4, 2026. Its figures are shown exactly as
+written; live balances stay on the Debts tab.
+
+- **The to-dos by phase:** This week (Oct 4-10), Rest of October, and
+  November to mid-December. The current phase is open, ticks are dated, and
+  anything overdue is marked.
+- **When the $5,250 lands:** the five-step order, to tick off.
+- **Sunday check-in:** seven items that reset every Sunday.
+- **Saving:**
+  - The checking floor, built in steps to $300.
+  - Sinking funds (car $20 a week now, fun $10 a week once the floor is
+    reached). Moving money in takes it out of the PNC balance.
+  - How to split each paycheck, and the split for after the debt is gone.
+- **Cost cutters**, **Earning more** (with the job links), **The October
+  squeeze**, **Money that's coming** and **The rules**.
 
 ### Settings
+
+Reached from the ⚙ in the header.
+
+- The checking floor, $300 to start.
 
 - The savings rate and the share kept in checking.
 - **Backup & restore.**
@@ -170,12 +214,13 @@ updates the phone automatically when a new build is deployed.
 
 ```
 src/
-  pages/        one file per tab: Dashboard, Debts, Calendar, Income, Settings
+  pages/        one file per tab: Dashboard, Debts, Calendar, Income, Plan, and Settings
   components/   cards and forms
   lib/          the logic: schedules, weeks, payoff strategies, tax, fuel, storage,
                 and screenshot reading (ocr.ts runs the engine; screenshot.ts turns
                 the words into figures and matches them to your plans)
   data/seed.ts  the reconciled figures
+  data/recoveryPlan.ts  the recovery plan's to-dos, tables and rules, as written
   version.ts    release history
 worker/         the optional Stripe bank-balance worker (Cloudflare)
 scripts/        icon generation, and copying the OCR engine into public/ocr

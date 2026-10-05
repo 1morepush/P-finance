@@ -305,6 +305,8 @@ export interface Settings {
    * goes to extra debt payoff.
    */
   keepInCheckingPercent: number
+  /** What checking should never drop below. Built up in steps. */
+  checkingFloor?: number
 }
 
 export interface BankBalance {
@@ -349,6 +351,57 @@ export interface AppState {
   settings: Settings
   /** ISO date of the last export. Only this device holds the data, so staleness matters. */
   lastBackupAt?: string
+  /** What is listed and sold on Depop. */
+  depopItems?: DepopItem[]
+  /** Recovery-plan to-dos ticked off: id → the day it was done. */
+  planDone?: Record<string, string>
+  /** The Sunday check-in: which items are done, for the week (its Sunday) they belong to. */
+  checkIn?: { week: string; done: string[] }
+  /** Money set aside by the week for costs that come round — the car, fun. */
+  funds?: SinkingFund[]
+}
+
+/**
+ * One piece listed on Depop. The fields follow the tracking sheet in the
+ * recovery plan: item_id, brand, item, tag_price, list_price, floor_price,
+ * date_listed, date_sold, sale_price, fees, shipping_paid, net.
+ */
+export interface DepopItem {
+  /** D001, D002 … as in the sheet. */
+  id: string
+  brand: string
+  item: string
+  size?: string
+  color?: string
+  material?: string
+  tagPrice?: number
+  listPrice: number
+  /** The lowest offer to accept. */
+  floorPrice?: number
+  dateListed: string
+  dateSold?: string
+  salePrice?: number
+  /** Shipping the buyer paid: Depop's processing fee is taken on it too. */
+  buyerShipping?: number
+  fees?: number
+  /** Shipping you paid. */
+  shippingPaid?: number
+  net?: number
+  /** The net went into the bank balance, so undoing the sale takes it back out. */
+  addedToBank?: boolean
+  incomeEntryId?: string
+}
+
+/** A pot filled a little each week for a cost that is certain to come. */
+export interface SinkingFund {
+  id: string
+  name: string
+  perWeek: number
+  balance: number
+  /** What it pays for, as the plan puts it. */
+  covers: string
+  /** Not started until the checking floor is reached. */
+  afterFloor?: boolean
 }
 
 const PRODUCT_CATEGORY: Record<DebtProduct, DebtCategory> = {
