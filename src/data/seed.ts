@@ -16,9 +16,15 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 
 // Source of truth: the status supplied 2026-09-30, read off the lender apps.
 // Totals this data produces (verified against the source before seeding):
-//   active             $12,210.85   the source's $11,902.99, plus $307.86 below
+//   active             $12,239.80   the source's $11,931.94, plus $307.86 below
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
+//
+// Added Oct 5, without touching the Sep 30 figures: a 0% PayPal Pay in 4 for
+// the oil-change supplies, $38.60 bought and $28.95 left as three of $9.65 on
+// Oct 19, Nov 4 and Nov 20. Tier 2 (0% plans) is $494.48 with it. The version
+// moves so phones are offered it; SEED_DATE stays, so payments logged since
+// Sep 30 are still replayed on top.
 //
 // What changed from Sep 28:
 //
@@ -56,7 +62,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-09-30'
+export const SEED_VERSION = '2026-10-05'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -264,6 +270,20 @@ export const seedState: AppState = {
       finalPaymentDate: '2027-02-17',
       notes:
         'Not 0%: $722.00 financed is repaid as $799.17, about 36% APR, and $133.28 is exactly the six-month payment on $722 at 36%. About $55 of the interest is still to come. AutoPay on since Sep 30 from the Visa ending 0153: four of $133.28 from Oct 17, then $132.77 on Feb 17, 2027 — $665.89.',
+    },
+    {
+      id: 'paypal_autozone_oil',
+      name: 'PayPal AutoZone Pay in 4 (oil change)',
+      product: 'paypal_pay_in_4',
+      status: 'active',
+      priorityTier: 2,
+      balance: 28.95,
+      apr: 0,
+      monthlyPayment: 9.65,
+      nextDue: '2026-10-19',
+      finalPaymentDate: '2026-11-20',
+      notes:
+        '$38.60 of oil-change supplies on 0% Pay in 4. Three of $9.65 left: Oct 19, Nov 4 and Nov 20 — PayPal spaced these 16 days apart, not 14. The last new plan for a while.',
     },
     {
       id: 'klarna_ace_large',
