@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '8.2',
+    date: '2026-10-05',
+    headline: 'People tabs updated: Himeth $794.68, Yuuko $336, and New Friend is Ben at $130.88',
+  },
+  {
     version: '8.1',
     date: '2026-10-05',
     headline: 'The PayPal oil-change plan added: $9.65 on Oct 19, Nov 4 and Nov 20',

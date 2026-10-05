@@ -16,7 +16,8 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 
 // Source of truth: the status supplied 2026-09-30, read off the lender apps.
 // Totals this data produces (verified against the source before seeding):
-//   active             $12,239.80   the source's $11,931.94, plus $307.86 below
+//   active             $12,192.82   lenders as of Sep 30 + the oil plan, and
+//                                    the people tabs from the Oct 5 note
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
 //
@@ -46,11 +47,14 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 // Sep 30, from the Visa ending 0153. Each schedule it emailed sums to the
 // balance here to the cent, so none of the four is an estimate any more.
 //
-// Himeth $548.68 and Liv $378.08 are, again, not used. They are the running
-// totals from before the Sep 17 correction — $866.54 − $317.86 and
-// $368.08 + $10 — confirmed at the time as $866.54 and $368.08. The status
-// repeats the old figures; it does not report a payment. Kept at the
-// confirmed amounts, which is where the $307.86 difference comes from.
+// The people tabs come from the note supplied on Oct 5, line for line:
+//   Himeth  $794.68   the old $317.86 line is now two, +$212 and +$34
+//   Liv     $368.08   unchanged
+//   Aiya    $300.00   unchanged
+//   Yuuko   $336.00   $276 + $60
+//   Ben     $130.88   was "New Friend" at $166; $35.12 less
+// $1,929.64 in all, down $46.98. Ben keeps the new_friend id so anything
+// logged against the tab before the rename still finds it.
 //
 // Klarna extended two due dates on Sep 21, each the one extension its order
 // allows: Frontier (Sep 30 → Oct 7) and ACE small (Sep 25 → Oct 2). Recorded
@@ -62,7 +66,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-10-05'
+export const SEED_VERSION = '2026-10-05b'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -374,15 +378,17 @@ export const seedState: AppState = {
       product: 'personal',
       status: 'active',
       priorityTier: 4,
-      balance: 866.54,
+      balance: 794.68,
       apr: 0,
       nextDue: 'flexible',
-      ledger: tab('himeth', [
-        591, 15, 27, 7.19, 7.19, 6, 6, 21.5, -50, -50.95, -31.25, 317.86,
-      ]),
-      // $866.54 confirmed on 2026-09-17: the +$317.86 belongs, and the $548.68
-      // quoted alongside was the running total before it.
-      notes: 'Twelve lines as supplied, confirmed at $866.54.',
+      ledger: [
+        ...tab('himeth', [591, 15, 27, 7.19, 7.19, 6, 6, 21.5, -50, -50.95, -31.25]),
+        // Replace the single +$317.86 line kept until Oct 5. New ids, so a
+        // phone holding the old line does not mistake one of these for it.
+        { id: 'himeth-oct5-0', date: '2026-10-05', amount: 212 },
+        { id: 'himeth-oct5-1', date: '2026-10-05', amount: 34 },
+      ],
+      notes: 'Thirteen lines as listed on Oct 5, totalling $794.68.',
     },
     {
       id: 'liv',
@@ -413,28 +419,29 @@ export const seedState: AppState = {
       product: 'personal',
       status: 'active',
       priorityTier: 4,
-      balance: 276.0,
+      balance: 336.0,
       apr: 0,
       nextDue: 'flexible',
-      ledger: tab('yuuko', [276]),
+      ledger: [...tab('yuuko', [276]), { id: 'yuuko-oct5-0', date: '2026-10-05', amount: 60 }],
     },
     {
       id: 'new_friend',
-      name: 'New Friend',
+      name: 'Ben',
       product: 'personal',
       status: 'active',
       priorityTier: 4,
-      balance: 166.0,
+      balance: 130.88,
       apr: 0,
       nextDue: 'flexible',
       ledger: [
         { id: 'new_friend-seed-0', date: '2026-09-14', amount: 296, note: 'Owed as of the Sep 14 update' },
         { id: 'new_friend-seed-1', date: '2026-09-25', amount: -130, note: 'Payment' },
+        { id: 'new_friend-oct5-0', date: '2026-10-05', amount: -35.12, note: 'Down to $130.88 on the Oct 5 list' },
       ],
       // A part-payment is a line on the tab, not a cleared debt: the cleared
       // log is for debts paid off, and counting $130 there as well as here
       // would count it twice.
-      notes: 'Paid $130 on Sep 25; $166 left, due later.',
+      notes: 'Listed as Ben on Oct 5 at $130.88. Paid $130 on Sep 25, then $35.12 less by Oct 5.',
     },
   ],
 
