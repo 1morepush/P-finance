@@ -35,6 +35,10 @@ needs doing now, and the places to tell the app what happened.
   of the checking floor.
 - **A warning card**, shown only when something needs doing: a payment past
   due, or less in the bank than the next 14 days will take.
+  It splits that around payday: what is due before the next paycheck, which
+  the bank has to cover alone, and whether the paycheck (or paychecks)
+  inside the 14 days covers the rest. Payday is set under Income → FedEx
+  paycheck estimate; it starts on Fridays from Oct 16, 2026, weekly.
 - **Car costs coming up**, shown while one is unpaid: the inspection and
   the registration renewal, each with its price range, due date, deadline
   and notes. Registration says it is waiting on the inspection until that
