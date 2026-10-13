@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AppState } from '../types'
 import { SEED_DATE, SEED_VERSION, seedState } from '../data/seed'
 import { replayManualPayments } from './payments'
+import { mergePlannedCosts } from './plannedCosts'
 import { today } from './schedule'
 import { APP_VERSION } from '../version'
 
@@ -190,6 +191,9 @@ export function applySeedUpdate(state: AppState): AppState {
       return !e.nextDue && here?.nextDue ? { ...e, nextDue: here.nextDue } : e
     }),
   ]
+  // Planned costs refresh from the figures too, but one paid on this device
+  // stays paid — the figures cannot know it happened.
+  next.plannedCosts = mergePlannedCosts(state.plannedCosts, seedState.plannedCosts ?? [])
   return replayManualPayments(next, SEED_DATE)
 }
 

@@ -374,6 +374,36 @@ export interface AppState {
   checkIn?: { week: string; done: string[] }
   /** Money set aside by the week for costs that come round — the car, fun. */
   funds?: SinkingFund[]
+  /** One-off costs with a date and only an estimate — an inspection, a registration. */
+  plannedCosts?: PlannedCost[]
+}
+
+/**
+ * A one-off cost known by its date and a price range rather than an exact
+ * figure. Until it is paid it is budgeted at the top of the range, so the
+ * calendar and the bank check never come up short because of it.
+ */
+export interface PlannedCost {
+  id: string
+  name: string
+  low: number
+  high: number
+  /** ISO date it is due. */
+  due: string
+  /** The last day it can be done without a penalty, where there is one. */
+  deadline?: string
+  /** As supplied. `paid` is set here when it is marked paid. */
+  status: 'pending' | 'overdue' | 'paid'
+  /** Another cost that has to be done first — registration needs the inspection. */
+  needs?: string
+  /** The recovery-plan to-do it settles, ticked when it is paid. */
+  planTask?: string
+  notes?: string
+  paidAmount?: number
+  paidOn?: string
+  paidFrom?: 'checking' | 'car fund'
+  /** The part taken from the car fund; anything beyond what it held came from checking. */
+  paidFromFund?: number
 }
 
 /**

@@ -1,5 +1,6 @@
-import type { Debt, Expense } from '../types'
+import type { Debt, Expense, PlannedCost } from '../types'
 import { allPayments, addDays, billPayments, type ScheduledPayment } from './schedule'
+import { plannedPayments } from './plannedCosts'
 
 /**
  * Every scheduled payment as a calendar file the phone's own calendar can
@@ -16,11 +17,14 @@ export function paymentsToICS(
   stamp = new Date(),
   /** Subscriptions and bills with a due date, reminded like any payment. */
   expenses: Expense[] = [],
+  /** One-off costs still to pay — the car inspection, the registration. */
+  planned: PlannedCost[] = [],
 ): { text: string; count: number } {
   const until = addDays(todayISO, horizonDays)
   const payments = [
     ...allPayments(debts).filter((p) => p.date >= todayISO && p.date <= until),
     ...billPayments(expenses, todayISO, until),
+    ...plannedPayments(planned, todayISO, until),
   ].sort((a, b) => a.date.localeCompare(b.date))
   const dtstamp = stamp.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 
@@ -41,7 +45,9 @@ export function paymentsToICS(
 function event(p: ScheduledPayment, dtstamp: string): string[] {
   const day = p.date.replace(/-/g, '')
   const next = addDays(p.date, 1).replace(/-/g, '')
-  const amount = p.amount.toFixed(2)
+  // A planned cost known only as a range says so rather than pretend to the cent.
+  const amount =
+    p.estimateLow !== undefined ? `${p.estimateLow.toFixed(0)}–${p.amount.toFixed(0)}` : p.amount.toFixed(2)
   return [
     'BEGIN:VEVENT',
     `UID:${p.debtId}-${p.date}@p-finance`,
@@ -50,8 +56,10 @@ function event(p: ScheduledPayment, dtstamp: string): string[] {
     `DTEND;VALUE=DATE:${next}`,
     `SUMMARY:${escape(`${p.debtName} — $${amount}${p.isFinal ? ' (final)' : ''}`)}`,
     `DESCRIPTION:${escape(
-      p.product === 'bill'
-        ? `$${amount} ${p.debtName} charge.`
+      p.estimateLow !== undefined
+        ? `${p.debtName}: about $${amount}.`
+        : p.product === 'bill'
+          ? `$${amount} ${p.debtName} charge.`
         : `$${amount} due to ${p.debtName}.${p.isFinal ? ' This is the last payment.' : ''}`,
     )}`,
     'BEGIN:VALARM',

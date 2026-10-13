@@ -21,6 +21,9 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
 //
+// Added Oct 13: two planned car costs, the inspection ($30-40, Oct 16) and the
+// registration renewal ($100-200, Oct 28, hard deadline Oct 31). Debts unchanged.
+//
 // Added Oct 5, without touching the Sep 30 figures: a 0% PayPal Pay in 4 for
 // the oil-change supplies, $38.60 bought and $28.95 left as three of $9.65 on
 // Oct 19, Nov 4 and Nov 20. Tier 2 (0% plans) is $494.48 with it. The version
@@ -66,7 +69,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-10-05b'
+export const SEED_VERSION = '2026-10-13'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -93,6 +96,34 @@ export const seedState: AppState = {
   // From the recovery plan, not the lender figures: none of these are touched
   // by a figures update, and a device that predates them picks them up here.
   depopItems: [],
+  // Supplied Oct 13 as rows, kept as given. Budgeted at the top of each range
+  // until paid. The inspection is flagged overdue in the source: the plan had
+  // it in the first week (Oct 4-10), though its own date is Oct 16.
+  plannedCosts: [
+    {
+      id: 'car_inspection',
+      name: 'NC safety + emissions inspection (Wake County)',
+      low: 30,
+      high: 40,
+      due: '2026-10-16',
+      status: 'overdue',
+      planTask: 'inspection',
+      notes: 'Do before registration; retest of failed items free within 60 days.',
+    },
+    {
+      id: 'car_registration',
+      name: 'NC registration renewal + vehicle tax',
+      low: 100,
+      high: 200,
+      due: '2026-10-28',
+      deadline: '2026-10-31',
+      status: 'pending',
+      needs: 'car_inspection',
+      planTask: 'registration',
+      notes:
+        'Hard deadline 2026-10-31. Amount estimated — check the renewal notice. Needs a passing inspection first.',
+    },
+  ],
   planDone: {},
   funds: DEFAULT_FUNDS,
   pendingClaims: [

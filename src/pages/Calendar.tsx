@@ -76,7 +76,7 @@ export function Calendar({
   const overdueSum = sumConfirmed(overdue)
 
   async function exportCalendar() {
-    const { text, count } = paymentsToICS(state.debts, now, 365, new Date(), state.expenses)
+    const { text, count } = paymentsToICS(state.debts, now, 365, new Date(), state.expenses, state.plannedCosts)
     const how = await deliverFile(`debt-payments-${now}.ics`, text, 'text/calendar')
     if (how === 'cancelled') return
     setExported(
