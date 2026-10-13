@@ -242,6 +242,11 @@ export interface PaycheckInputs {
   preTaxPerCheck: number
   /** Anything taken after tax, per check. Lowers take-home only. */
   afterTaxPerCheck: number
+  /**
+   * A day a paycheck lands. Any one will do — later paydays are counted on
+   * from it by `frequency`, so it never needs updating.
+   */
+  nextPayday?: string
 }
 
 /** What the paycheck plan remembers between visits. */

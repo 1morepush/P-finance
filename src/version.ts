@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '10.1',
+    date: '2026-10-13',
+    headline: 'The warning on Home knows your payday: what is short until Friday, and whether the paycheck covers the rest',
+  },
+  {
     version: '10.0',
     date: '2026-10-13',
     headline: 'Car costs coming up: the inspection and registration on the calendar, paid from checking or the car fund',

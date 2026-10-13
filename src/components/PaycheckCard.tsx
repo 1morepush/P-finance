@@ -57,6 +57,7 @@ export function PaycheckCard({
     frequency: saved.frequency,
     preTaxPerCheck: Number(preTax) || 0,
     afterTaxPerCheck: Number(afterTax) || 0,
+    nextPayday: saved.nextPayday ?? DEFAULT_PAYCHECK.nextPayday,
   }
   const est = estimatePaycheck(inputs)
   const every = EVERY[inputs.frequency]
@@ -146,6 +147,25 @@ export function PaycheckCard({
           </button>
         ))}
       </div>
+
+      <label className="mt-2 flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        A payday
+        <input
+          type="date"
+          value={inputs.nextPayday ?? ''}
+          onChange={(e) => {
+            remember({ nextPayday: e.target.value || undefined })
+            setNote(null)
+          }}
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={inputStyle}
+        />
+      </label>
+      <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        Any one will do. The app counts on from it{' '}
+        {{ weekly: 'every week', biweekly: 'every two weeks', monthly: 'every month' }[inputs.frequency]}, and the warning on Home uses it to tell
+        what is due before the money lands from what is due after.
+      </p>
 
       <div className="mt-2 grid grid-cols-2 gap-2">
         {field('Health/dental per check', preTax, setPreTax, 'preTaxPerCheck', '0.01', '0.00')}

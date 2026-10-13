@@ -172,4 +172,6 @@ export const DEFAULT_PAYCHECK: PaycheckInputs = {
   frequency: 'weekly',
   preTaxPerCheck: 0,
   afterTaxPerCheck: 0,
+  // Friday — the user's FedEx payday, given Oct 13, 2026.
+  nextPayday: '2026-10-16',
 }
