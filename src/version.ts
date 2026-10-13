@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '10.0',
+    date: '2026-10-13',
+    headline: 'Car costs coming up: the inspection and registration on the calendar, paid from checking or the car fund',
+  },
+  {
     version: '9.0',
     date: '2026-10-05',
     headline: 'A mileage log for taxes: odometer readings, 1099 or W-2, the 2026 IRS rates, and a CSV or PDF to hand over',

@@ -2,6 +2,7 @@ import type { AppState } from '../types'
 import { weeklyExpenseObligation } from './finance'
 import { WEEKS_PER_MONTH, expenseMonthly } from './budget'
 import { summarize } from './gig'
+import { plannedCostsOf, plannedPayments } from './plannedCosts'
 import {
   addDays,
   allPayments,
@@ -83,7 +84,8 @@ export function weekTarget(state: AppState, now = today(), weeksAhead = 0): Week
   // Subscriptions land on their own days, like a debt payment would. Spread
   // evenly they made a week holding Claude and iCloud look the same as one
   // holding neither, and never showed up in the week's list.
-  const bills = billPayments(state.expenses, from, to)
+  // Planned one-off costs (an inspection, say) land on their day the same way.
+  const bills = [...billPayments(state.expenses, from, to), ...plannedPayments(plannedCostsOf(state), from, to)]
   const billsDue = bills.reduce((n, b) => n + b.amount, 0)
 
   // Only the current week can be partly spent; a past-dated payment can still

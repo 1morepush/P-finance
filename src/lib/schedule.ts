@@ -68,6 +68,11 @@ export interface ScheduledPayment {
   isFinal: boolean
   /** From an unconfirmed debt — shown, but kept out of the confirmed totals. */
   isPotential: boolean
+  /**
+   * Set on a planned cost known only as a range: the bottom of it. `amount`
+   * is then the top, which is what gets budgeted.
+   */
+  estimateLow?: number
 }
 
 /**
@@ -392,5 +397,6 @@ export function billPayments(expenses: Expense[], from: string, until: string): 
 
 /** What a payment row is labelled: the lender product, or "Subscription / bill". */
 export function paymentLabel(p: ScheduledPayment): string {
+  if (p.estimateLow !== undefined) return `Estimate, $${p.estimateLow.toFixed(0)}–${p.amount.toFixed(0)}`
   return p.product === 'bill' ? 'Subscription / bill' : PRODUCT_LABEL[p.product]
 }

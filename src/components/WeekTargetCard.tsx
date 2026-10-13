@@ -129,7 +129,7 @@ export function WeekTargetCard({ state }: { state: AppState }) {
 
       <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
         {formatCurrency(w.debtRemaining)} of debt
-        {w.billsRemaining > 0 && <> + {formatCurrency(w.billsRemaining)} subscriptions</>}
+        {w.billsRemaining > 0 && <> + {formatCurrency(w.billsRemaining)} subscriptions and bills</>}
         {w.livingCosts > 0 ? (
           <> + {formatCurrency(w.livingCosts)} everyday costs</>
         ) : state.expenses.length === 0 ? (

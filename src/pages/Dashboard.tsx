@@ -6,6 +6,7 @@ import { ScreenshotImport } from '../components/ScreenshotImport'
 import { RunwayCard } from '../components/RunwayCard'
 import { WeekTargetCard } from '../components/WeekTargetCard'
 import { DueAlertCard } from '../components/DueAlertCard'
+import { PlannedCostsCard } from '../components/PlannedCostsCard'
 import { ThisWeekCard } from '../components/ThisWeekCard'
 import { CheckInCard } from '../components/CheckInCard'
 import { floorStatus } from '../lib/recovery'
@@ -186,6 +187,8 @@ export function Dashboard({
       </Card>
 
       <DueAlertCard state={state} />
+
+      <PlannedCostsCard state={state} setState={setState} />
 
       <WeekTargetCard state={state} />
 

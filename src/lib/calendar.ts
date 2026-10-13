@@ -1,6 +1,7 @@
 import type { AppState, ClearedDebt, DebtCategory, DebtProduct } from '../types'
 import { PRODUCT_LABEL, categoryOfProduct } from '../types'
 import { addMonths, allPayments, billPayments, paymentLabel, today, type ScheduledPayment } from './schedule'
+import { plannedCostsOf, plannedPayments } from './plannedCosts'
 
 /**
  * One row on the calendar: either money already gone, or money still coming.
@@ -132,13 +133,14 @@ export function paidEntries(state: AppState): CalendarEntry[] {
 export const BILL_HORIZON_MONTHS = 12
 
 /**
- * Everything still to come out: each debt's projected instalments, and the
- * subscriptions and bills that have a due date.
+ * Everything still to come out: each debt's projected instalments, the
+ * subscriptions and bills that have a due date, and planned one-off costs.
  */
 export function dueItems(state: AppState, includePotential = true, now = today()): ScheduledPayment[] {
   return [
     ...allPayments(state.debts, includePotential),
     ...billPayments(state.expenses, now, addMonths(now, BILL_HORIZON_MONTHS)),
+    ...plannedPayments(plannedCostsOf(state)),
   ].sort((a, b) => a.date.localeCompare(b.date))
 }
 

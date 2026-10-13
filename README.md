@@ -35,6 +35,16 @@ needs doing now, and the places to tell the app what happened.
   of the checking floor.
 - **A warning card**, shown only when something needs doing: a payment past
   due, or less in the bank than the next 14 days will take.
+- **Car costs coming up**, shown while one is unpaid: the inspection and
+  the registration renewal, each with its price range, due date, deadline
+  and notes. Registration says it is waiting on the inspection until that
+  is paid.
+  - Until paid, each is counted at the top of its range on the calendar, in
+    the week card, in the warning card and in the calendar export.
+  - **Mark paid** takes the real amount and where it came from: PNC
+    checking (lowers the bank balance) or the car fund. If the fund doesn't
+    hold enough, the rest comes from checking. It also ticks the plan's
+    to-do. **Undo** puts the money back.
 - **Week cost card.** Swipe through the next 52 weeks, Sunday to Saturday.
   Each week shows debt payments and subscriptions on the days they come out,
   plus a weekly share of costs that have no date. It also shows what is still
