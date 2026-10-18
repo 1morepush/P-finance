@@ -109,6 +109,11 @@ What you owe, and the plan to clear it.
 
 ### Calendar
 
+- **In the bank by Saturday:** today's bank balance, less everything due
+  through Saturday (anything past due included, unconfirmed debts left out,
+  planned costs at the top of their range), plus each paycheck on its
+  payday. Under each week's total in the grid, a second figure carries it
+  forward week by week, red when it goes below zero.
 - Month grids stack as you scroll. Each week row is shown in full, so days
   from the next or previous month appear faded, labelled with their month.
 - Beside each Sunday is what that week still owes, Sunday to Saturday,

@@ -8,6 +8,7 @@ import { formatCurrency } from '../lib/finance'
 import { calendarEntries, dueItems, earliestMonth, monthTotals } from '../lib/calendar'
 import { paymentsToICS } from '../lib/ics'
 import { deliverFile } from '../lib/share'
+import { weekEndBalances } from '../lib/projection'
 import {
   addDays,
   addMonths,
@@ -65,6 +66,10 @@ export function Calendar({
     addMonths(`${stackStart}-01`, i).slice(0, 7),
   )
   const [exported, setExported] = useState<string | null>(null)
+  // A year of weeks, so every stacked month that is loaded has its figures.
+  const projected = useMemo(() => weekEndBalances(state, 53, now), [state, now])
+  const balances = useMemo(() => new Map(projected.map((w) => [w.week, w.balance])), [projected])
+  const thisWeek = projected[0]
 
   // Past due and still standing: owed now, and part of every window. Each
   // window is N days counting today, the same arithmetic every other figure
@@ -131,6 +136,32 @@ export function Calendar({
             {formatCurrency(sumConfirmed(next14))} due in the next 14 days.
           </p>
         )}
+        <div
+          className="mt-3 flex items-baseline justify-between gap-2 border-t pt-2 text-sm"
+          style={{ borderColor: 'var(--border)' }}
+          data-week-end-balance={thisWeek.balance}
+        >
+          <span style={{ color: 'var(--text-secondary)' }}>
+            In the bank by Saturday, {formatShortDate(thisWeek.end).replace(/^\w+, /, '')}
+          </span>
+          <strong
+            className="tabular-nums"
+            style={{ color: thisWeek.balance < 0 ? 'var(--status-critical)' : 'var(--status-good)' }}
+          >
+            {formatCurrency(thisWeek.balance)}
+          </strong>
+        </div>
+        <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          {formatCurrency(state.bankBalance.amount)} in the bank as of{' '}
+          {formatShortDate(state.bankBalance.updatedAt)}, less everything due by then
+          {thisWeek.includesPay
+            ? thisWeek.paychecks > 0
+              ? `, plus ${thisWeek.paychecks} paycheck${thisWeek.paychecks === 1 ? '' : 's'}`
+              : ', with no payday before then'
+            : ' — no pay counted yet; add it under Income → FedEx paycheck estimate'}
+          . The green figure under each week's total in the calendar carries this forward.
+          {state.bankBalance.updatedAt < now && ' Update the balance on Home for a truer figure.'}
+        </p>
       </Card>
 
       {/* The key and the export sit above the months they describe. */}
@@ -196,6 +227,7 @@ export function Calendar({
           <MonthGrid
             month={m}
             entries={entries}
+            balances={balances}
             today={now}
             selected={selected?.month === m ? selected.date : null}
             onSelect={(date) => setSelected(date ? { month: m, date } : null)}

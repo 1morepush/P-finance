@@ -46,14 +46,24 @@ function buildWeeks(month: string): string[][] {
  * already settled shows what went out, ticked, so it reads as done rather
  * than as empty.
  */
+/** "$412", "-$86", "$1.2k" — what fits in the narrow week column. */
+function compact(n: number): string {
+  const sign = n < 0 ? '-' : ''
+  const a = Math.abs(n)
+  return a >= 1000 ? `${sign}$${(a / 1000).toFixed(1)}k` : `${sign}$${Math.round(a)}`
+}
+
 function WeekTotal({
   week,
   byDate,
   today,
+  balance,
 }: {
   week: string[]
   byDate: Map<string, CalendarEntry[]>
   today: string
+  /** The bank at the end of this week's Saturday, for this week and later ones. */
+  balance?: number
 }) {
   const items = week.flatMap((d) => byDate.get(d) ?? [])
   const due = items.filter((e) => e.kind === 'due' && !e.isPotential).reduce((n, e) => n + e.amount, 0)
@@ -66,12 +76,14 @@ function WeekTotal({
       : paid > 0
         ? `Week of ${week[0]}: all paid, ${formatCurrency(paid)}`
         : `Week of ${week[0]}: nothing due`
+  const fullLabel =
+    balance === undefined ? label : `${label}; bank by Saturday about ${formatCurrency(balance)}`
   return (
     <div
-      className="flex min-h-[46px] items-center justify-center rounded-lg px-0.5"
+      className="flex min-h-[46px] flex-col items-center justify-center rounded-lg px-0.5"
       style={{ background: current ? 'var(--surface-page)' : 'transparent' }}
-      aria-label={label}
-      title={label}
+      aria-label={fullLabel}
+      title={fullLabel}
       data-week={week[0]}
     >
       <span
@@ -84,6 +96,15 @@ function WeekTotal({
       >
         {due > 0 ? dollars(due) : paid > 0 ? `✓${dollars(paid)}` : '—'}
       </span>
+      {balance !== undefined && (
+        <span
+          className="mt-0.5 tabular-nums text-center text-[9px] leading-tight"
+          style={{ color: balance < 0 ? 'var(--status-critical)' : 'var(--status-good)' }}
+          data-balance={balance}
+        >
+          {compact(balance)}
+        </span>
+      )}
     </div>
   )
 }
@@ -99,8 +120,11 @@ export function MonthGrid({
   onMonthChange,
   onPay,
   onUndo,
+  balances,
 }: {
   month: string
+  /** Projected bank at the end of each week, keyed by its Sunday. */
+  balances?: Map<string, number>
   /** Paid and due together — see ../lib/calendar. */
   entries: CalendarEntry[]
   today: string
@@ -190,7 +214,13 @@ export function MonthGrid({
         ))}
 
         {weeks.flatMap((week, w) => [
-          <WeekTotal key={`week-${week[0]}`} week={week} byDate={byDate} today={today} />,
+          <WeekTotal
+            key={`week-${week[0]}`}
+            week={week}
+            byDate={byDate}
+            today={today}
+            balance={balances?.get(week[0])}
+          />,
           ...week.map((date, d) => {
             const i = w * 7 + d
             // A day from the month before or after, filling out a partial week.
