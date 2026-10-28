@@ -58,6 +58,9 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
           }
           value={`− ${formatCurrency(r.monthlyMinimums)}`}
         />
+        {r.oneOffs > 0 && (
+          <Row label="Car costs, one-off (top of range)" value={`− ${formatCurrency(r.oneOffs)}`} />
+        )}
         <Row
           label="Living costs"
           value={noExpenses ? 'not entered' : `− ${formatCurrency(r.monthlyExpenses)}`}
@@ -100,7 +103,7 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
           </p>
           <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
             {formatCurrency(r.reserves)} on hand against{' '}
-            {formatCurrency(r.monthlyMinimums + r.monthlyExpenses)} due in the next 30 days.
+            {formatCurrency(r.monthlyMinimums + r.oneOffs + r.monthlyExpenses)} due in the next 30 days.
             {r.monthsOfCover !== null && (
               <>
                 {' '}
@@ -150,7 +153,7 @@ export function RunwayCard({ state, onAddExpenses }: { state: AppState; onAddExp
           </p>
           <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
             Income drops to {formatCurrency(r.incomeAfterEnd)}/mo against{' '}
-            {formatCurrency(r.monthlyMinimums + r.monthlyExpenses)} of near-term commitments — a{' '}
+            {formatCurrency(r.monthlyMinimums + r.oneOffs + r.monthlyExpenses)} of near-term commitments — a{' '}
             <strong style={{ color: tone }}>
               {r.netAfterEnd < 0 ? `${formatCurrency(-r.netAfterEnd)} monthly gap` : 'surplus'}
             </strong>

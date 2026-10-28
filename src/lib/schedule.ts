@@ -31,6 +31,15 @@ export function addMonths(iso: string, n: number): string {
   return t.toISOString().slice(0, 10)
 }
 
+/**
+ * How many payments are left: balance ÷ payment, rounded up — but to the cent
+ * first. Two $74.49 payments off $223.47 leave $74.49000000000002 in floating
+ * point, which a bare ceil reads as two payments rather than one.
+ */
+export function paymentsLeft(balance: number, payment: number): number {
+  return Math.ceil(Math.round((balance / payment) * 1e6) / 1e6)
+}
+
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
 }
@@ -44,7 +53,7 @@ function daysBetween(a: string, b: string): number {
 export function cycleDays(debt: Debt): number {
   const payment = debt.monthlyPayment ?? 0
   if (payment <= 0 || !isDate(debt.nextDue) || !isDate(debt.finalPaymentDate)) return 14
-  const gaps = Math.ceil(debt.balance / payment) - 1
+  const gaps = paymentsLeft(debt.balance, payment) - 1
   if (gaps < 1) return 14
   const span = daysBetween(debt.nextDue, debt.finalPaymentDate)
   const gap = span / gaps
@@ -103,7 +112,7 @@ export function projectPayments(debt: Debt): ScheduledPayment[] {
   const count =
     debt.product === 'credit_card' && debt.apr > 0
       ? (estimatePayoffMonths(debt.balance, debt.apr, payment) ?? 0)
-      : Math.ceil(debt.balance / payment)
+      : paymentsLeft(debt.balance, payment)
   if (count <= 0) return []
 
   const out: ScheduledPayment[] = []

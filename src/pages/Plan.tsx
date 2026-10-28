@@ -59,7 +59,7 @@ export function Plan({
             {OCTOBER.map(([what, est]) => (
               <div key={what} className="flex items-baseline justify-between gap-3 py-1.5">
                 <span style={what.startsWith('In') ? { color: 'var(--status-good)' } : undefined}>{what}</span>
-                <span className="shrink-0 text-right text-xs tabular-nums">{est}</span>
+                <span className="max-w-[55%] text-right text-xs tabular-nums">{est}</span>
               </div>
             ))}
           </div>
