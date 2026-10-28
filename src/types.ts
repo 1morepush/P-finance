@@ -167,6 +167,12 @@ export interface Payment {
   ledgerEntryId?: string
   /** Settled automatically because its due date passed, rather than entered by hand. */
   auto?: boolean
+  /**
+   * Marked fully paid off for less than the balance — an early-payoff
+   * discount, unearned interest dropped. The part never paid, so undoing puts
+   * the whole balance back.
+   */
+  writtenOff?: number
 }
 
 /** One gig-work shift: what came in, what the driving cost, and what is left. */
