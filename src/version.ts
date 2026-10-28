@@ -29,7 +29,7 @@ export const RELEASES: readonly Release[] = [
   {
     version: '10.5',
     date: '2026-10-28',
-    headline: 'Every interest-charging plan paid off: four Affirm loans and two PayPal plans cleared, bank at $3,974.31',
+    headline: 'Every interest-charging plan paid off, and the Apple Card caught up: bank at $3,550.31',
   },
   {
     version: '10.4',

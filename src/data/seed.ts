@@ -16,7 +16,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 
 // Source of truth: the status supplied 2026-09-30, read off the lender apps.
 // Totals this data produces (verified against the source before seeding):
-//   active              $9,552.93   after the Oct 28 payoffs: the 0% plans,
+//   active              $9,128.93   after the Oct 28 payoffs: the 0% plans,
 //                                    the Apple Card and the people tabs
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
@@ -26,6 +26,9 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 // plans (Frontier, Amazon, the oil Pay in 4), the Apple Card and the people.
 // The bank balance is the PNC available figure of the same day, $3,974.31, and
 // a figures update now carries it to a phone whose own balance is older.
+// The same day the Apple Card was caught up: $424, September's past-due
+// minimum and October's, from PNC, so the bank is $3,550.31 and the card
+// $7,073 with Nov 30 next.
 //
 // Oct 28: no figures changed. The version moves so phones re-run their
 // autopay settling with the cent-rounding fix: before it, two $74.49 Klarna
@@ -94,10 +97,11 @@ export const SEED_DATE = '2026-09-30'
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
   // PNC available balance on Oct 28, read off the app: $5,060.56 ledger less
-  // $1,101.25 pending withdrawals plus a $15.00 pending Venmo deposit. The
-  // four Affirm payoffs are among the pending, so this is after them.
+  // $1,101.25 pending withdrawals plus a $15.00 pending Venmo deposit — the
+  // four Affirm payoffs are among the pending — $3,974.31, less the $424
+  // Apple Card payment made the same day that had not shown there yet.
   bankBalance: {
-    amount: 3974.31,
+    amount: 3550.31,
     updatedAt: '2026-10-28',
   },
   savingsBalance: 0,
@@ -321,15 +325,17 @@ export const seedState: AppState = {
       product: 'credit_card',
       status: 'active',
       priorityTier: 3,
-      balance: 7497.0,
+      // $7,497 less $424 paid Oct 28: September's past-due $212 and
+      // October's $212, both minimums, so the next one is Nov 30.
+      balance: 7073.0,
       apr: 22.49,
       // A card is paid by hand, not on autopay, so a passed due date is never
       // assumed to have gone through.
       autoMarkPaid: false,
       monthlyPayment: 212.0,
-      nextDue: '2026-09-30',
+      nextDue: '2026-11-30',
       notes:
-        'Revolving — no lender-set payoff date. Held flat at $212/mo it clears in about 57 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
+        'Revolving — no lender-set payoff date. Paid $424 on Oct 28 to catch up September and October ($212 each); next minimum Nov 30. Held flat at $212/mo it clears in about 53 payments; real card minimums shrink as the balance falls, which is what stretches these to 10+ years.',
     },
     // The four running tabs, seeded line by line as supplied on 2026-09-17.
     // No dates or descriptions came with the lines, so each is stamped with the
