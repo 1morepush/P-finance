@@ -16,10 +16,16 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 
 // Source of truth: the status supplied 2026-09-30, read off the lender apps.
 // Totals this data produces (verified against the source before seeding):
-//   active             $12,192.82   lenders as of Sep 30 + the oil plan, and
-//                                    the people tabs from the Oct 5 note
+//   active              $9,552.93   after the Oct 28 payoffs: the 0% plans,
+//                                    the Apple Card and the people tabs
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
+//
+// Oct 28 (b): every plan that charged interest is paid off — the four Affirm
+// loans ($1,064.97 pending at PNC) and PayPal AutoZone and Omio. Left: the 0%
+// plans (Frontier, Amazon, the oil Pay in 4), the Apple Card and the people.
+// The bank balance is the PNC available figure of the same day, $3,974.31, and
+// a figures update now carries it to a phone whose own balance is older.
 //
 // Oct 28: no figures changed. The version moves so phones re-run their
 // autopay settling with the cent-rounding fix: before it, two $74.49 Klarna
@@ -74,7 +80,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-10-28'
+export const SEED_VERSION = '2026-10-28b'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -87,9 +93,12 @@ export const SEED_DATE = '2026-09-30'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
+  // PNC available balance on Oct 28, read off the app: $5,060.56 ledger less
+  // $1,101.25 pending withdrawals plus a $15.00 pending Venmo deposit. The
+  // four Affirm payoffs are among the pending, so this is after them.
   bankBalance: {
-    amount: 719,
-    updatedAt: '2026-08-13',
+    amount: 3974.31,
+    updatedAt: '2026-10-28',
   },
   savingsBalance: 0,
   settings: {
@@ -229,88 +238,6 @@ export const seedState: AppState = {
   // Tier 0 — urgent · Tier 1 — ~36% APR · Tier 2 — 0% promo BNPL
   // Tier 3 — Apple Card · Tier 4 — personal / flexible
   debts: [
-    {
-      id: 'paypal_autozone',
-      name: 'PayPal AutoZone',
-      product: 'paypal_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 349.03,
-      apr: 35.99,
-      monthlyPayment: 34.91,
-      nextDue: '2026-10-13',
-      finalPaymentDate: '2027-07-13',
-    },
-    {
-      id: 'paypal_omio',
-      name: 'PayPal Omio',
-      product: 'paypal_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 526.87,
-      apr: 35.99,
-      monthlyPayment: 52.7,
-      nextDue: '2026-10-29',
-      finalPaymentDate: '2027-07-29',
-      notes:
-        'The Sep 29 payment posted. $526.87 at $52.70 is 10 payments, Oct 29, 2026 to Jul 29, 2027.',
-    },
-    {
-      id: 'affirm_atlanta',
-      name: 'Affirm SpringHill Suites Atlanta',
-      product: 'affirm_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 253.56,
-      apr: 36.0,
-      monthlyPayment: 36.28,
-      nextDue: '2026-10-20',
-      finalPaymentDate: '2027-04-20',
-      notes:
-        'Shown in Affirm as a Hotels.com plan. AutoPay on since Sep 30 from the Visa ending 0153: six of $36.28 from Oct 20, then $35.88 on Apr 20, 2027 — $253.56.',
-    },
-    {
-      id: 'affirm_columbia',
-      name: 'Affirm La Quinta Columbia',
-      product: 'affirm_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 209.1,
-      apr: 36.0,
-      monthlyPayment: 26.17,
-      nextDue: '2026-10-21',
-      finalPaymentDate: '2027-05-21',
-      notes:
-        'AutoPay on since Sep 30 from the Visa ending 0153: seven of $26.17 from Oct 21, then $25.91 on May 21, 2027 — $209.10.',
-    },
-    {
-      id: 'affirm_tokyo',
-      name: 'Affirm Hotel Keihan Tokyo',
-      product: 'affirm_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 267.25,
-      apr: 36.0,
-      monthlyPayment: 53.45,
-      nextDue: '2026-10-03',
-      finalPaymentDate: '2027-02-03',
-      notes:
-        'Five payments of $53.45, Oct 3, 2026 to Feb 3, 2027. The Sep 28 figure of $213.80 had the Sep 3 payment taken off twice. Affirm emailed an Oct 3 reminder, and AutoPay is on since Sep 30 from the Visa ending 0153.',
-    },
-    {
-      id: 'affirm_airbnb_cousin',
-      name: 'Affirm Airbnb (cousin)',
-      product: 'affirm_pay_monthly',
-      status: 'active',
-      priorityTier: 1,
-      balance: 665.89,
-      apr: 36.0,
-      monthlyPayment: 133.28,
-      nextDue: '2026-10-17',
-      finalPaymentDate: '2027-02-17',
-      notes:
-        'Not 0%: $722.00 financed is repaid as $799.17, about 36% APR, and $133.28 is exactly the six-month payment on $722 at 36%. About $55 of the interest is still to come. AutoPay on since Sep 30 from the Visa ending 0153: four of $133.28 from Oct 17, then $132.77 on Feb 17, 2027 — $665.89.',
-    },
     {
       id: 'paypal_autozone_oil',
       name: 'PayPal AutoZone Pay in 4 (oil change)',
@@ -482,6 +409,57 @@ export const seedState: AppState = {
   ],
 
   clearedDebts: [
+    // Paid off Oct 28: every Affirm, Klarna and PayPal plan that charged
+    // interest. Amounts are the balance still outstanding, as elsewhere in this
+    // log; the notes give what the payoff actually cost.
+    {
+      id: 'affirm_airbnb_cousin',
+      name: 'Affirm Airbnb (cousin)',
+      product: 'affirm_pay_monthly',
+      amountCleared: 532.61,
+      dateCleared: '2026-10-28',
+      notes: 'Paid off early for $499.77 (pending at PNC Oct 28), against $532.61 of scheduled payments.',
+    },
+    {
+      id: 'affirm_tokyo',
+      name: 'Affirm Hotel Keihan Tokyo',
+      product: 'affirm_pay_monthly',
+      amountCleared: 213.8,
+      dateCleared: '2026-10-28',
+      notes: 'Paid off early for $203.77 (pending at PNC Oct 28), against $213.80 of scheduled payments.',
+    },
+    {
+      id: 'affirm_atlanta',
+      name: 'Affirm SpringHill Suites Atlanta',
+      product: 'affirm_pay_monthly',
+      amountCleared: 217.28,
+      dateCleared: '2026-10-28',
+      notes: 'Paid off early for $197.56 (pending at PNC Oct 28), against $217.28 of scheduled payments.',
+    },
+    {
+      id: 'affirm_columbia',
+      name: 'Affirm La Quinta Columbia',
+      product: 'affirm_pay_monthly',
+      amountCleared: 182.93,
+      dateCleared: '2026-10-28',
+      notes: 'Paid off early for $163.87 (pending at PNC Oct 28), against $182.93 of scheduled payments.',
+    },
+    {
+      id: 'paypal_omio',
+      name: 'PayPal Omio',
+      product: 'paypal_pay_monthly',
+      amountCleared: 526.87,
+      dateCleared: '2026-10-28',
+      notes: 'Paid off by Oct 28. Not among the PNC pending charges, so not taken off the bank balance here.',
+    },
+    {
+      id: 'paypal_autozone',
+      name: 'PayPal AutoZone',
+      product: 'paypal_pay_monthly',
+      amountCleared: 314.12,
+      dateCleared: '2026-10-28',
+      notes: 'Paid off by Oct 28. Not among the PNC pending charges, so not taken off the bank balance here.',
+    },
     {
       id: 'delta_airlines',
       name: 'PayPal Delta Airlines',

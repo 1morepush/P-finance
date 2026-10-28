@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '10.5',
+    date: '2026-10-28',
+    headline: 'Every interest-charging plan paid off: four Affirm loans and two PayPal plans cleared, bank at $3,974.31',
+  },
+  {
     version: '10.4',
     date: '2026-10-28',
     headline: 'Fixes from a full check: Frontier back on Nov 4, car costs in the runway and past-due box, clearer labels',
