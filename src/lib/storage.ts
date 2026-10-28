@@ -194,6 +194,10 @@ export function applySeedUpdate(state: AppState): AppState {
   // Planned costs refresh from the figures too, but one paid on this device
   // stays paid — the figures cannot know it happened.
   next.plannedCosts = mergePlannedCosts(state.plannedCosts, seedState.plannedCosts ?? [])
+  // The figures can carry a bank balance read off the bank the same day. It
+  // replaces the phone's only when it is at least as recent, so a balance
+  // typed in after the figures were made is never overwritten.
+  if (seedState.bankBalance.updatedAt >= state.bankBalance.updatedAt) next.bankBalance = seedState.bankBalance
   return replayManualPayments(next, SEED_DATE)
 }
 
