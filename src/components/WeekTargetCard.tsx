@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState } from '../types'
 import { Card } from './Card'
+import { plannedCostsOf, plannedPayments } from '../lib/plannedCosts'
 import { formatCurrency } from '../lib/finance'
 import { upcomingWeeks } from '../lib/week'
-import { formatShortDate, overduePayments, overdueTotal } from '../lib/schedule'
+import { formatShortDate, overduePayments, today } from '../lib/schedule'
 import { averageNetPerShift, shiftNet, shiftsBetween } from '../lib/gig'
 
 /**
@@ -30,8 +31,14 @@ export function WeekTargetCard({ state }: { state: AppState }) {
 
   // Everything else on this screen looks forward from today, so a missed
   // instalment would otherwise appear nowhere at all.
-  const overdue = overduePayments(state.debts)
-  const overdueSum = overdueTotal(state.debts)
+  // Past-due planned costs (the car inspection) belong here too: they are
+  // owed now and the week below only looks forward.
+  const now = today()
+  const overdue = [
+    ...overduePayments(state.debts),
+    ...plannedPayments(plannedCostsOf(state)).filter((p) => p.date < now),
+  ]
+  const overdueSum = overdue.reduce((n, p) => n + p.amount, 0)
 
   const heavy = w.vsAverage > 1
   const tone = heavy ? 'var(--status-warning)' : 'var(--status-good)'

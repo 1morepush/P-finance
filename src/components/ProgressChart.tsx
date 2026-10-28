@@ -106,7 +106,7 @@ export function ProgressChart({ state }: { state: AppState }) {
           Progress
         </h2>
         <span className="text-xs" style={{ color: 'var(--status-good)' }}>
-          {formatCurrency(p.paidOff)} paid off · {Math.round(p.fraction * 100)}%
+          {formatCurrency(p.paidOff)} down overall · {Math.round(p.fraction * 100)}%
         </span>
       </div>
 

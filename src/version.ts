@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '10.4',
+    date: '2026-10-28',
+    headline: 'Fixes from a full check: Frontier back on Nov 4, car costs in the runway and past-due box, clearer labels',
+  },
+  {
     version: '10.3',
     date: '2026-10-28',
     headline: 'A Paid off button on every debt: clears it in one tap, at the payoff amount',

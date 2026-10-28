@@ -21,6 +21,11 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
 //
+// Oct 28: no figures changed. The version moves so phones re-run their
+// autopay settling with the cent-rounding fix: before it, two $74.49 Klarna
+// payments left $148.98000000000002, which read as three payments left and
+// moved Frontier's last one from Nov 4 to Oct 28.
+//
 // Added Oct 13: two planned car costs, the inspection ($30-40, Oct 16) and the
 // registration renewal ($100-200, Oct 28, hard deadline Oct 31). Debts unchanged.
 //
@@ -69,7 +74,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-10-13'
+export const SEED_VERSION = '2026-10-28'
 
 /**
  * The date the lender figures below were taken. Separate from the version,

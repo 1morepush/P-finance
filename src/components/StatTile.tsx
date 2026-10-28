@@ -10,12 +10,12 @@ export function StatTile({
   accent?: string
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
         {label}
       </span>
       <span
-        className="tabular-nums text-2xl font-semibold"
+        className="tabular-nums text-lg font-semibold sm:text-2xl"
         style={{ color: accent ?? 'var(--text-primary)' }}
       >
         {value}

@@ -106,7 +106,7 @@ export function estimatePayoffMonths(
   monthlyPayment: number,
 ): number | null {
   const monthlyRate = aprPercent / 100 / 12
-  if (monthlyRate <= 0) return Math.ceil(balance / monthlyPayment)
+  if (monthlyRate <= 0) return Math.ceil(Math.round((balance / monthlyPayment) * 1e6) / 1e6)
   const interestOnly = balance * monthlyRate
   if (monthlyPayment <= interestOnly) return null
   const months =

@@ -47,7 +47,8 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
 
   const applied = Math.min(input.amount, debt.balance)
   const writtenOff = input.settle ? Math.round((debt.balance - applied) * 100) / 100 : 0
-  const remaining = input.settle ? 0 : Math.max(debt.balance - applied, 0)
+  // To the cent: repeated float subtraction otherwise leaves $148.98000000000002.
+  const remaining = input.settle ? 0 : Math.max(Math.round((debt.balance - applied) * 100) / 100, 0)
   const clears = remaining === 0
   const advanced = input.advanceDue && !clears ? nextDueAfter(debt) : null
 

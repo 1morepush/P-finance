@@ -155,7 +155,10 @@ export function PaycheckPlanCard({
             higher than this shows. Add them under Living costs below.
           </p>
         ) : (
-          <Row label="Food, phone, insurance and the rest" amount={plan.livingCosts} />
+          // Only what is entered without a set day — on these figures, Rocket
+          // Money. Calling it "food, phone, insurance" promised costs that were
+          // never entered.
+          <Row label="Costs without a set day (weekly share)" amount={plan.livingCosts} />
         )}
 
         <div className="mt-1 border-t pt-1" style={{ borderColor: 'var(--border)' }}>

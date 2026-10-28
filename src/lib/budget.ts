@@ -8,6 +8,7 @@ import {
   today,
 } from './schedule'
 import { uid } from './id'
+import { plannedCostsOf, plannedPayments } from './plannedCosts'
 
 export const WEEKS_PER_MONTH = 4.345
 
@@ -81,6 +82,11 @@ export interface Runway {
    * anything already past due and still standing.
    */
   monthlyMinimums: number
+  /**
+   * One-off planned costs (the car inspection, the registration) due in the
+   * next 30 days or already overdue, at the top of their range.
+   */
+  oneOffs: number
   /** The past-due part of that, so it can be named rather than hidden in the total. */
   overdue: number
   /** The following calendar month, which is usually lower as short plans finish. */
@@ -131,6 +137,14 @@ export function runway(state: AppState, now = today()): Runway {
   // to start at today and lose it entirely the day after it was due.
   const overdue = overdueTotal(state.debts, now)
   const minimums = scheduledInDays(state.debts, 30, now) + overdue
+  // Planned one-offs, unpaid: an overdue one is owed now, the rest land in the
+  // 30-day window their date falls in.
+  const planned = plannedPayments(plannedCostsOf(state))
+  const plannedIn = (from: string, days: number, first: boolean) =>
+    planned
+      .filter((p) => (first && p.date < from) || (p.date >= from && p.date < addDays(from, days)))
+      .reduce((n, p) => n + p.amount, 0)
+  const oneOffs = plannedIn(now, 30, true)
   const reserves = state.bankBalance.amount + state.savingsBalance
 
   // Anchored on the first of next month, not on tomorrow: on the 30th,
@@ -148,8 +162,8 @@ export function runway(state: AppState, now = today()): Runway {
     ? monthlyIncomeOn(state, addMonthsApprox(incomeEndsOn, 0.1))
     : income
 
-  const monthlyNet = income - expenses - minimums
-  const netAfterEnd = incomeAfterEnd - expenses - minimums
+  const monthlyNet = income - expenses - minimums - oneOffs
+  const netAfterEnd = incomeAfterEnd - expenses - minimums - oneOffs
 
   // Walk forward in 30-day windows, spending each window's actual scheduled debt
   // plus living costs against reserves. Income is pro-rated across the window a
@@ -162,7 +176,8 @@ export function runway(state: AppState, now = today()): Runway {
     const start = addDays(now, i * 30)
     const inflow = incomeAcross(state, start, 30)
     // The past-due amount lands in the first window: it is owed now, not never.
-    const outflow = scheduledInDays(state.debts, 30, start) + expenses + (i === 0 ? overdue : 0)
+    const outflow =
+      scheduledInDays(state.debts, 30, start) + expenses + (i === 0 ? overdue : 0) + plannedIn(start, 30, i === 0)
     const delta = inflow - outflow
     if (delta >= 0) {
       pot += delta
@@ -181,6 +196,7 @@ export function runway(state: AppState, now = today()): Runway {
     monthlyIncome: income,
     monthlyExpenses: expenses,
     monthlyMinimums: minimums,
+    oneOffs,
     overdue,
     nextMonthMinimums: nextMonthRow?.total ?? 0,
     nextMonthLabel: nextMonthRow?.month ?? '',
