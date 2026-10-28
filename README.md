@@ -80,6 +80,12 @@ needs doing now, and the places to tell the app what happened.
 
 What you owe, and the plan to clear it.
 
+- **Paid off** on each debt clears it in one go. The amount starts at what
+  settling today should cost (less than the balance for a loan whose future
+  interest drops away) and can be changed to the lender's payoff quote. It
+  asks whether the money came out of PNC checking. The debt moves to the
+  paid-off list either way, and the payment can be undone from Logged
+  payments, which puts the full balance back.
 - **Summary:** the total, the split by kind, what is paid off so far, and the
   **Progress** chart.
 - **Needs fixing**, shown only when something is wrong: a plan with no due

@@ -19,6 +19,11 @@ export interface PaymentInput {
    * recording, which is what every ordinary payment wants.
    */
   record?: boolean
+  /**
+   * Fully paid off: the debt clears even if `amount` is less than the balance
+   * (an early-payoff quote). The difference is kept as `writtenOff`.
+   */
+  settle?: boolean
 }
 
 /** The due date one billing cycle on, or null if the debt has no dated schedule. */
@@ -41,14 +46,21 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
   if (!debt || input.amount <= 0) return state
 
   const applied = Math.min(input.amount, debt.balance)
-  const remaining = Math.max(debt.balance - applied, 0)
+  const writtenOff = input.settle ? Math.round((debt.balance - applied) * 100) / 100 : 0
+  const remaining = input.settle ? 0 : Math.max(debt.balance - applied, 0)
   const clears = remaining === 0
   const advanced = input.advanceDue && !clears ? nextDueAfter(debt) : null
 
   // A debt kept as a running tab has to hear about this, or its lines and its
   // balance start disagreeing — the tab's own sum is what the balance means.
   const ledgerEntry: LedgerEntry | null = debt.ledger
-    ? { id: uid(), date: input.date, amount: -applied, note: 'Payment', fromBank: input.fromBank }
+    ? {
+        id: uid(),
+        date: input.date,
+        amount: -(applied + writtenOff),
+        note: input.settle ? 'Paid off' : 'Payment',
+        fromBank: input.fromBank,
+      }
     : null
 
   const payment: Payment = {
@@ -61,6 +73,7 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
     clearedDebt: clears,
     ...(advanced ? { previousNextDue: debt.nextDue } : {}),
     ...(input.auto ? { auto: true } : {}),
+    ...(writtenOff > 0 ? { writtenOff } : {}),
     ...(ledgerEntry ? { ledgerEntryId: ledgerEntry.id } : {}),
   }
 
@@ -134,7 +147,7 @@ export function undoPayment(state: AppState, paymentId: string, todayISO = today
       d.id === payment.debtId
         ? {
             ...d,
-            balance: d.balance + payment.amount,
+            balance: Math.round((d.balance + payment.amount + (payment.writtenOff ?? 0)) * 100) / 100,
             status: payment.clearedDebt ? 'active' : d.status,
             ...(payment.previousNextDue ? { nextDue: payment.previousNextDue } : {}),
             ...(restoresPastDue ? { autoMarkPaid: false } : {}),

@@ -5,6 +5,7 @@ import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
 import { DebtForm } from '../components/DebtForm'
 import { PaymentForm } from '../components/PaymentForm'
+import { PaidOffForm } from '../components/PaidOffForm'
 import { applyPayment, isOrphaned, undoPayment, type PaymentInput } from '../lib/payments'
 import { earlyPayoff, payoffSummary } from '../lib/payoff'
 import { WhatIfCard } from '../components/WhatIfCard'
@@ -61,12 +62,15 @@ function DebtCard({
   badge,
   onClick,
   onPay,
+  onPaidOff,
   onOpenTab,
 }: {
   debt: Debt
   badge?: string
   onClick: () => void
   onPay?: () => void
+  /** Clears the whole debt in one go. */
+  onPaidOff?: () => void
   /** Personal debts kept line by line open their tab rather than the editor. */
   onOpenTab?: () => void
 }) {
@@ -117,6 +121,19 @@ function DebtCard({
                 style={{ background: 'var(--status-good)', color: 'white' }}
               >
                 Pay
+              </button>
+            )}
+            {onPaidOff && debt.status !== 'potential' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPaidOff()
+                }}
+                className="rounded-md border px-2 py-0.5 text-[11px] font-medium"
+                style={{ borderColor: 'var(--status-good)', color: 'var(--status-good)' }}
+              >
+                Paid off
               </button>
             )}
           </div>
@@ -184,6 +201,8 @@ export function Debts({
 }) {
   const [editing, setEditing] = useState<Debt | 'new' | null>(null)
   const [paying, setPaying] = useState<string | 'any' | null>(null)
+  /** The debt being marked fully paid off. */
+  const [payingOff, setPayingOff] = useState<string | null>(null)
   /** The debt whose Delete has been armed, so it takes a second tap. */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [allPayments, setAllPayments] = useState(false)
@@ -366,6 +385,7 @@ export function Debts({
                   badge={tier === tiers[0].tier && i === 0 ? 'NEXT TARGET' : undefined}
                   onClick={() => edit(d)}
                   onPay={() => setPaying(d.id)}
+                  onPaidOff={() => setPayingOff(d.id)}
                   onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
                 />
               ))}
@@ -380,6 +400,7 @@ export function Debts({
                 badge={i === 0 ? 'NEXT TARGET' : undefined}
                 onClick={() => edit(d)}
                 onPay={() => setPaying(d.id)}
+                onPaidOff={() => setPayingOff(d.id)}
                 onOpenTab={d.ledger ? () => setOpenTab(d.id) : undefined}
               />
             ))}
@@ -630,6 +651,7 @@ export function Debts({
                             {formatDate(pay.date)}
                             {pay.auto && ' · auto (due date passed)'}
                             {pay.clearedDebt && ' · cleared it 🎉'}
+                            {pay.writtenOff ? ` · ${formatCurrency(pay.writtenOff)} not owed after all` : ''}
                             {!pay.fromBank && !pay.auto && ' · not from bank'}
                             {orphaned && ' · debt since removed'}
                           </div>
@@ -672,6 +694,19 @@ export function Debts({
 
       {tabDebt && (
         <LedgerModal debt={tabDebt} setState={setState} onClose={() => setOpenTab(null)} />
+      )}
+
+      {payingOff && state.debts.some((d) => d.id === payingOff) && (
+        <Modal title="Fully paid off" onClose={() => setPayingOff(null)}>
+          <PaidOffForm
+            debt={state.debts.find((d) => d.id === payingOff)!}
+            onSave={(input) => {
+              setState((s) => applyPayment(s, input))
+              setPayingOff(null)
+            }}
+            onCancel={() => setPayingOff(null)}
+          />
+        </Modal>
       )}
 
       {paying && (
