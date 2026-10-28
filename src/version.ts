@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '10.6',
+    date: '2026-10-28',
+    headline: 'Half of Liv paid ($184.04); bank at $2,527.23 once the Apple Card and PayPal payments clear',
+  },
+  {
     version: '10.5',
     date: '2026-10-28',
     headline: 'Every interest-charging plan paid off, and the Apple Card caught up: bank at $2,706.76',

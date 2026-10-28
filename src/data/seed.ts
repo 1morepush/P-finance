@@ -16,7 +16,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 
 // Source of truth: the status supplied 2026-09-30, read off the lender apps.
 // Totals this data produces (verified against the source before seeding):
-//   active              $9,128.93   after the Oct 28 payoffs: the 0% plans,
+//   active              $8,944.89   after the Oct 28 payoffs and half of Liv: the 0% plans,
 //                                    the Apple Card and the people tabs
 //   of which estimated      $0.00   Affirm's AutoPay emails confirm all four
 //   cleared to date     $1,787.64   Delta added
@@ -84,7 +84,7 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
  * replaces the seed wholesale on load, so without this a reconciliation never
  * reaches a phone that has opened the app before.
  */
-export const SEED_VERSION = '2026-10-28b'
+export const SEED_VERSION = '2026-10-28c'
 
 /**
  * The date the lender figures below were taken. Separate from the version,
@@ -101,9 +101,12 @@ export const seedState: AppState = {
   // The four Affirm payoffs ($1,064.97) showed as pending, leaving $3,974.31.
   // Three more left PNC the same day without showing yet, and come off here:
   // the Apple Card $424 and the two PayPal payoffs, $318.99 (AutoZone) and
-  // $524.56 (Omio), $843.55 together.
+  // $524.56 (Omio), $843.55 together — $2,706.76.
+  // Later the same day PNC showed $3,794.78 after $184.04 went to Liv, with
+  // the Apple Card and PayPal payments still not taken out. Less those
+  // ($1,267.55), what is really there is $2,527.23.
   bankBalance: {
-    amount: 2706.76,
+    amount: 2527.23,
     updatedAt: '2026-10-28',
   },
   savingsBalance: 0,
@@ -367,10 +370,13 @@ export const seedState: AppState = {
       product: 'personal',
       status: 'active',
       priorityTier: 4,
-      balance: 368.08,
+      balance: 184.04,
       apr: 0,
       nextDue: 'flexible',
-      ledger: tab('liv', [664.64, -178.56, -74, -34, -10]),
+      ledger: [
+        ...tab('liv', [664.64, -178.56, -74, -34, -10]),
+        { id: 'liv-oct28-0', date: '2026-10-28', amount: -184.04, note: 'Half the tab, sent Oct 28' },
+      ],
     },
     {
       id: 'aiya',
