@@ -27,7 +27,8 @@ function tab(who: string, amounts: number[]): LedgerEntry[] {
 // The bank balance is the PNC available figure of the same day, $3,974.31, and
 // a figures update now carries it to a phone whose own balance is older.
 // The same day the Apple Card was caught up: $424, September's past-due
-// minimum and October's, from PNC, so the bank is $3,550.31 and the card
+// minimum and October's, from PNC. With the two PayPal payoffs, also not yet
+// showing at PNC ($318.99 + $524.56), the bank is $2,706.76; the card is
 // $7,073 with Nov 30 next.
 //
 // Oct 28: no figures changed. The version moves so phones re-run their
@@ -96,12 +97,13 @@ export const SEED_DATE = '2026-09-30'
 
 export const seedState: AppState = {
   seedVersion: SEED_VERSION,
-  // PNC available balance on Oct 28, read off the app: $5,060.56 ledger less
-  // $1,101.25 pending withdrawals plus a $15.00 pending Venmo deposit — the
-  // four Affirm payoffs are among the pending — $3,974.31, less the $424
-  // Apple Card payment made the same day that had not shown there yet.
+  // PNC on Oct 28. Before any payoff the available balance was $5,039.28.
+  // The four Affirm payoffs ($1,064.97) showed as pending, leaving $3,974.31.
+  // Three more left PNC the same day without showing yet, and come off here:
+  // the Apple Card $424 and the two PayPal payoffs, $318.99 (AutoZone) and
+  // $524.56 (Omio), $843.55 together.
   bankBalance: {
-    amount: 3550.31,
+    amount: 2706.76,
     updatedAt: '2026-10-28',
   },
   savingsBalance: 0,
@@ -456,7 +458,7 @@ export const seedState: AppState = {
       product: 'paypal_pay_monthly',
       amountCleared: 526.87,
       dateCleared: '2026-10-28',
-      notes: 'Paid off by Oct 28. Not among the PNC pending charges, so not taken off the bank balance here.',
+      notes: 'Paid off early for $524.56 from PNC on Oct 28, against $526.87 of scheduled payments.',
     },
     {
       id: 'paypal_autozone',
@@ -464,7 +466,7 @@ export const seedState: AppState = {
       product: 'paypal_pay_monthly',
       amountCleared: 314.12,
       dateCleared: '2026-10-28',
-      notes: 'Paid off by Oct 28. Not among the PNC pending charges, so not taken off the bank balance here.',
+      notes: 'Paid off for $318.99 from PNC on Oct 28 — $4.87 more than the $314.12 the app had, interest accrued since its last figure.',
     },
     {
       id: 'delta_airlines',

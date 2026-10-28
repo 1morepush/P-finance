@@ -29,7 +29,7 @@ export const RELEASES: readonly Release[] = [
   {
     version: '10.5',
     date: '2026-10-28',
-    headline: 'Every interest-charging plan paid off, and the Apple Card caught up: bank at $3,550.31',
+    headline: 'Every interest-charging plan paid off, and the Apple Card caught up: bank at $2,706.76',
   },
   {
     version: '10.4',
