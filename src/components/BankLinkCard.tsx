@@ -1,8 +1,8 @@
+import { setBankFromStatement } from '../lib/pending'
 import { useEffect, useState } from 'react'
 import type { AppState } from '../types'
 import { Card } from './Card'
 import { formatCurrency } from '../lib/finance'
-import { today } from '../lib/schedule'
 import {
   cleanWorkerUrl,
   fetchAccounts,
@@ -88,7 +88,7 @@ export function BankLinkCard({
   }
 
   function applyBalance(amount: number, label: string) {
-    setState((s) => ({ ...s, bankBalance: { amount, updatedAt: today() } }))
+    setState((s) => setBankFromStatement(s, amount))
     setNote(`Bank balance set to ${formatCurrency(amount)} from ${label}.`)
   }
 

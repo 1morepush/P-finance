@@ -9,9 +9,12 @@ import { DueAlertCard } from '../components/DueAlertCard'
 import { PlannedCostsCard } from '../components/PlannedCostsCard'
 import { ThisWeekCard } from '../components/ThisWeekCard'
 import { CheckInCard } from '../components/CheckInCard'
-import { floorStatus } from '../lib/recovery'
-import { StatTile } from '../components/StatTile'
-import { formatCurrency, formatDate } from '../lib/finance'
+import { openTasks } from '../lib/recovery'
+import { BankCard } from '../components/BankCard'
+import { SafeCard } from '../components/SafeCard'
+import { PayoffCard } from '../components/PayoffCard'
+import { Section } from '../components/Section'
+import { formatCurrency } from '../lib/finance'
 import { owedWithin, today } from '../lib/schedule'
 import { calculateWeeklySplit } from '../lib/split'
 import { applyPayment } from '../lib/payments'
@@ -38,8 +41,6 @@ export function Dashboard({
   onGoToPlan: () => void
 }) {
   const [incomeInput, setIncomeInput] = useState('')
-  const [balanceEdit, setBalanceEdit] = useState(false)
-  const [balanceInput, setBalanceInput] = useState(String(state.bankBalance.amount))
 
   const incomeAmount = Number(incomeInput) || 0
   const split = useMemo(() => calculateWeeklySplit(state, incomeAmount), [state, incomeAmount])
@@ -53,7 +54,6 @@ export function Dashboard({
 
   // Linked once in Settings; from then on the balance can be pulled from here.
   const stripeLinked = loadBankLink() !== null
-  const floor = floorStatus(state)
   // The check-in is a Sunday job; on other days it lives on the Plan tab.
   const isSunday = new Date(`${today()}T00:00:00Z`).getUTCDay() === 0
 
@@ -65,13 +65,6 @@ export function Dashboard({
       bankBalance: { amount: s.bankBalance.amount + incomeAmount, updatedAt: today() },
       incomeEntries: [...s.incomeEntries, { id: uid(), date: today(), amount: incomeAmount }],
     }
-  }
-
-  function saveBalance() {
-    const amount = Number(balanceInput)
-    if (Number.isNaN(amount)) return
-    setState((s) => ({ ...s, bankBalance: { amount, updatedAt: today() } }))
-    setBalanceEdit(false)
   }
 
   function logIncome() {
@@ -115,86 +108,33 @@ export function Dashboard({
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
-      <Card>
-        <div className="grid grid-cols-2 gap-4">
-          <StatTile
-            label="Bank balance"
-            value={formatCurrency(state.bankBalance.amount)}
-            sub={`updated ${formatDate(state.bankBalance.updatedAt)}`}
-            accent={state.bankBalance.amount < 0 ? 'var(--status-critical)' : undefined}
-          />
-          <StatTile
-            label="Savings set aside"
-            value={formatCurrency(state.savingsBalance)}
-            accent="var(--status-good)"
-          />
-        </div>
-        {/* The plan's floor, built in steps — the next one is the target. */}
-        <p className="mt-2 text-xs" style={{ color: floor.reached ? 'var(--status-good)' : 'var(--text-muted)' }}>
-          {floor.reached
-            ? `✓ At or above your ${formatCurrency(floor.target).replace('.00', '')} floor`
-            : `${formatCurrency(floor.toGo)} to the ${formatCurrency(floor.step!).replace('.00', '')} step of your ${formatCurrency(floor.target).replace('.00', '')} floor`}
-        </p>
-        {/* Every way to bring the balance up to date, in one place. */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-lg px-3 py-1.5 text-xs font-medium"
-            style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
-            onClick={() => {
-              setBalanceInput(String(state.bankBalance.amount))
-              setBalanceEdit((v) => !v)
-            }}
-          >
-            {balanceEdit ? 'Cancel' : 'Edit'}
-          </button>
-          <ScreenshotImport state={state} setState={setState} />
-          {stripeLinked && (
-            <button
-              type="button"
-              className="rounded-lg px-3 py-1.5 text-xs font-medium"
-              style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
-              onClick={onGoToSettings}
-            >
-              Stripe ›
-            </button>
-          )}
-        </div>
-        {balanceEdit && (
-          <div className="mt-3 flex gap-2">
-            <input
-              type="number"
-              inputMode="decimal"
-              value={balanceInput}
-              onChange={(e) => setBalanceInput(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              style={{
-                background: 'var(--surface-page)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)',
-              }}
-            />
-            <button
-              type="button"
-              onClick={saveBalance}
-              className="rounded-lg px-4 py-2 text-sm font-medium"
-              style={{ background: 'var(--cat-installment)', color: 'white' }}
-            >
-              Save
-            </button>
-          </div>
-        )}
-      </Card>
+      <BankCard
+        state={state}
+        setState={setState}
+        actions={
+          <>
+            <ScreenshotImport state={state} setState={setState} />
+            {stripeLinked && (
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                style={{ background: 'var(--surface-page)', color: 'var(--text-secondary)' }}
+                onClick={onGoToSettings}
+              >
+                Stripe ›
+              </button>
+            )}
+          </>
+        }
+      />
 
       <DueAlertCard state={state} />
 
+      <SafeCard state={state} setState={setState} />
+
+      <PayoffCard state={state} setState={setState} />
+
       <PlannedCostsCard state={state} setState={setState} />
-
-      <WeekTargetCard state={state} />
-
-      {isSunday && <CheckInCard state={state} setState={setState} />}
-
-      <ThisWeekCard state={state} setState={setState} onOpenPlan={onGoToPlan} />
 
       <CommandBar
         state={state}
@@ -210,6 +150,19 @@ export function Dashboard({
         }
       />
 
+      {isSunday && <CheckInCard state={state} setState={setState} />}
+
+      {/* Everything below is worth having and not worth scrolling past every
+          time, so it folds away and remembers how it was left. */}
+      <Section id="home-week" title="This week's bills" summary="What comes out, day by day, for the next year of weeks">
+        <WeekTargetCard state={state} />
+      </Section>
+
+      <Section id="home-todo" title="To do" summary={`${openTasks(state).length} open in your plan`}>
+        <ThisWeekCard state={state} setState={setState} onOpenPlan={onGoToPlan} />
+      </Section>
+
+      <Section id="home-income" title="Log a paycheck" summary="Add this week's pay and see how to split it">
       <Card>
         <h2 className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
           Log this week's income
@@ -358,8 +311,11 @@ export function Dashboard({
           )}
         </div>
       </Card>
+      </Section>
 
-      <RunwayCard state={state} onAddExpenses={onGoToIncome} />
+      <Section id="home-runway" title="Runway" summary="How long the money lasts at the rate the bills fall">
+        <RunwayCard state={state} onAddExpenses={onGoToIncome} />
+      </Section>
     </div>
   )
 }

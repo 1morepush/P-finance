@@ -4,15 +4,14 @@ import { Section } from '../components/Section'
 import { PlanTaskRow } from '../components/PlanTaskRow'
 import { CheckInCard } from '../components/CheckInCard'
 import { FloorCard, FundsCard } from '../components/SavingCards'
+import { PayoffCard } from '../components/PayoffCard'
 import {
   COST_CUTS,
   EARNING,
   LUMP_SUM,
   MONEY_COMING,
-  OCTOBER,
   PAYCHECK_ORDER,
   PHASES,
-  PLAN_DATE,
   PLAN_UPDATED,
   RULES,
 } from '../data/recoveryPlan'
@@ -41,40 +40,19 @@ export function Plan({
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
       <div>
-        <h1 className="text-lg font-semibold">Money recovery plan</h1>
+        <h1 className="text-lg font-semibold">Money plan</h1>
         <p className="text-xs" style={muted}>
-          From {formatDate(PLAN_DATE)}, figures updated {formatDate(PLAN_UPDATED)} for the oil-change
-          plan and the people tabs. Your live balances are on the Debts tab.
+          Rewritten {formatDate(PLAN_UPDATED)}, after every loan that charged interest was paid off. Your
+          live balances are on the Debts tab.
         </p>
       </div>
 
       <p className="text-sm" style={secondary}>
-        Cover every payment through October, let Klarna finish on Nov 5, then put the $5,250
-        reimbursement to work in the order below.
+        Keep a real cushion in PNC, put $300 a month on the Apple Card, and send the $5,250
+        reimbursement to the card the day it lands. After that, the people you owe.
       </p>
 
-      <Section id="plan-october" title="The October squeeze" summary="October is the hardest month of the whole payoff">
-        <Card>
-          <div className="flex flex-col divide-y text-sm" style={{ borderColor: 'var(--border)' }}>
-            {OCTOBER.map(([what, est]) => (
-              <div key={what} className="flex items-baseline justify-between gap-3 py-1.5">
-                <span style={what.startsWith('In') ? { color: 'var(--status-good)' } : undefined}>{what}</span>
-                <span className="max-w-[55%] text-right text-xs tabular-nums">{est}</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs" style={secondary}>
-            Depending on your hours and whether September's Apple Card minimum is still owed, October nets
-            between about -$370 and +$435 before food and gas. DoorDash, Depop and the cuts below have to
-            close that gap.
-          </p>
-          <p className="mt-1 text-xs" style={muted}>
-            November's loan installments come to $463.08. Klarna's and the oil plan's last payments in
-            November free up $368 a month by December, and the Tokyo and Airbnb loans ending in February
-            free $186 more.
-          </p>
-        </Card>
-      </Section>
+      <PayoffCard state={state} setState={setState} />
 
       <Section id="plan-coming" title="Money that's coming" summary="Don't spend either lump sum before it's in your account">
         <Card>
@@ -134,7 +112,7 @@ export function Plan({
       >
         <Card>
           <p className="text-xs" style={muted}>
-            Use it in this order. The amounts assume normal payments until January.
+            Use it in this order. Don't spend any of it before it is in your account.
           </p>
           <ol className="mt-1">
             {LUMP_SUM.map((t, i) => (
@@ -155,12 +133,8 @@ export function Plan({
             ))}
           </ol>
           <p className="mt-2 text-xs" style={secondary}>
-            If the wage claim pays out, all of it goes to the Apple Card until it's gone, then to the
-            emergency fund.
-          </p>
-          <p className="mt-1 text-xs" style={muted}>
-            If the $5,250 lands on time, the ~36% loans end months ahead of their July schedule, and the
-            Apple Card is what's left.
+            If the wage claim pays out, it follows the same order: the Apple Card until it's gone, then
+            the people you owe, then savings.
           </p>
         </Card>
       </Section>
@@ -202,7 +176,7 @@ export function Plan({
           </div>
           <p className="mt-2 text-xs" style={muted}>
             Keep the rave tickets you've already paid for. Just don't buy new events on payment plans
-            until the ~36% loans are gone.
+            until the Apple Card is gone.
           </p>
         </Card>
       </Section>
@@ -210,7 +184,7 @@ export function Plan({
       <Section id="plan-saving" title="Saving" summary="The checking floor, sinking funds, and how to split each paycheck">
         <p className="text-sm" style={secondary}>
           For now, saving means a protected checking floor and a small car fund. Real savings start once
-          the ~36% loans are gone.
+          the Apple Card is gone.
         </p>
         <FloorCard state={state} />
         <FundsCard state={state} setState={setState} />

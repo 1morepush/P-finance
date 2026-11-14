@@ -24,6 +24,12 @@ export interface PaymentInput {
    * (an early-payoff quote). The difference is kept as `writtenOff`.
    */
   settle?: boolean
+  /**
+   * Sent, but the bank has not taken it out yet. The balance still drops —
+   * the money is spoken for — and it is listed as not yet posted, so the
+   * bank's own figure can be told apart from what is really there.
+   */
+  notPosted?: boolean
 }
 
 /** The due date one billing cycle on, or null if the debt has no dated schedule. */
@@ -112,6 +118,14 @@ export function applyPayment(state: AppState, input: PaymentInput): AppState {
           ]
         : state.clearedDebts,
     payments: input.record === false ? state.payments : [...state.payments, payment],
+    ...(input.notPosted && input.fromBank && applied > 0
+      ? {
+          pendingOutflows: [
+            ...(state.pendingOutflows ?? []),
+            { id: uid(), label: debt.name, amount: applied, date: input.date, paymentId: payment.id },
+          ],
+        }
+      : {}),
   }
 }
 
@@ -163,6 +177,9 @@ export function undoPayment(state: AppState, paymentId: string, todayISO = today
       ? state.clearedDebts.filter((c) => c.id !== payment.debtId)
       : state.clearedDebts,
     payments: state.payments.filter((p) => p.id !== paymentId),
+    ...(state.pendingOutflows
+      ? { pendingOutflows: state.pendingOutflows.filter((o) => o.paymentId !== paymentId) }
+      : {}),
   }
 }
 

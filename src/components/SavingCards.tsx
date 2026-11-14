@@ -52,7 +52,8 @@ export function FloorCard({ state }: { state: AppState }) {
         )}
       </p>
       <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-        Build PNC to $300 in steps: $100, then $200, then $300. Don't spend below it except in a true
+        Build PNC to {formatCurrency(f.target).replace('.00', '')} in steps:{' '}
+        {f.steps.map((s) => formatCurrency(s).replace('.00', '')).join(', then ')}. Don't spend below it except in a true
         emergency. The Sep 14 overdraft cost $36 and started a rough week, and this floor is what stops
         the next one.
       </p>

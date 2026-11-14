@@ -9,6 +9,7 @@ import { Calendar } from './pages/Calendar'
 import { Income } from './pages/Income'
 import { Settings } from './pages/Settings'
 import { Plan } from './pages/Plan'
+import { Finder } from './components/Finder'
 import {
   dedupeSettlements,
   recordSnapshot,
@@ -22,6 +23,10 @@ import { APP_VERSION, releasesSince } from './version'
 function App() {
   const [state, setState, persisted] = useAppState()
   const [tab, setTab] = useState<Tab>('dashboard')
+  const [finding, setFinding] = useState(false)
+  // Bumped on every jump from Find, so the tab is drawn afresh and a section
+  // it has just unfolded is read as open.
+  const [jump, setJump] = useState(0)
   const [autoSettled, setAutoSettled] = useState<AutoSettlement[]>([])
   const [deduped, setDeduped] = useState<Dedupe | null>(null)
   const [updateReady, setUpdateReady] = useState(false)
@@ -82,6 +87,15 @@ function App() {
           <span className="tabular-nums text-xs" style={{ color: 'var(--text-muted)' }}>
             v{APP_VERSION}
           </span>
+          <button
+            type="button"
+            onClick={() => setFinding(true)}
+            aria-label="Find"
+            className="rounded-lg px-1.5 text-base leading-none"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            🔍
+          </button>
           <button
             type="button"
             onClick={() => setTab('settings')}
@@ -284,6 +298,17 @@ function App() {
         </div>
       )}
 
+      {finding && (
+        <Finder
+          onGo={(t) => {
+            setTab(t)
+            setJump((n) => n + 1)
+          }}
+          onClose={() => setFinding(false)}
+        />
+      )}
+
+      <div key={jump}>
       {tab === 'dashboard' && (
         <Dashboard
           state={state}
@@ -298,6 +323,7 @@ function App() {
       {tab === 'income' && <Income state={state} setState={setState} />}
       {tab === 'plan' && <Plan state={state} setState={setState} />}
       {tab === 'settings' && <Settings state={state} setState={setState} />}
+      </div>
 
       <BottomNav active={tab} onChange={setTab} />
     </div>

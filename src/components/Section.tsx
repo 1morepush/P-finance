@@ -40,7 +40,7 @@ export function Section({
 }) {
   const [open, setOpen] = useState(() => remembered(id, defaultOpen))
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex scroll-mt-16 flex-col gap-4" data-find={id}>
       <button
         type="button"
         aria-expanded={open}

@@ -26,55 +26,42 @@ See [`worker/README.md`](worker/README.md).
 
 ### Home
 
-Home is for today: what is in the bank, what this week takes, anything that
-needs doing now, and the places to tell the app what happened.
+Home is for today: what is in the bank, what is safe to spend, and the
+quickest ways to tell the app what happened. The rest folds away.
 
-- **Bank balance and savings.** Bring the balance up to date by typing it
-  (**Edit**), from a screenshot (**📷 Screenshot**), or from Stripe once a bank
-  is linked. A line under it shows how far the balance is from the next step
-  of the checking floor.
-- **A warning card**, shown only when something needs doing: a payment past
-  due, or less in the bank than the next 14 days will take.
-  It splits that around payday: what is due before the next paycheck, which
-  the bank has to cover alone, and whether the paycheck (or paychecks)
-  inside the 14 days covers the rest. Payday is set under Income → FedEx
-  paycheck estimate; it starts on Fridays from Oct 16, 2026, weekly.
-- **Car costs coming up**, shown while one is unpaid: the inspection and
-  the registration renewal, each with its price range, due date, deadline
-  and notes. Registration says it is waiting on the inspection until that
-  is paid.
-  - Until paid, each is counted at the top of its range on the calendar, in
-    the week card, in the warning card and in the calendar export.
-  - **Mark paid** takes the real amount and where it came from: PNC
-    checking (lowers the bank balance) or the car fund. If the fund doesn't
-    hold enough, the rest comes from checking. It also ticks the plan's
-    to-do. **Undo** puts the money back.
-- **Week cost card.** Swipe through the next 52 weeks, Sunday to Saturday.
-  Each week shows debt payments and subscriptions on the days they come out,
-  plus a weekly share of costs that have no date. It also shows what is still
-  left to cover this week.
-- **To do:** the recovery plan's next few to-dos, soonest due first, with
-  anything left from an earlier week carried along. Tick them here or on the
-  Plan tab.
+- **In the bank:** what is really there, and whether it is above the
+  checking floor.
+  - **Update balance** takes the available balance PNC shows.
+    **📷 Screenshot** reads it from a screenshot, and Stripe pulls it once a
+    bank is linked.
+  - **Sent, not out yet** is for money you have sent that PNC has not taken.
+    It comes off the balance at once, and the card shows what PNC still
+    shows. Tap **It's out** when it posts, or **Didn't go** to put it back.
+    Payments logged anywhere in the app can be marked the same way. Typing
+    PNC's figure takes these off for you.
+- **A warning card**, only when a payment is past due or the next 14 days
+  take more than the bank holds, split around payday.
+- **Safe to spend:** the bank, less the floor, less everything due before
+  the next paycheck, less food and gas until then. "How this is worked out"
+  lists each piece. Food, gas, phone and car insurance are entered here and
+  saved as living costs.
+- **Apple Card payoff** (whichever debt charges the highest interest):
+  this month's progress toward $300, what can go on it today without
+  touching the floor or the bills, a quick way to log a payment, and when it
+  ends at the minimum, at $300 a month, and with the $5,250 reimbursement.
+- **Car costs coming up**, while one is unpaid.
+- **Tell it what you did:** type a plain sentence ("paid 50 toward Apple
+  Card", "doordash 120, 25 gas, 4 hours", "bank balance is 812") and the app
+  records it. The 📷 reads screenshots of the bank, the Apple Card, or a plan
+  in Affirm, Klarna or PayPal, and shows each figure before anything changes.
 - **Sunday check-in**, on Sundays.
-- **Tell it what you did.** Type a plain sentence and the app records it.
-  Examples: "paid 50 toward Omio", "doordash 120, 25 gas, 4 hours",
-  "I owe Sam 150", "bank balance is 812". It can log a payment, income, a
-  shift or a new debt. The 📷 beside it reads screenshots.
-- **Reading screenshots.** Pick screenshots of the bank app, the Apple Card,
-  or a plan in Affirm, Klarna or PayPal:
-  - The app reads the available balance, the card's balance and minimum
-    payment (and whether Apple says it is past due), or a plan's amount left
-    to pay and next due date.
-  - It works out which plan each one is, by name and then by amount.
-  - It shows each figure next to what the app has. Every figure can be
-    edited, and nothing changes until you confirm.
-  - Two screenshots of the same plan are combined.
-  - The reader downloads about 7 MB the first time it is used, then works
-    offline.
-- **Log this week's income**, with a suggested split between debt, extra
-  payoff, savings and money kept in checking.
-- **Runway**: how long the money lasts at the rate the bills fall.
+- Folded sections that remember how you left them: **This week's bills**
+  (a year of weeks), **To do**, **Log a paycheck** (with a suggested split)
+  and **Runway**.
+
+The 🔍 in the header is **Find**: type what you are looking for ("gas",
+"Liv", "backup") and it opens the right tab, unfolds the section and scrolls
+to it.
 
 ### Debts
 
@@ -180,23 +167,24 @@ What you owe, and the plan to clear it.
 
 ### Plan
 
-The Money Recovery Plan of Oct 4, 2026. Its figures are shown as written,
-except where they were updated on Oct 5 for the oil-change plan and the
-people tabs (October instalments, November's, and the lump-sum amounts).
-Live balances stay on the Debts tab.
+The money plan, rewritten Nov 14, 2026 after every loan that charged
+interest was paid off: keep $1,500 in PNC, put $300 a month on the Apple
+Card, and send the $5,250 reimbursement to the card when it lands. A phone
+still on the first plan's $300 floor is moved to $1,500 once; a floor set by
+hand is kept.
 
-- **The to-dos by phase:** This week (Oct 4-10), Rest of October, and
-  November to mid-December. The current phase is open, ticks are dated, and
-  anything overdue is marked.
-- **When the $5,250 lands:** the five-step order, to tick off.
+- **Apple Card payoff**, the same card as on Home.
+- **The to-dos by phase:** Now (Nov 14-30), December, and January to March.
+  The current phase is open, ticks are dated, and anything overdue is marked.
+- **When the $5,250 lands:** the three-step order, to tick off.
 - **Sunday check-in:** seven items that reset every Sunday.
 - **Saving:**
-  - The checking floor, built in steps to $300.
+  - The checking floor, built in steps to $1,500.
   - Sinking funds (car $20 a week now, fun $10 a week once the floor is
     reached). Moving money in takes it out of the PNC balance.
   - How to split each paycheck, and the split for after the debt is gone.
-- **Cost cutters**, **Earning more** (with the job links), **The October
-  squeeze**, **Money that's coming** and **The rules**.
+- **Cost cutters**, **Earning more** (with the job links), **Money that's
+  coming** and **The rules**.
 
 ### Settings
 

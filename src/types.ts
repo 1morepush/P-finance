@@ -333,6 +333,8 @@ export interface Settings {
   keepInCheckingPercent: number
   /** What checking should never drop below. Built up in steps. */
   checkingFloor?: number
+  /** What to put on the interest-charging debt each month, minimum included. */
+  payoffMonthly?: number
 }
 
 export interface BankBalance {
@@ -387,6 +389,25 @@ export interface AppState {
   funds?: SinkingFund[]
   /** One-off costs with a date and only an estimate — an inspection, a registration. */
   plannedCosts?: PlannedCost[]
+  /**
+   * Money already sent that the bank has not taken out yet. `bankBalance` is
+   * always what is really there — these are already off it — so the bank's own
+   * app shows more than the balance here by their total until they post.
+   */
+  pendingOutflows?: PendingOutflow[]
+  /** The plan this device has been moved onto; see `PLAN_VERSION`. */
+  planVersion?: string
+}
+
+/** A payment sent but not yet out of the bank. */
+export interface PendingOutflow {
+  id: string
+  label: string
+  amount: number
+  /** ISO date it was sent. */
+  date: string
+  /** The logged payment it belongs to, so undoing that removes this. */
+  paymentId?: string
 }
 
 /**

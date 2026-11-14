@@ -161,7 +161,7 @@ export function Settings({
           Checking floor
         </h2>
         <p className="mb-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          What PNC should never drop below. The plan builds it to $300 in steps of $100.
+          What PNC should never drop below. The plan keeps $1,500 there, built in steps of $500.
         </p>
         <label className="flex items-center gap-2 text-sm">
           $
@@ -170,7 +170,7 @@ export function Settings({
             inputMode="decimal"
             step="50"
             min="0"
-            value={state.settings.checkingFloor ?? 300}
+            value={state.settings.checkingFloor ?? 1500}
             onChange={(e) => {
               const v = Number(e.target.value)
               if (Number.isFinite(v) && v >= 0) {

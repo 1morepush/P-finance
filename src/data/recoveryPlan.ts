@@ -1,17 +1,21 @@
 import type { SinkingFund } from '../types'
 
 /**
- * The Money Recovery Plan of Oct 4, 2026, as written. Every figure here is
- * the plan's own and is shown as it stands — estimates, ranges and all. The
- * live balances are the app's; this is the plan for what to do with them.
+ * The money plan, as it stands from Nov 14, 2026.
  *
- * Updated Oct 5, at the user's request, for the oil-change Pay in 4 and the
- * people tabs from the Oct 5 note: October instalments $695.33 → $704.98,
- * personal debts after December ~$1,520 → ~$1,780, so the Apple Card's share
- * of the $5,250 ~$1,970 → ~$1,710. The ~36% loans are unchanged at ~$1,260.
+ * The first plan (Oct 4) was about surviving October and clearing the ~36%
+ * loans. Those were all paid off on Oct 28, so this one replaces it: keep a
+ * real cushion in checking, put $300 a month on the Apple Card, and send the
+ * $5,250 reimbursement to the card when it lands. To-dos that still apply
+ * keep their ids, so anything already ticked stays ticked.
  */
-export const PLAN_UPDATED = '2026-10-05'
+export const PLAN_UPDATED = '2026-11-14'
 export const PLAN_DATE = '2026-10-04'
+/** Bumped when the plan is rewritten, so a device can be moved onto it once. */
+export const PLAN_VERSION = '2026-11-14'
+
+/** The lump sum the payoff plan counts on, and the month it is expected. A guess until it is paid. */
+export const LUMP = { amount: 5250, month: '2027-01', name: 'FedEx tuition reimbursement' }
 
 export interface PlanTask {
   id: string
@@ -32,85 +36,64 @@ export interface PlanPhase {
 
 export const PHASES: PlanPhase[] = [
   {
-    id: 'week1',
-    title: 'This week (Oct 4-10)',
-    from: '2026-10-04',
-    to: '2026-10-10',
+    id: 'now',
+    title: 'Now (Nov 14-30)',
+    from: '2026-11-14',
+    to: '2026-11-30',
     tasks: [
+      { id: 'inspection', text: "Get the safety and emissions inspection ($30-40) if it isn't done yet. Registration can't be renewed without it." },
+      { id: 'registration', text: 'Renew the registration. It was due Oct 31, so do it now to avoid a late fee or a ticket.' },
       {
-        id: 'apple-sept-min',
-        text: "Pay what you can toward September's Apple Card minimum now, and all $212 before Oct 30. After that, a late payment can be reported to the credit bureaus.",
-        due: '2026-10-30',
+        id: 'apple-nov-min',
+        text: 'Pay the Apple Card by Nov 30: at least the $212 minimum, and $300 if the bank stays above the floor.',
+        due: '2026-11-30',
       },
-      {
-        id: 'call-ana',
-        text: 'Call Ana Smith back on Mon Oct 5 or later at 919-707-7983, with Case 220463 and your documents ready.',
-        due: '2026-10-05',
-      },
-      {
-        id: 'pnc-197',
-        text: 'Have $197.67 in PNC by Oct 6 for Frontier (Oct 7), Amazon (Oct 8) and ACE (Oct 10).',
-        due: '2026-10-06',
-      },
-      { id: 'inspection', text: "Get the safety and emissions inspection ($30-40). Registration can't be renewed without it." },
-      { id: 'oil', text: 'Do the DIY oil change ($35-50). Check your manual for the oil grade, likely 0W-20.' },
-      { id: 'ux-study', text: 'Ask the UX study whether its 3-shift cap covers all your bookings, and cancel the extra shifts early.' },
-      { id: 'apply-remote', text: 'Apply to the three remote roles in Earning more.' },
-      { id: 'overdraft-off', text: 'Turn off overdraft coverage on your PNC debit card and set a low-balance alert at $100.' },
-      { id: 'depop-first-10', text: 'Photograph and list your first 10 Depop items.' },
-      { id: 'ten-a-month', text: 'Text everyone you owe the $10-a-month plan, and send the first $10.' },
-    ],
-  },
-  {
-    id: 'october',
-    title: 'Rest of October',
-    from: '2026-10-11',
-    to: '2026-10-31',
-    tasks: [
-      {
-        id: 'registration',
-        text: 'Pay the registration renewal by Oct 31. The exact amount is on your renewal notice.',
-        due: '2026-10-31',
-      },
-      { id: 'apple-oct-min', text: "Pay October's Apple Card minimum by Oct 31.", due: '2026-10-31' },
-      { id: 'floor-150-300', text: 'Build the PNC floor to $150, then $300.' },
-      { id: 'cuts', text: 'Freeze the gym, cancel Rocket Money, and downgrade iCloud if you can.' },
-      { id: 'instawork', text: 'Work every booked Instawork shift, and DoorDash the 10:30-3 lunch block on free mornings.' },
-    ],
-  },
-  {
-    id: 'nov-dec',
-    title: 'November to mid-December',
-    from: '2026-11-01',
-    to: '2026-12-15',
-    tasks: [
-      {
-        id: 'klarna-ends',
-        text: 'Klarna ends Nov 5. Put the freed-up money toward Affirm Tokyo or the Airbnb loan.',
-        due: '2026-11-05',
-      },
-      { id: 'photo-cloud', text: 'Choose Google Photos or iCloud before Google renews on Nov 10.', due: '2026-11-10' },
+      { id: 'budget-setup', text: 'Enter food, gas, phone and car insurance on Home, so "safe to spend" is a real number.' },
+      { id: 'gym-cancel', text: 'Send the Anytime Fitness cancellation email (the draft is in your Gmail) and keep the written confirmation.' },
+      { id: 'people-nov', text: "Send November's $10 to each person you owe." },
+      { id: 'call-ana', text: 'Check in with Ana Smith at 919-707-7983 about the wage claim, Case 220463.' },
       { id: 'peak-hours', text: 'Ask your FedEx supervisor about extra peak-season hours.' },
-      {
-        id: 'tuition-call',
-        text: 'Ask FedEx Tuition Assistance (1-888-901-6337) when to apply for spring, and whether this term used your whole yearly limit.',
-      },
+    ],
+  },
+  {
+    id: 'december',
+    title: 'December',
+    from: '2026-12-01',
+    to: '2026-12-31',
+    tasks: [
       {
         id: 'asu-receipts',
         text: 'Save every ASU itemized receipt, and submit grades and receipts right after the term ends Dec 12.',
         due: '2026-12-12',
       },
+      {
+        id: 'tuition-call',
+        text: 'Ask FedEx Tuition Assistance (1-888-901-6337) when the $5,250 will be paid, when to apply for spring, and whether this term used your whole yearly limit.',
+      },
+      { id: 'apple-dec-min', text: 'Pay the Apple Card by Dec 30: $300 if you can, never less than the minimum.', due: '2026-12-30' },
+      { id: 'people-dec', text: "Send December's $10 to each person you owe." },
+      { id: 'depop-first-10', text: 'Photograph and list your first 10 Depop items.' },
+    ],
+  },
+  {
+    id: 'new-year',
+    title: 'January to March',
+    from: '2027-01-01',
+    to: '2027-03-31',
+    tasks: [
+      { id: 'lump-to-card', text: 'When the $5,250 lands, top PNC back up to the floor and put the rest on the Apple Card the same day.' },
+      { id: 'apple-finish', text: 'Keep $300 a month going until the Apple Card is at zero.' },
+      { id: 'people-after', text: 'Then send that $300 a month to the people you owe, smallest tab first.' },
+      { id: 'mileage-tax', text: 'At tax time, save the mileage log from the Income tab and claim the deduction.' },
     ],
   },
 ]
 
 /** "When the $5,250 lands" — in this order. */
 export const LUMP_SUM: PlanTask[] = [
-  { id: 'lump-apple-past-due', text: 'Anything past due on the Apple Card.' },
-  { id: 'lump-36', text: 'The six ~36% loans: about $1,260 left by January.' },
-  { id: 'lump-emergency', text: "A $500 starter emergency fund, so the next car repair doesn't become new debt." },
-  { id: 'lump-personal', text: 'Your personal debts: about $1,780 after $50 a month through December.' },
-  { id: 'lump-apple', text: 'The Apple Card: the remaining ~$1,710.' },
+  { id: 'lump-floor', text: 'Top PNC back up to the floor if it has dipped below.' },
+  { id: 'lump-card', text: 'Everything else goes on the Apple Card, the same day.' },
+  { id: 'lump-rest', text: "If any is left after the card is at zero, pay the people you owe, smallest tab first." },
 ]
 
 export const SUNDAY_CHECK_IN: PlanTask[] = [
@@ -131,10 +114,10 @@ export interface CostCut {
 }
 
 export const COST_CUTS: CostCut[] = [
-  { id: 'cut-gym', cut: 'Freeze Anytime Fitness', saves: '~$54/mo', how: "Ask the front desk about a freeze and its fee. Cancel if there's no freeze option." },
+  { id: 'cut-gym', cut: 'Cancel Anytime Fitness', saves: '~$54/mo', how: 'The cancellation email is drafted in your Gmail. Add the club address, send it, and keep the written confirmation.' },
   { id: 'cut-rocket', cut: 'Cancel Rocket Money Premium', saves: '$8/mo', how: 'Your P-finance app already tracks subscriptions.' },
   { id: 'cut-icloud', cut: 'iCloud 2TB down to 200GB', saves: '~$7/mo', how: 'Only if you use under 200GB (Settings, your name, iCloud).' },
-  { id: 'cut-photo-cloud', cut: 'Keep one photo cloud', saves: '~$2.50/mo', how: 'Google Photos renews Nov 10 at $29.99 a year.' },
+  { id: 'cut-photo-cloud', cut: 'Keep one photo cloud', saves: '~$2.50/mo', how: 'Google Photos is $29.99 a year and iCloud is monthly. Pick one before the next renewal.' },
   { id: 'cut-claude', cut: 'Claude Pro', saves: '$20/mo', how: "Drop to the free plan if you aren't using it most weeks." },
   {
     id: 'cut-overdraft',
@@ -189,7 +172,7 @@ export const EARNING: EarnOption[] = [
 ]
 
 export const RULES = [
-  'If you can\'t pay cash today, the answer is "not yet." No new payment plans until the ~36% loans are gone, and after that never more than one at a time.',
+  'If you can\'t pay cash today, the answer is "not yet." No new payment plans until the Apple Card is gone, and after that never more than one at a time.',
   'The checking floor is untouchable.',
   "The Apple Card minimum gets paid before anything optional. If you're ever about to miss it, message Apple Card support before the due date.",
   'Never borrow from one person to pay another. Skip payday loans and cash-advance apps entirely.',
@@ -198,31 +181,23 @@ export const RULES = [
 
 export const PAYCHECK_ORDER = [
   'Top PNC back up to the floor.',
-  'Cover everything due before your next paycheck. Check the next 14 days in your app.',
+  'Cover everything due before your next paycheck. Home shows it.',
+  'Food and gas for the week.',
   'Move $20 to the car fund.',
-  'Send the personal-debt payments: $50 a month in total, $10 each.',
-  'Put everything left on Affirm Tokyo or the Airbnb loan, which free up the most monthly cash per dollar paid.',
-]
-
-/** The October squeeze, as estimated. */
-export const OCTOBER: [string, string][] = [
-  ['In: FedEx, 15-18.5 hrs a week', '$880-1,090'],
-  ['In: Instawork, after tax and gas', '$260-515'],
-  ['Out: loan installments', '$704.98'],
-  ['Out: Apple Card minimum', "$212, or about $424 if September's is still unpaid"],
-  ['Out: inspection, oil, registration', '$165-290 (approx.)'],
-  ['Out: subscriptions and gym', 'about $88'],
+  'Send the personal-debt payments: $10 each, once a month.',
+  'Everything left goes on the Apple Card, up to $300 a month. Go past $300 only while the bank stays above the floor.',
 ]
 
 export const MONEY_COMING: { source: string; amount: string; expected: string; status: string }[] = [
   { source: 'FedEx tuition reimbursement', amount: '$5,250', expected: 'Dec 2026-Feb 2027', status: 'Approved; pays after grades and receipts' },
   { source: 'NC DOL wage claim, Case 220463', amount: '$4,583-9,167', expected: 'Nov 2026-Mar 2027 (a guess)', status: 'Under investigation' },
-  { source: 'Instawork, October', amount: '$361-693 gross', expected: 'Oct 2026', status: 'Booked; labor shifts unconfirmed' },
 ]
 
 /** Build checking to the floor in these steps. */
-export const FLOOR_STEPS = [100, 200, 300]
-export const FLOOR_TARGET = 300
+export const FLOOR_STEPS = [500, 1000, 1500]
+export const FLOOR_TARGET = 1500
+/** The first plan's floor, so a device still on it can be told apart from one set by hand. */
+export const OLD_FLOOR_TARGET = 300
 
 export const DEFAULT_FUNDS: SinkingFund[] = [
   { id: 'fund-car', name: 'Car', perWeek: 20, balance: 0, covers: 'Registration, inspection, oil, tires, repairs' },
