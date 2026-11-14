@@ -58,5 +58,5 @@ body {
 h1,
 h2,
 h3 {
-  scroll-margin-top: 4rem;
+  scroll-margin-top: calc(4rem + env(safe-area-inset-top));
 }

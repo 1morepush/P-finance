@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '11.1',
+    date: '2026-11-14',
+    headline: 'The top bar no longer hides behind the iPhone clock and Dynamic Island',
+  },
+  {
     version: '11.0',
     date: '2026-11-14',
     headline: 'Safe to spend, an Apple Card payoff plan, payments not out of PNC yet, a shorter Home, Find, and a new plan',
