@@ -1,3 +1,4 @@
+import { setBankFromStatement } from './pending'
 import type { AppState, Debt, DebtProduct, DebtStatus, PriorityTier } from '../types'
 import { PRODUCT_LABEL } from '../types'
 import { activeDebts, formatCurrency, orderByStrategy } from './finance'
@@ -62,7 +63,7 @@ export function applyAction(state: AppState, action: Action): AppState {
     case 'shift':
       return addShift(state, action.input)
     case 'bank':
-      return { ...state, bankBalance: { amount: action.amount, updatedAt: today() } }
+      return setBankFromStatement(state, action.amount)
   }
 }
 

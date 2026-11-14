@@ -1,3 +1,4 @@
+import { statementBalance } from '../lib/pending'
 import { useRef, useState } from 'react'
 import type { AppState } from '../types'
 import { Modal } from './Modal'
@@ -211,7 +212,7 @@ export function ScreenshotImport({
                 const p = effective(d)
                 const changes = changesFor(p, state)
                 const debt = state.debts.find((x) => x.id === d.debtId)
-                const current = p.kind === 'bank' ? state.bankBalance.amount : debt?.balance
+                const current = p.kind === 'bank' ? statementBalance(state) : debt?.balance
                 return (
                   <div
                     key={i}

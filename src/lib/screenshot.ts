@@ -1,3 +1,4 @@
+import { setBankFromStatement, statementBalance } from './pending'
 import type { AppState, Debt } from '../types'
 import { activeDebts } from './finance'
 import { addDays, isDate, today } from './schedule'
@@ -489,8 +490,8 @@ export function propose(readings: Reading[], state: AppState): { proposals: Prop
 export function changesFor(p: Proposal, state: AppState): { field: 'balance' | 'nextDue' | 'minimum'; from?: number | string; to: number | string }[] {
   const out: { field: 'balance' | 'nextDue' | 'minimum'; from?: number | string; to: number | string }[] = []
   if (p.kind === 'bank') {
-    if (p.balance !== undefined && Math.abs(p.balance - state.bankBalance.amount) > 0.004) {
-      out.push({ field: 'balance', from: state.bankBalance.amount, to: p.balance })
+    if (p.balance !== undefined && Math.abs(p.balance - statementBalance(state)) > 0.004) {
+      out.push({ field: 'balance', from: statementBalance(state), to: p.balance })
     }
     return out
   }
@@ -519,7 +520,8 @@ export function applyProposals(state: AppState, accepted: Proposal[], now = toda
   for (const p of accepted) {
     if (p.kind === 'bank') {
       if (p.balance === undefined) continue
-      next = { ...next, bankBalance: { amount: p.balance, updatedAt: now } }
+      // The bank's figure still holds anything sent but not yet posted.
+      next = setBankFromStatement(next, p.balance, now)
       continue
     }
     next = {

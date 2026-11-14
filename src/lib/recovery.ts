@@ -90,9 +90,9 @@ export interface FloorStatus {
 }
 
 /**
- * The floor is built in steps — $100, then $200, then $300 — rather than as
- * one figure, so there is always a near target. A floor set to something other
- * than the plan's $300 keeps the steps below it and ends at it.
+ * The floor is built in steps — $500, then $1,000, then $1,500 — rather than
+ * as one figure, so there is always a near target. A floor set to something
+ * other than the plan's keeps the steps below it and ends at it.
  */
 export function floorStatus(state: AppState): FloorStatus {
   const target = state.settings.checkingFloor ?? FLOOR_TARGET

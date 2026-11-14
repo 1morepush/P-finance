@@ -28,6 +28,7 @@ export function PaidOffForm({
   const [amount, setAmount] = useState(quote.toFixed(2))
   const [date, setDate] = useState(today())
   const [fromBank, setFromBank] = useState(true)
+  const [notPosted, setNotPosted] = useState(false)
   const amt = Number(amount)
   const valid = amt >= 0 && amt <= debt.balance + 0.005 && amount !== ''
   const writtenOff = valid ? Math.max(debt.balance - amt, 0) : 0
@@ -38,7 +39,7 @@ export function PaidOffForm({
       onSubmit={(e) => {
         e.preventDefault()
         if (!valid) return
-        onSave({ debtId: debt.id, amount: amt, date, fromBank, advanceDue: false, settle: true })
+        onSave({ debtId: debt.id, amount: amt, date, fromBank, advanceDue: false, settle: true, ...(fromBank && notPosted ? { notPosted } : {}) })
       }}
     >
       <p className="text-sm">
@@ -96,6 +97,12 @@ export function PaidOffForm({
         <input type="checkbox" checked={fromBank} onChange={(e) => setFromBank(e.target.checked)} />
         It came out of PNC checking
       </label>
+      {fromBank && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={notPosted} onChange={(e) => setNotPosted(e.target.checked)} />
+          PNC hasn't taken it out yet
+        </label>
+      )}
       {!fromBank && (
         <p className="-mt-2 text-[11px]" style={muted}>
           The bank balance stays as it is — paid from another account, or forgiven.

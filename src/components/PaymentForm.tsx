@@ -30,6 +30,7 @@ export function PaymentForm({
   const [date, setDate] = useState(today())
   const [fromBank, setFromBank] = useState(true)
   const [advanceDue, setAdvanceDue] = useState(true)
+  const [notPosted, setNotPosted] = useState(false)
 
   const value = Number(amount) || 0
   const advanceTo = debt ? nextDueAfter(debt) : null
@@ -47,7 +48,7 @@ export function PaymentForm({
       onSubmit={(e) => {
         e.preventDefault()
         if (!debt || value <= 0) return
-        onSave({ debtId, amount: value, date, fromBank, advanceDue })
+        onSave({ debtId, amount: value, date, fromBank, advanceDue, ...(fromBank && notPosted ? { notPosted } : {}) })
       }}
     >
       <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -111,6 +112,12 @@ export function PaymentForm({
         />
         Deduct from bank balance
       </label>
+      {fromBank && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={notPosted} onChange={(e) => setNotPosted(e.target.checked)} />
+          PNC hasn't taken it out yet
+        </label>
+      )}
 
       {advanceTo && !clears && (
         <label className="flex items-center gap-2 text-sm">

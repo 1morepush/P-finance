@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AppState } from '../types'
 import { SEED_DATE, SEED_VERSION, seedState } from '../data/seed'
 import { replayManualPayments } from './payments'
+import { FLOOR_TARGET, OLD_FLOOR_TARGET, PLAN_VERSION } from '../data/recoveryPlan'
 import { mergePlannedCosts } from './plannedCosts'
 import { today } from './schedule'
 import { APP_VERSION } from '../version'
@@ -53,7 +54,7 @@ function loadState(): AppState {
     // version, it started on it — so stamp the version rather than greet a
     // first-time user with a list of what changed since a version they never
     // had.
-    return { ...seedState, lastSeenVersion: APP_VERSION }
+    return { ...seedState, lastSeenVersion: APP_VERSION, planVersion: PLAN_VERSION }
   }
   try {
     const parsed = JSON.parse(raw)
@@ -127,7 +128,16 @@ function merge(raw: Partial<AppState>): AppState {
     // Same reasoning as seedVersion: taking this from the seed would tell a
     // device that has never exported that it is safely backed up.
     lastBackupAt: parsed.lastBackupAt,
-    settings: { ...seedState.settings, ...parsed.settings },
+    settings: {
+      ...seedState.settings,
+      ...parsed.settings,
+      // A device still on the first plan carries its $300 floor. The current
+      // plan keeps $1,500; a floor set to anything else was set by hand and stays.
+      ...(parsed.planVersion !== PLAN_VERSION && parsed.settings?.checkingFloor === OLD_FLOOR_TARGET
+        ? { checkingFloor: FLOOR_TARGET }
+        : {}),
+    },
+    planVersion: PLAN_VERSION,
   }
 }
 

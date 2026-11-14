@@ -27,6 +27,11 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '11.0',
+    date: '2026-11-14',
+    headline: 'Safe to spend, an Apple Card payoff plan, payments not out of PNC yet, a shorter Home, Find, and a new plan',
+  },
+  {
     version: '10.5',
     date: '2026-10-28',
     headline: 'Every interest-charging plan paid off, and the Apple Card caught up: bank at $2,706.76',

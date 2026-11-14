@@ -52,3 +52,11 @@ body {
     padding: 0 !important;
   }
 }
+
+/* Find scrolls to a heading or a marked card; keep it clear of the sticky header. */
+[data-find],
+h1,
+h2,
+h3 {
+  scroll-margin-top: 4rem;
+}
