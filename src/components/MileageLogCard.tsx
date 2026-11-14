@@ -141,7 +141,7 @@ function PrintableLog({
   const cellCls = 'border border-neutral-300 px-1.5 py-1 align-top'
   return (
     <div
-      className="mileage-print fixed inset-0 z-30 overflow-y-auto bg-white p-4 text-black"
+      className="mileage-print fixed inset-0 z-30 overflow-y-auto bg-white px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] text-black"
       role="dialog"
       aria-modal="true"
       aria-label={`Mileage log ${year}`}

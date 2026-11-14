@@ -79,7 +79,10 @@ function App() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-md" style={{ background: 'var(--surface-page)' }}>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
+      {/* Installed on an iPhone the page runs under the clock and Dynamic Island,
+          so the bar keeps clear of them: without the inset its buttons sat
+          behind the status bar, out of sight and out of reach. */}
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--surface-page) 85%, transparent)' }}>
         <h1 className="text-base font-semibold">P-Finance</h1>
         {/* Which build is on this phone, answerable without opening Settings —
             the question comes up every time something is deployed. */}
